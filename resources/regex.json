@@ -1,0 +1,14 @@
+{
+  "procedure": {
+    "regex": "(.*) \\((.*)\\)",
+    "fields": ["procedure", "date"]
+  },
+  "anesthetic": {
+    "regex": "(.*) (.* .*) \\((.*)\\)",
+    "fields": ["anesthetic", "amount", "date"]
+  },
+  "analgesic": {
+    "regex": "(.*) (.* .*) \\((.*)\\)",
+    "fields": ["analgesic", "amount", "date"]
+  }
+}
