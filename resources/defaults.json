@@ -1,6 +1,9 @@
 {
-  "toe-pich": "{yes}",
-  "Isoflourane": {"concentration": "1 %"},
+  "toe_pich": "{yes}",
+  "appearance": "healthy",
+  "incision_control": "healing",
+  "treatments": "analgesic",
+  "Isoflourane": {"amount": "100 μl", "concentration": "1 %"},
   "Ketamine/Xylazine": {"concentration":"10 mg/kg"},
   "Lidocaine": {"concentration": "20 mg/ml"},
   "Buprenophen": {"concentration": "0.05-0.1 mg/kg"},

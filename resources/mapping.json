@@ -4,5 +4,7 @@
   "Sex": "sex",
   "Line": "line",
   "DOB": "dob",
-  "Line / Strain (Name)": "line"
+  "Line / Strain (Name)": "line",
+  "start": "start_date",
+  "end": "end_date"
 }

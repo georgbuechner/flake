@@ -9,7 +9,11 @@
   "exp": "",
   "signiture": "{signiture}",
   "procedure":[],
-  "post-procedure":[],
+  "post_procedure":[],
   "anesthetic": [],
-  "analgesic": []
+  "analgesic": [],
+  "death_drug": "Isoflourane",
+  "start_date": "",
+  "last_date": "",
+  "end_date": ""
 }

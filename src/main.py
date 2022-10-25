@@ -2,8 +2,14 @@ import clevercsv
 import pandas as pd
 import json
 import re
+from datetime import datetime, timedelta
 from docx import Document
 from typing import Dict
+
+def daterange(date1, date2):
+    date1 = datetime.strptime(date1, "%d/%m/%Y")
+    date2 = datetime.strptime(date2, "%d/%m/%Y")
+    return [date1 + timedelta(days=x) for x in range(date2.day-date1.day+1)]
 
 def print_data(df: pd.DataFrame):
     print("DATA")
@@ -15,6 +21,13 @@ def print_data(df: pd.DataFrame):
             print("Comments:")
             for field in value.split(";"):
                 print(f"- {field}")
+
+def get_max_date(xs: list) -> datetime:
+    max_date = datetime(1970, 1, 1)
+    for x in xs:
+        if datetime.strptime(x["date"], "%d/%m/%Y") > max_date:
+            max_date = datetime.strptime(x["date"], "%d/%m/%Y")
+    return max_date
 
 def create_fields(
     df: pd.DataFrame, mapping: Dict[str, str], regex: Dict[str, any], fields: Dict[str, any]
@@ -59,6 +72,10 @@ def create_fields(
                 if ":" in entry:
                     key, val = get_key_val_pair(entry)
                     add_to_fields(key, val)
+    fields["last_date"] = max(
+        get_max_date(fields["anesthetic"]), get_max_date(fields["analgesic"])
+    )
+    fields["last_date"] = datetime.strftime(fields["last_date"], "%d/%m/%Y")
     return fields
 
 def add_value_paragraph(par, tag, val): 
@@ -81,12 +98,29 @@ def edit_paragraph(par, fields):
     """ 
     Edits paragraph by checking for tags and eventually replacing tag with entry
     """
+    # Check deep-tag (f.e. [death_drug.amount])
+    result = re.search(r"\[(.*)\.(.*)\]", par.text)
+    # Check if value contains a signal-word.
+    if result is not None:
+        tag_a = result.group(1)
+        tag_b = result.group(2)
+        print("edit_paragraph: ", par.text, tag_a, tag_b)
+        print("edit_paragraph: ", par.text, fields[tag_a], defaults[fields[tag_a]], tag_b)
+        if tag_b in tag_a:
+            par.text = par.text.replace(result.group(0), tag_a[tag_b]) 
+        if tag_a in fields and tag_b in fields[tag_a]:
+            par.text = par.text.replace(result.group(0), fields[tag_a][tag_b]) 
+        if tag_a in defaults and tag_b in defaults[tag_a]:
+            par.text = par.text.replace(result.group(0), defaults[tag_a][tag_b]) 
+        if fields[tag_a] in defaults and tag_b in defaults[fields[tag_a]]:
+            par.text = par.text.replace(result.group(0), defaults[fields[tag_a]][tag_b]) 
+        return par
+    # Check flat-tag (f.e. [user]
     result = re.search(r"\[(.*)\]", par.text)
     if result is not None:
         key = result.group(1)
         if key in fields:
-            tag = "[" + key + "]"
-            add_value_paragraph(par, tag, str(fields[key]))
+            add_value_paragraph(par, result.group(0), str(fields[key]))
     return par
 
 def edit_paragraphs(doc, fields):
@@ -129,16 +163,21 @@ def edit_list_tables(doc, fields, defaults):
         Gets (potential) tag from input. If remove is True, remove tag (replace
         with empty string)
         """
-        # Search list-tag (<tag>)
+        # Search from-to-tag (f.e. <start_date-end_date>):
+        result = re.search(r"\<(.*)-(.*)\>", par.text)
+        # If found return tag
+        if result is not None:
+            if remove:
+                par.text = par.text.replace(result.group(0), "") 
+            return [result.group(1), result.group(2)]
+        # Search list-tag (f.e. <procedure>)
         result = re.search(r"\<(.*)\>", par.text)
         # If found return tag
         if result is not None:
-            key = result.group(1)
             # If `remove` is True, replace tag with empty string
             if remove:
-                tag = "<" + key + ">"
-                par.text = par.text.replace(tag, "") 
-            return key
+                par.text = par.text.replace(result.group(0), "") 
+            return result.group(1)
         # Otherwise, return None
         return None
 
@@ -180,7 +219,17 @@ def edit_list_tables(doc, fields, defaults):
         # Get infos from first row
         row = table.rows[0]
         tag, tags = get_table_infos(row)
-        if tag is not None and tag in fields:
+        # Check from-to-tag (first element is from, second to)
+        if isinstance(tag, list):
+            _from = fields[tag[0]]
+            _to = fields[tag[1]]
+            date_list = daterange(_from, _to)
+            for entry in date_list:
+                edit_table(
+                    table, tag, ["date"] + tags[1:], {"date": datetime.strftime(entry, "%d.%m.%y") }
+                )
+        # Check "normal" tag
+        elif tag is not None and tag in fields:
             # If no information but tag exists, add "None"-row
             if len(fields[tag]) == 0:
                 row = table.add_row().cells
