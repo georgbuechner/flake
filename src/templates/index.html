@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Input</title>
+
+  <link href="static/css/general.css" rel="stylesheet">
+</head>
+
+<body>
+    <h1>Larkum database Input</h1>
+
+    <p>Select User</p>
+    <ul>
+    {% for user in users %}
+      <li>
+          <a href="/{{user}}">
+            <input class="btn" type="button" value="{{user}}" />
+          </a>
+      </li>
+      {% endfor %}
+    </ul>
+</body>
+
+</html>

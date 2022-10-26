@@ -1,0 +1,24 @@
+/* General css */
+
+body {
+    font-family: SFMono-Regular, Menlo, Conolas,"Leberation Mono", "Courier New", monospace;
+    font-size: 11px;
+}
+
+.btn {
+    padding: 0.4em;
+    border: transparent;
+    background-color: #bfc9ca;
+    text-decoration: none;
+    border-radius: 1px;
+    font-size: 11px;
+}
+
+.btn:hover{
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.btn:active {
+  background-color: green;
+}

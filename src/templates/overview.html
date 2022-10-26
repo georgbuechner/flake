@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{user}}</title>
+
+  <link href="static/css/general.css" rel="stylesheet">
+</head>
+
+<body>
+  <h1>Larkum database {{user}}</h1>
+    <table class="thread-dark">
+      <tr>
+        <th>ID</th>
+        <th>Responsible</th>
+        <th>Sex</th>
+        <th>Line / Strain (Name)</th>
+        <th>DOB</th>
+        <th>Sacrifice date</th>
+        <th>License number</th>
+      </tr>
+      {% for entry in list_fields %}
+        <tr>
+          <td>{{entry.id}}</li>
+          <td>{{entry.user}}</li>
+          <td>{{entry.sex}}</li>
+          <td>{{entry.line}}</li>
+          <td>{{entry.dob}}</li>
+          <td>{{entry.death_date}}</li>
+          <td>{{entry.protocol}}</li>
+          <td>
+            <a href="/{{user}}/{{entry.id}}">
+               <input class="btn" type="button" value="edit" />
+            </a>
+          </td>
+      {% endfor %}
+    </table>
+</body>
+
+</html>

@@ -1,10 +1,16 @@
 {
   "ID": "id",
-  "User": "user",
+  "Responsible": "user",
   "Sex": "sex",
-  "Line": "line",
   "DOB": "dob",
   "Line / Strain (Name)": "line",
-  "start": "start_date",
-  "end": "end_date"
+  "Sacrifice date": "death_date",
+  "License number": "protocol",
+
+  "Verantwortlich": "user",
+  "Geschlecht": "",
+  "Geb.":"dob",
+  "Linie / Stamm (Name)": "line",
+  "Sterbedatum":"death_date",
+  "Lizenznummer": "protocol"
 }

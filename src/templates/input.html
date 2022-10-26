@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Input</title>
+
+  <link href="static/css/general.css" rel="stylesheet">
+</head>
+
+<body>
+    <p>Larkum database Input</p>
+    <label>Start date</label><input id="start" type="date"></input><br>
+    <label>End date</label><input id="end" type="date"></input><br>
+    <label>Sub Experiment</label><input id="end"></input><br>
+    <label>Start weight</label><input id="end"></input><br>
+    <br>
+
+    
+    <h3>Analgesia</h3>
+    <table>
+      <tr>
+        <th>Analgesia</th>
+        <th>date</th>
+        <th>amount</th>
+        <th>concentration</th>
+      </tr>
+      <tr>
+        <td>
+        <select id="drug_1" type="list">
+          <option value="lidocaine">Lidocaine</option>
+          <option value="buprenophen">Buprenophen</option>
+          <option value="carprophen">Carprophen</option>
+        </select>
+        </td>
+        <td><input id="date" type="date"></input></td>
+        <td><input id="amount"></input></td>
+        <td><input id="concentration"></input></td>
+      </tr>
+    </table>
+
+</body>
+
+</html>
