@@ -9,18 +9,18 @@
 </head>
 
 <body>
-    <h1>Larkum database Input</h1>
+  <div class="center_in_box">
+    <h1>Larkum Database Input</h1>
 
     <p>Select User</p>
     <ul>
     {% for user in users %}
       <li>
-          <a href="/{{user}}">
-            <input class="btn" type="button" value="{{user}}" />
-          </a>
+        <a href="/{{user}}">{{user}}</a>
       </li>
       {% endfor %}
     </ul>
+  </div>
 </body>
 
 </html>

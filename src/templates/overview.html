@@ -6,11 +6,14 @@
   <title>{{user}}</title>
 
   <link href="static/css/general.css" rel="stylesheet">
+  <script src="static/js/general.js"></script>
 </head>
 
 <body>
-  <h1>Larkum database {{user}}</h1>
-    <table class="thread-dark">
+  <div class="center_in_box">
+    <h1>Larkum database: <i>{{user}}</i></h1>
+
+    <table class="center">
       <tr>
         <th>ID</th>
         <th>Responsible</th>
@@ -20,7 +23,7 @@
         <th>Sacrifice date</th>
         <th>License number</th>
       </tr>
-      {% for entry in list_fields %}
+      {% for entry in animal_data %}
         <tr>
           <td>{{entry.id}}</li>
           <td>{{entry.user}}</li>
@@ -29,13 +32,17 @@
           <td>{{entry.dob}}</li>
           <td>{{entry.death_date}}</li>
           <td>{{entry.protocol}}</li>
-          <td>
-            <a href="/{{user}}/{{entry.id}}">
-               <input class="btn" type="button" value="edit" />
-            </a>
-          </td>
+          <td><a href="/{{user}}/{{entry.id}}">edit</a></td>
       {% endfor %}
     </table>
+
+    <br><br>
+
+    <label>Upload pyrat csv: <label>
+    <input type="file" id="pyrat_csv" accept=".csv" /></input>
+    <input type="submit" id="submit" value="upload" onclick="UploadPyratData('{{user}}')">
+
+  </div>
 </body>
 
 </html>

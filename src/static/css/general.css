@@ -3,13 +3,30 @@
 body {
     font-family: SFMono-Regular, Menlo, Conolas,"Leberation Mono", "Courier New", monospace;
     font-size: 11px;
+    background-color: #f0f0e8;
 }
 
+.center_in_box {
+    margin: auto;
+    margin-top: 8em;
+    width: 70%;
+    min-width: 45em;
+    border: 3px solid black;
+    padding: 70px;
+    text-align: center;
+    background-color: rgba(163, 180, 196, 0.5);
+    color: #053769;
+}
+
+.center_in_box h1 {
+  color: #ffffff;
+  margin-bottom: 5rem;
+}
+
+/* buttons */
 .btn {
     padding: 0.4em;
     border: transparent;
-    background-color: #bfc9ca;
-    text-decoration: none;
     border-radius: 1px;
     font-size: 11px;
 }
@@ -21,4 +38,16 @@ body {
 
 .btn:active {
   background-color: green;
+}
+
+/* tables */ 
+th, td {
+  padding: 12px;
+  padding: text-align;
+  border-bottom: 1px solid #ddd;
+}
+
+.center {
+  margin-left: auto;
+  margin-right: auto;
 }

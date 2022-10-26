@@ -8,7 +8,7 @@
   "License number": "protocol",
 
   "Verantwortlich": "user",
-  "Geschlecht": "",
+  "Geschlecht": "sex",
   "Geb.":"dob",
   "Linie / Stamm (Name)": "line",
   "Sterbedatum":"death_date",
