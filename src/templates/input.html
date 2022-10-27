@@ -5,40 +5,82 @@
   <meta charset="utf-8">
   <title>Input</title>
 
-  <link href="static/css/general.css" rel="stylesheet">
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="/static/js/general.js"></script>
 </head>
 
 <body>
-    <p>Larkum database Input</p>
-    <label>Start date</label><input id="start" type="date"></input><br>
-    <label>End date</label><input id="end" type="date"></input><br>
-    <label>Sub Experiment</label><input id="end"></input><br>
-    <label>Start weight</label><input id="end"></input><br>
-    <br>
+  <div class="center_in_box">
 
-    
-    <h3>Analgesia</h3>
-    <table>
-      <tr>
-        <th>Analgesia</th>
-        <th>date</th>
-        <th>amount</th>
-        <th>concentration</th>
-      </tr>
-      <tr>
-        <td>
-        <select id="drug_1" type="list">
-          <option value="lidocaine">Lidocaine</option>
-          <option value="buprenophen">Buprenophen</option>
-          <option value="carprophen">Carprophen</option>
-        </select>
-        </td>
-        <td><input id="date" type="date"></input></td>
-        <td><input id="amount"></input></td>
-        <td><input id="concentration"></input></td>
-      </tr>
-    </table>
+    <h1>Larkum database Input</h1>
 
+    <div style="text-align: left">
+
+      <h3>General</h3>
+      <label>Start date</label>
+      <input id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})"></input>
+      <br>
+      <label>End date</label><input id="end" type="date"></input><br>
+      <label>Sub Experiment</label><input id="end"></input><br>
+      <label>Start weight</label><input id="end"></input><br>
+      <br>
+
+      <h3>Procedures</h3>
+      <table>
+        <tr>
+          <th>Procedure name</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Surgery</th>
+        </tr>
+        {% for entry in procedures %}
+        <tr>
+            <td><input id="amount" value="{{entry['Procedure name']}}"></input></td>
+            <td>
+              <input id="start_date" type="date" start_plus={{entry["days_after_start"]}}></input>
+            </td>
+            <td>
+              <input id="end_date" type="date"
+              start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
+              </input>
+            </td>
+            <td><input id="amount" value="{{entry['surgery?']}}"></input></td>
+        <tr>
+        {% endfor %}
+      </table>
+     
+      <h3>Analgesia</h3>
+      <table>
+        <tr>
+          <th>Analgesia</th>
+          <th>date</th>
+          <th>amount</th>
+          <th>concentration</th>
+        </tr>
+        {% for entry in analgesic %}
+          {% for i in range(entry["days_after_surgery"]+1) %}
+            <tr>
+              <td>
+              <select id="drug_1" type="list">
+                {% for e in analgesic %}
+                  {% if e["Drug name"] == e["Drug name"] %}
+                    <option value="{{e['Drug name']}}" selected>{{e["Drug name"]}}</option>
+                  {% else %}
+                    <option value="{{e['Drug name']}}">{{e['Drug name']}}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              </td>
+              <td><input id="date" type="date" start_plus={{i}}></input></td>
+              <td><input id="amount" value="{{entry['default_amount']}}"></input></td>
+              <td><input id="concentration" value="{{entry['concentration']}}"></input></td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </table>
+
+    </div>
+  </div>
 </body>
 
 </html>

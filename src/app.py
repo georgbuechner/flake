@@ -25,9 +25,16 @@ def overview(user):
         "overview.html", user=user, animal_data=dmanager.animal_data
     )
 
-@app.route("/<user>/<mouse_id>")
-def input(user: str, mouse_id: str):
-    return render_template("input.html")
+@app.route("/<user>/<protocol>")
+def input(user: str, protocol: str):
+    anesthetic, analgesic, procedures, surgery_start = dmanager.load_protocal_data(protocol)
+    return render_template(
+        "input.html", 
+        anesthetic=anesthetic, 
+        analgesic=analgesic,
+        procedures=procedures,
+        surgery_start=surgery_start
+    )
 
 if __name__=="__main__":
     dmanager.load_data()

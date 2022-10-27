@@ -5,8 +5,8 @@
   <meta charset="utf-8">
   <title>{{user}}</title>
 
-  <link href="static/css/general.css" rel="stylesheet">
-  <script src="static/js/general.js"></script>
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="/static/js/general.js"></script>
 </head>
 
 <body>
@@ -32,7 +32,7 @@
           <td>{{entry.dob}}</li>
           <td>{{entry.death_date}}</li>
           <td>{{entry.protocol}}</li>
-          <td><a href="/{{user}}/{{entry.id}}">edit</a></td>
+          <td><a href="/{{user}}/{{entry.protocol_escaped}}">edit</a></td>
       {% endfor %}
     </table>
 

@@ -26,3 +26,19 @@ async function UploadPyratData(user)
     alert("Something went wrong: " + e)
   }
 }
+
+function UpdateDates(date_string, surgery_start) {
+  // Get all elements with `start_plus` (days to add/ days after surgery) attribute:
+  var arr = document.querySelectorAll("[start_plus]");
+  // Get current day and add surgery-start
+  const day = new Date(date_string).getDate() + parseInt(surgery_start);
+  // Iterate over all elements with `start_plus` attribute and modify date
+  // accordings to start_plus 
+  for (var i = 0; i < arr.length; i++) {
+    const copiedDate = new Date(date_string);
+    const start_plus = parseInt(arr[i].getAttribute("start_plus"))
+    copiedDate.setDate(start_plus+parseInt(day));
+    // Set date-value
+    arr[i].setAttribute("value", copiedDate.toISOString().substring(0, 10));
+  }
+}
