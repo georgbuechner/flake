@@ -12,19 +12,14 @@
 <body>
   <div class="topnav">
     <a href="/">Home</a>
-    <a class="active" href="/overview">Overview</a>
+    <a href="/overview">Overview</a>
+    <a class="active" href="/users/{{user}}">User-Overview</a>
   </div>
 
   <div class="center_in_box">
     <h1>Larkum database: <i>{{user}}</i></h1>
 
     {% include "overview_table.html" %}
-
-    <br><br>
-
-    <label>Upload pyrat csv: <label>
-    <input type="file" id="pyrat_csv" accept=".csv" /></input>
-    <input type="submit" id="submit" value="upload" onclick="UploadPyratData('{{user}}')">
 
   </div>
 </body>

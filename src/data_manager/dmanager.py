@@ -15,6 +15,7 @@ class DManager:
         self.protocol_path = os.path.join("resources", "protocols")
         self.animal_data = []
         self.users = []
+        self.protocols = []
 
     def load_data(self):
         # Iterate over all files in data-folder
@@ -31,10 +32,15 @@ class DManager:
         # Rename to mouse-id
         os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
 
-    def load_protocal_data(self, protocol: str): 
+    def get_animal_data(self, filter_tag=None, match=None):
+        if filter_tag is None:
+            return self.animal_data
+        return [entry for entry in self.animal_data if entry[filter_tag] == match]
+
+    def load_protocal_data(self, mouse_id: str): 
+        data = self.__get_mouse_entry(mouse_id)
         for filename in os.listdir(self.protocol_path):
-            print(filename, protocol)
-            if protocol in filename:
+            if data["protocol_escaped"] in filename:
                 full_path = os.path.join(self.protocol_path, filename)
                 medication = self.__parse_protocal_data(full_path, "medication", "Drug name")
                 anesthetic, analgesic = self.__medication(medication)
@@ -72,7 +78,6 @@ class DManager:
         def sort_by_after_start(e):
             return e["days_after_start"]
         procedure.sort(key=sort_by_after_start)
-        print("PROCEDURE", procedure)
         return procedure, surgery_start
 
     def __parse_protocal_data(self, path: str, sheet_name: str, index_name: str):
@@ -97,6 +102,12 @@ class DManager:
         # Check if new user was added.
         if data["user"] not in self.users:
             self.users.append(data["user"])
+        if data["protocol_escaped"] not in self.protocols:
+            self.protocols.append(data["protocol_escaped"])
         # Return data
         return data
 
+    def __get_mouse_entry(self, mouse_id: str):
+        for entry in self.animal_data:
+            if entry["id"] == mouse_id:
+                return entry

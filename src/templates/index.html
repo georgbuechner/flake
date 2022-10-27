@@ -9,17 +9,40 @@
 </head>
 
 <body>
+  <div class="topnav">
+    <a class="active" href="/">Home</a>
+  </div>
+
   <div class="center_in_box">
     <h1>Larkum Database Input</h1>
 
-    <p>Select User</p>
+    <h3>Go to overview:</h3>
+    <a href="/overview">Overview</a>
+
+    <br>
+    <br>
+
+    <h3>Select User:</h3>
     <ul>
     {% for user in users %}
       <li>
-        <a href="/{{user}}">{{user}}</a>
+        <a href="/users/{{user}}">{{user}}</a>
       </li>
       {% endfor %}
     </ul>
+
+    <br>
+    <br>
+
+    <h3>Select Protocol:</h3>
+    <ul>
+    {% for protocol in protocols %}
+      <li>
+        <a href="/protocols/{{protocol}}">{{protocol}}</a>
+      </li>
+    {% endfor %}
+    </ul>
+
   </div>
 </body>
 

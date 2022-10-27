@@ -7,7 +7,46 @@ app = Flask(__name__)
 
 @app.route("/")
 def main():
-    return render_template("index.html", users=dmanager.users)
+    return render_template(
+        "index.html", users=dmanager.users, protocols=dmanager.protocols
+    )
+
+@app.route("/overview")
+def overview():
+    return render_template(
+        "overview.html", animal_data=dmanager.animal_data
+    )
+
+@app.route("/users/<user>")
+def users(user):
+    return render_template(
+        "user_overview.html", 
+        user=user, 
+        animal_data=dmanager.get_animal_data("user", user)
+    )
+
+@app.route("/protocols/<protocol>")
+def protocols(protocol):
+    return render_template(
+        "protocol_overview.html", 
+        protocol=protocol,
+        animal_data=dmanager.get_animal_data("protocol_escaped", protocol)
+    )
+
+@app.route("/animal_data/<animal_id>")
+def input(animal_id: str):
+    anesthetic, analgesic, procedures, surgery_start = dmanager.load_protocal_data(
+        animal_id
+    )
+    return render_template(
+        "input.html", 
+        anesthetic=anesthetic, 
+        analgesic=analgesic,
+        procedures=procedures,
+        surgery_start=surgery_start,
+        animal_id=animal_id,
+        animal_data=dmanager.get_animal_data("id", animal_id)
+    )
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 def upload_pyrat_data():
@@ -19,22 +58,6 @@ def upload_pyrat_data():
     dmanager.upload_csv(tmp_path, content.get("csv"))
     return "successfully updloaded pyrat-data", 200
 
-@app.route("/<user>")
-def overview(user):
-    return render_template(
-        "overview.html", user=user, animal_data=dmanager.animal_data
-    )
-
-@app.route("/<user>/<protocol>")
-def input(user: str, protocol: str):
-    anesthetic, analgesic, procedures, surgery_start = dmanager.load_protocal_data(protocol)
-    return render_template(
-        "input.html", 
-        anesthetic=anesthetic, 
-        analgesic=analgesic,
-        procedures=procedures,
-        surgery_start=surgery_start
-    )
 
 if __name__=="__main__":
     dmanager.load_data()

@@ -42,3 +42,19 @@ function UpdateDates(date_string, surgery_start) {
     arr[i].setAttribute("value", copiedDate.toISOString().substring(0, 10));
   }
 }
+
+function GenerateP9(protocol) {
+  alert("Funcionality not yet implemented. Sorry :(");
+}
+
+function GenerateScoreSheet(animal_id) {
+  alert("Funcionality not yet implemented. Sorry :(");
+}
+
+function GenerateSurgerySheet(animal_id) {
+  alert("Funcionality not yet implemented. Sorry :(");
+}
+
+function Store(animal_id) {
+  alert("Funcionality not yet implemented. Sorry :(");
+}

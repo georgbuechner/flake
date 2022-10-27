@@ -42,7 +42,7 @@ body {
 
 /* tables */ 
 th, td {
-  padding: 12px;
+  padding: 11px;
   padding: text-align;
   border-bottom: 1px solid #ddd;
 }
@@ -50,4 +50,13 @@ th, td {
 .center {
   margin-left: auto;
   margin-right: auto;
+}
+
+ul {
+  list-style-type:none; 
+  padding-inline-start: 0px;
+}
+
+li {
+  margin-bottom: 0.5rem;
 }

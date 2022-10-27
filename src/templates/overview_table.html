@@ -1,0 +1,23 @@
+  <table class="center">
+    <tr>
+      <th>ID</th>
+      <th>Responsible</th>
+      <th>Sex</th>
+      <th>Line / Strain (Name)</th>
+      <th>DOB</th>
+      <th>Sacrifice date</th>
+      <th>License number</th>
+    </tr>
+    {% for entry in animal_data %}
+      <tr>
+        <td>{{entry.id}}</li>
+        <td>{{entry.user}}</li>
+        <td>{{entry.sex}}</li>
+        <td>{{entry.line}}</li>
+        <td>{{entry.dob}}</li>
+        <td>{{entry.death_date}}</li>
+        <td>{{entry.protocol}}</li>
+        <td><a href="/animal_data/{{entry.id}}">edit</a></td>
+    {% endfor %}
+  </table>
+

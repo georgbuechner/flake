@@ -10,19 +10,56 @@
 </head>
 
 <body>
+  <div class="topnav">
+    <a class="active" href="/">Home</a>
+    <a href="/overview">Overview</a>
+    <a href="/animal_data/{{animal_id}}">{{animal_id}}</a>
+  </div>
+
   <div class="center_in_box">
 
     <h1>Larkum database Input</h1>
 
+    {% include "overview_table.html" %}
+
+    <br>
+    <br>
+    <br>
+    <br>
+
+
+    <input type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')">
+    <input type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')">
+    <input type="submit" id="submit" value="Score Sheet" onclick="GenerateScoreSheet('{{animal_id}}')">
+    
+    <br>
+    <br>
+
     <div style="text-align: left">
 
       <h3>General</h3>
-      <label>Start date</label>
-      <input id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})"></input>
+      <table>
+        <tr>
+          <td> <label>Start date: </label> </td>
+          <td>
+            <input id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})"></input>
+          </td>
+        </tr>
+        <tr>
+          <td> <label>End date: </label> </td>
+          <td> <input id="end" type="date"></input> </td>
+        </tr>
+        <tr>
+          <td> <label>Sub Experiment: </label> </td>
+          <td> <input id="end"></input> </td>
+        </tr>
+        <tr>
+          <td> <label>Start weight: </label>
+          <td> <input id="end"></input> </td>
+        </tr>
+      </table>
+
       <br>
-      <label>End date</label><input id="end" type="date"></input><br>
-      <label>Sub Experiment</label><input id="end"></input><br>
-      <label>Start weight</label><input id="end"></input><br>
       <br>
 
       <h3>Procedures</h3>
@@ -48,7 +85,10 @@
         <tr>
         {% endfor %}
       </table>
-     
+
+      <br>
+      <br>
+    
       <h3>Analgesia</h3>
       <table>
         <tr>
@@ -80,6 +120,16 @@
       </table>
 
     </div>
+    
+  <br>
+  <br>
+  <br>
+  <br>
+
+  <input type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')">
+  <input type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')">
+  <input type="submit" id="submit" value="Score Sheet" onclick="GenerateScoreSheet('{{animal_id}}')">
+
   </div>
 </body>
 
