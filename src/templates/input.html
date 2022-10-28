@@ -103,7 +103,7 @@
               <td>
               <select id="drug_1" type="list">
                 {% for e in analgesic %}
-                  {% if e["Drug name"] == e["Drug name"] %}
+                  {% if e["Drug name"] == entry["Drug name"] %}
                     <option value="{{e['Drug name']}}" selected>{{e["Drug name"]}}</option>
                   {% else %}
                     <option value="{{e['Drug name']}}">{{e['Drug name']}}</option>

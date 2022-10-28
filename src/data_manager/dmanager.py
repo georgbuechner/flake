@@ -57,6 +57,7 @@ class DManager:
         # Seperate anesthetic and analgesic
         anesthetic = [entry for entry in medication if entry["Drug name"] in ANESTHETIC]
         analgesic = [entry for entry in medication if entry["Drug name"] not in ANESTHETIC]
+        sort_obj_list_by(analgesic, "days_after_surgery")
         return anesthetic, analgesic
 
     def __procedure(self, procedure: Dict[str, Dict[str, any]]):
@@ -65,19 +66,21 @@ class DManager:
         Finds surgery-start (days after begin), sorts by days after surgery
         start and makes sure all values are ints
         """
-        # Find
+        # Find surgery_start and do some parsing.
         surgery_start = 0
         for value in procedure: 
+            # Find surgery-start (days_after_start from any element with surgery?=yes)
             if value["surgery?"] == "yes":
                 surgery_start = value["days_after_start"]
+            # And make sure days_after_start is interger
             value["days_after_start"] = int(value["days_after_start"])
+            # And make sure duration_in_days is interger (user first element if range
             if isinstance(value["duration_in_days"], str) and "-" in value["duration_in_days"]:
                 value["duration_in_days"] = int(value["duration_in_days"].split("-")[0])
             else:
                 value["duration_in_days"] = int(value["duration_in_days"])
-        def sort_by_after_start(e):
-            return e["days_after_start"]
-        procedure.sort(key=sort_by_after_start)
+        # Sort:
+        sort_obj_list_by(procedure, "days_after_start")
         return procedure, surgery_start
 
     def __parse_protocal_data(self, path: str, sheet_name: str, index_name: str):
@@ -111,3 +114,10 @@ class DManager:
         for entry in self.animal_data:
             if entry["id"] == mouse_id:
                 return entry
+
+def sort_obj_list_by(obj_list, key):
+    def sort_by_key(e):
+        return e[key]
+    obj_list.sort(key=sort_by_key)
+    return obj_list
+
