@@ -35,15 +35,14 @@ def protocols(protocol):
 
 @app.route("/animal_data/<animal_id>")
 def input(animal_id: str):
-    anesthetic, analgesic, procedures, surgery_start = dmanager.load_protocal_data(
-        animal_id
-    )
+    experiment_data = dmanager.load_protocal_data(animal_id)
     return render_template(
         "input.html", 
-        anesthetic=anesthetic, 
-        analgesic=analgesic,
-        procedures=procedures,
-        surgery_start=surgery_start,
+        anesthesia=experiment_data.anesthetic, 
+        analgesic=experiment_data.analgesic,
+        procedures=experiment_data.procedures,
+        post_procedures=experiment_data.post_procedures,
+        surgery_start=experiment_data.surgery_start,
         animal_id=animal_id,
         animal_data=dmanager.get_animal_data("id", animal_id)
     )

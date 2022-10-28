@@ -32,6 +32,10 @@ li {
   margin-bottom: 0.5rem;
 }
 
+.short {
+  width: 40px;
+}
+
 .center_in_box {
   margin: auto;
   margin-top: 5em;

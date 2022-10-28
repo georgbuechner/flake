@@ -3,9 +3,19 @@ import json
 import os
 import math
 import pandas as pd
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
+
+@dataclass
+class ExperimentData: 
+    anesthetic: List[Dict[str, any]]
+    analgesic: List[Dict[str, any]]
+    procedures: List[Dict[str, any]]
+    post_procedures: List[Dict[str, any]]
+    surgery_start: int 
+
 
 class DManager:
     def __init__(self, data_path: str):
@@ -38,23 +48,29 @@ class DManager:
             os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
             return 200
 
-    def get_animal_data(self, filter_tag=None, match=None):
+    def get_animal_data(self, filter_tag=None, key=None):
         if filter_tag is None:
             return self.animal_data
-        return [entry for entry in self.animal_data if entry[filter_tag] == match]
+        return [entry for entry in self.animal_data if entry[filter_tag] == key]
 
-    def load_protocal_data(self, mouse_id: str): 
+    def load_protocal_data(self, mouse_id: str) -> ExperimentData: 
         data = self.__get_mouse_entry(mouse_id)
         for filename in os.listdir(self.protocol_path):
             if data["protocol_escaped"] in filename:
                 full_path = os.path.join(self.protocol_path, filename)
                 medication = self.__parse_protocal_data(full_path, "medication", "Drug name")
                 anesthetic, analgesic = self.__medication(medication)
-                procedure = self.__parse_protocal_data(full_path, "procedure", "Procedure name")
-                procedures, surgery_start = self.__procedure(procedure)
-        return anesthetic, analgesic, procedures, surgery_start
+                procedures = self.__parse_protocal_data(full_path, "procedure", "Procedure name")
+                procedures, post_procedures, surgery_start = self.__procedure(procedures)
+        # Create experiment-data from parsed values
+        experiment_data = ExperimentData(
+            anesthetic, analgesic, procedures, post_procedures, surgery_start
+        )
+        return experiment_data
 
-    def __medication(self, medication: Dict[str, Dict[str, any]]):
+    def __medication(
+        self, medication: List[Dict[str, any]]
+    ) -> Tuple[List[Dict[str, any]], List[Dict[str, any]]]:
         """ 
         Extra parsing for medication infos. 
         anesthetic and analgesic drugs are seperated according to pre-defined
@@ -66,7 +82,9 @@ class DManager:
         sort_obj_list_by(analgesic, "days_after_surgery")
         return anesthetic, analgesic
 
-    def __procedure(self, procedure: Dict[str, Dict[str, any]]):
+    def __procedure(
+        self, procedures: List[Dict[str, any]]
+    ) -> Tuple[List[Dict[str, any]], List[Dict[str, any]], int]:
         """ 
         Extra parsing for procedure infos. 
         Finds surgery-start (days after begin), sorts by days after surgery
@@ -74,7 +92,7 @@ class DManager:
         """
         # Find surgery_start and do some parsing.
         surgery_start = 0
-        for value in procedure: 
+        for value in procedures: 
             # Find surgery-start (days_after_start from any element with surgery?=yes)
             if value["surgery?"] == "yes":
                 surgery_start = value["days_after_start"]
@@ -86,8 +104,15 @@ class DManager:
             else:
                 value["duration_in_days"] = int(value["duration_in_days"])
         # Sort:
-        sort_obj_list_by(procedure, "days_after_start")
-        return procedure, surgery_start
+        sort_obj_list_by(procedures, "days_after_start")
+        # Split in pre_procedures and post_procedures
+        post_procedures = [
+            entry for entry in procedures if entry["days_after_start"] > surgery_start
+        ]
+        procedures = [
+            entry for entry in procedures if entry["days_after_start"] <= surgery_start
+        ]
+        return procedures, post_procedures, surgery_start
 
     def __parse_protocal_data(self, path: str, sheet_name: str, index_name: str):
         df = pd.read_excel(path, sheet_name=sheet_name) 

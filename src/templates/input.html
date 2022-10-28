@@ -18,7 +18,7 @@
 
   <div class="center_in_box">
 
-    <h1>Larkum database Input</h1>
+    <h1>LARKUM DATABASE INPUT</h1>
 
     {% include "overview_table.html" %}
 
@@ -58,11 +58,13 @@
       <br>
 
       <h3>Procedures</h3>
+      <h4>Conducted Procedures</h4>
       <table>
         <tr>
           <th>Procedure name</th>
           <th>Start date</th>
           <th>End date</th>
+          <th>Experimenter</th>
           <th>Surgery</th>
         </tr>
         {% for entry in procedures %}
@@ -73,17 +75,74 @@
             </td>
             <td>
               <input id="end_date" type="date"
-              start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
+                start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
               </input>
             </td>
-            <td><input id="amount" value="{{entry['surgery?']}}"></input></td>
+            <td><input id="experimenter" value="{{animal_data[0]['user']}}"></input></td>
+            <td><input id="surgery?" class="short" value="{{entry['surgery?']}}"></input></td>
         <tr>
+        {% endfor %}
+      </table>
+
+      <h4>Post-operative Procedures</h4>
+      <table>
+        <tr>
+          <th>Procedure name</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Experimenter</th>
+          <th>Surgery</th>
+        </tr>
+        {% for entry in post_procedures %}
+        <tr>
+            <td><input id="amount" value="{{entry['Procedure name']}}"></input></td>
+            <td>
+              <input id="start_date" type="date" start_plus={{entry["days_after_start"]}}></input>
+            </td>
+            <td>
+              <input id="end_date" type="date"
+                start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
+              </input>
+            </td>
+            <td><input id="experimenter" value="{{animal_data[0]['user']}}"></input></td>
+            <td><input id="surgery?" class="short" value="{{entry['surgery?']}}"></input></td>
+        <tr>
+        {% endfor %}
+      </table>
+
+      <h3>Anesthesia</h3>
+      <table>
+        <tr>
+          <th>Anesthesia</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Concentration</th>
+          <th>Toe pinch</th>
+        </tr>
+        {% for entry in anesthesia %}
+          <tr>
+            <td>
+              <select id="drug_1" type="list">
+                {% for e in anesthesia %}
+                  {% if e["Drug name"] == entry["Drug name"] %}
+                    <option value="{{e['Drug name']}}" selected>{{e["Drug name"]}}</option>
+                  {% else %}
+                    <option value="{{e['Drug name']}}">{{e['Drug name']}}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </td>
+            <td><input id="date" type="date" start_plus=0></input></td>
+            <td><input id="amount" class="short" value="{{entry['default_amount']}}"></input></td>
+            <td><input id="concentration" value="{{entry['concentration']}}"></input></td>
+            <td><input id="toe_pinch" class="short" value="yes"></input></td>
+          </tr>
         {% endfor %}
       </table>
 
       <br>
       <br>
-    
+  
       <h3>Analgesia</h3>
       <table>
         <tr>
@@ -96,18 +155,18 @@
           {% for i in range(entry["days_after_surgery"]+1) %}
             <tr>
               <td>
-              <select id="drug_1" type="list">
-                {% for e in analgesic %}
-                  {% if e["Drug name"] == entry["Drug name"] %}
-                    <option value="{{e['Drug name']}}" selected>{{e["Drug name"]}}</option>
-                  {% else %}
-                    <option value="{{e['Drug name']}}">{{e['Drug name']}}</option>
-                  {% endif %}
-                {% endfor %}
-              </select>
+                <select id="drug_1" type="list">
+                  {% for e in analgesic %}
+                    {% if e["Drug name"] == entry["Drug name"] %}
+                      <option value="{{e['Drug name']}}" selected>{{e["Drug name"]}}</option>
+                    {% else %}
+                      <option value="{{e['Drug name']}}">{{e['Drug name']}}</option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
               </td>
               <td><input id="date" type="date" start_plus={{i}}></input></td>
-              <td><input id="amount" value="{{entry['default_amount']}}"></input></td>
+              <td><input id="amount" class="short" value="{{entry['default_amount']}}"></input></td>
               <td><input id="concentration" value="{{entry['concentration']}}"></input></td>
             </tr>
           {% endfor %}
@@ -121,9 +180,15 @@
   <br>
   <br>
 
-  <input type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')">
-  <input type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')">
-  <input type="submit" id="submit" value="Score Sheet" onclick="GenerateScoreSheet('{{animal_id}}')">
+  <input 
+    type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')"
+  >
+  <input 
+    type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
+  >
+  <input 
+    type="submit" id="submit" value="Score Sheet" onclick="GenerateScoreSheet('{{animal_id}}')"
+  >
 
   </div>
 </body>
