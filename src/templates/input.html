@@ -28,13 +28,6 @@
     <br>
 
 
-    <input type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')">
-    <input type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')">
-    <input type="submit" id="submit" value="Score Sheet" onclick="GenerateScoreSheet('{{animal_id}}')">
-    
-    <br>
-    <br>
-
     <div style="text-align: left">
 
       <h3>General</h3>
@@ -42,7 +35,9 @@
         <tr>
           <td> <label>Start date: </label> </td>
           <td>
-            <input id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})"></input>
+            <input 
+              id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})">
+            </input>
           </td>
         </tr>
         <tr>
@@ -51,11 +46,11 @@
         </tr>
         <tr>
           <td> <label>Sub Experiment: </label> </td>
-          <td> <input id="end"></input> </td>
+          <td> <input id="experiment"></input> </td>
         </tr>
         <tr>
           <td> <label>Start weight: </label>
-          <td> <input id="end"></input> </td>
+          <td> <input id="start_weight"></input> </td>
         </tr>
       </table>
 
@@ -93,9 +88,9 @@
       <table>
         <tr>
           <th>Analgesia</th>
-          <th>date</th>
-          <th>amount</th>
-          <th>concentration</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Concentration</th>
         </tr>
         {% for entry in analgesic %}
           {% for i in range(entry["days_after_surgery"]+1) %}

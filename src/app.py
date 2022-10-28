@@ -55,8 +55,11 @@ def upload_pyrat_data():
     user = json.loads(request.form.get("user"))["name"] 
     tmp_path = user + ".csv"
     # upload via data-manager
-    dmanager.upload_csv(tmp_path, content.get("csv"))
-    return "successfully updloaded pyrat-data", 200
+    status = dmanager.upload_csv(tmp_path, content.get("csv"))
+    if status == 200:
+        return "successfully updloaded pyrat-data", status
+    elif status == 409:
+        return "Couldn't updload pyrat-data: animal exists", status
 
 
 if __name__=="__main__":

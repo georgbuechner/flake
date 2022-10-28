@@ -29,8 +29,14 @@ class DManager:
         file.save(tmp_path)
         # Load file
         data = self.__load_csv(tmp_path)
-        # Rename to mouse-id
-        os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
+        # If None (mouse_id already exists)
+        if data is None:
+            os.remove(tmp_path)
+            return 409
+        # Otherwise, rename file to mouse-id and move to data folder
+        else:
+            os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
+            return 200
 
     def get_animal_data(self, filter_tag=None, match=None):
         if filter_tag is None:
@@ -100,6 +106,9 @@ class DManager:
                 data[self.mapping[key]] = value
                 if self.mapping[key] == "protocol":
                     data["protocol_escaped"] = value.replace(" ", "").replace("/", "_")
+        # If already exists, return None.
+        if self.__get_mouse_entry(data["id"]) is not None:
+            return None
         # Add to animal data
         self.animal_data.append(data)
         # Check if new user was added.
@@ -114,6 +123,8 @@ class DManager:
         for entry in self.animal_data:
             if entry["id"] == mouse_id:
                 return entry
+        return None
+
 
 def sort_obj_list_by(obj_list, key):
     def sort_by_key(e):
