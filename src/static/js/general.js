@@ -53,7 +53,7 @@ function UpdateDates(date_string, surgery_start) {
   let end_date_elem = document.getElementById("end");
   end_date_elem.setAttribute("value", endDate.toISOString().substring(0, 10));
   // Send message to user to double check all entries.
-  alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
+  // TODO (activate this again!): alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
 }
 
 function GenerateP9(protocol) {
@@ -68,6 +68,38 @@ function GenerateSurgerySheet(animal_id) {
   alert("Funcionality not yet implemented. Sorry :(");
 }
 
-function Store(animal_id) {
-  alert("Funcionality not yet implemented. Sorry :(");
+async function Store(animal_id) {
+  const table = document.getElementById("procedures");
+  let formData = new FormData();
+
+
+  let data = {};
+  let procedures = [];
+  for (var i = 0, row; row = table.rows[i]; i++) {
+    let entry = new Object();
+    for (var j = 0, col; col = row.cells[j]; j++) {
+      // If has children (not th), add new entry:
+      if (col.children.length > 0) {
+        const input = col.children[0];
+        entry[input.id] = input.value;
+      }
+    }  
+    if (Object.keys(entry).length > 0)
+      procedures.push(entry);
+  }
+  data["procedures"] = procedures;
+  formData.append("data", JSON.stringify(data));
+  try {
+    let r = await fetch('/store/'+animal_id, 
+     {method: "POST", body: formData}); 
+    console.log('HTTP response code: ' + r.status); 
+    if (r.status === 200) {
+      alert("Success!");
+    }
+    else {
+      alert("Something went wrong: Error code: " + r.status);
+    }
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
 }

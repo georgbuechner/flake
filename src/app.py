@@ -1,8 +1,11 @@
 import json
 from flask import Flask, render_template, request
 from data_manager.dmanager import DManager
+from data_manager.sql_connector import SqlConnector
 
-dmanager = DManager("data/")
+
+sql_connector = SqlConnector("data/database.db")
+dmanager = DManager("data/animal_data/", sql_connector)
 app = Flask(__name__)
 
 @app.route("/")
@@ -38,6 +41,7 @@ def input(animal_id: str):
     experiment_data = dmanager.load_protocal_data(animal_id)
     return render_template(
         "input.html", 
+        stored=experiment_data.stored,
         anesthesia=experiment_data.anesthetic, 
         analgesic=experiment_data.analgesic,
         procedures=experiment_data.procedures,
@@ -46,6 +50,13 @@ def input(animal_id: str):
         animal_id=animal_id,
         animal_data=dmanager.get_animal_data("id", animal_id)
     )
+
+@app.route("/store/<animal_id>", methods=["POST"])
+def store_data(animal_id: str):
+    data = json.loads(request.form.get("data"))
+    print("GOT DATA: ", animal_id, data)
+    dmanager.store(animal_id, data)
+    return "Success", 200
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 def upload_pyrat_data():

@@ -36,7 +36,11 @@
           <td> <label>Start date: </label> </td>
           <td>
             <input 
-              id="start" type="date" onchange="UpdateDates(this.value, {{surgery_start}})">
+              id="start" type="date" 
+              {% if stored=false %} 
+                onchange="UpdateDates(this.value, {{surgery_start}})"
+              {% endif %}
+            >
             </input>
           </td>
         </tr>
@@ -59,27 +63,37 @@
 
       <h3>Procedures</h3>
       <h4>Conducted Procedures</h4>
-      <table>
+      <table id="procedures">
         <tr>
           <th>Procedure name</th>
           <th>Start date</th>
           <th>End date</th>
           <th>Experimenter</th>
-          <th>Surgery</th>
         </tr>
         {% for entry in procedures %}
         <tr>
-            <td><input id="amount" value="{{entry['Procedure name']}}"></input></td>
-            <td>
-              <input id="start_date" type="date" start_plus={{entry["days_after_start"]}}></input>
-            </td>
-            <td>
-              <input id="end_date" type="date"
-                start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
-              </input>
-            </td>
-            <td><input id="experimenter" value="{{animal_data[0]['user']}}"></input></td>
-            <td><input id="surgery?" class="short" value="{{entry['surgery?']}}"></input></td>
+            {% if stored=false %} 
+              <td><input id="procedure_name" value="{{entry['Procedure name']}}"></input></td>
+              <td>
+                <input id="start_date" type="date" start_plus={{entry["days_after_start"]}}></input>
+              </td>
+              <td>
+                <input id="end_date" type="date"
+                  start_plus={{entry["days_after_start"]+entry["duration_in_days"]}}>
+                </input>
+              </td>
+              <td><input id="experimenter" value="{{animal_data[0]['user']}}"></input></td>
+            {% else %}
+              <td><input id="procedure_name" value="{{entry['name']}}"></input></td>
+              <td>
+                <input id="start_date" type="date" value={{entry['start_date']}}></input>
+              </td>
+              <td>
+                <input id="end_date" type="date" value={{entry['end_date']}}>
+                </input>
+              </td>
+              <td><input id="experimenter" value="{{entry['experimenter']}}"></input></td>
+            {% endif %}
         <tr>
         {% endfor %}
       </table>
@@ -91,7 +105,6 @@
           <th>Start date</th>
           <th>End date</th>
           <th>Experimenter</th>
-          <th>Surgery</th>
         </tr>
         {% for entry in post_procedures %}
         <tr>
@@ -105,7 +118,6 @@
               </input>
             </td>
             <td><input id="experimenter" value="{{animal_data[0]['user']}}"></input></td>
-            <td><input id="surgery?" class="short" value="{{entry['surgery?']}}"></input></td>
         <tr>
         {% endfor %}
       </table>

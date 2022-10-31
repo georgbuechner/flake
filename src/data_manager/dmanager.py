@@ -5,11 +5,13 @@ import math
 import pandas as pd
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
+from data_manager.sql_connector import SqlConnector
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 
 @dataclass
 class ExperimentData: 
+    stored: bool
     anesthetic: List[Dict[str, any]]
     analgesic: List[Dict[str, any]]
     procedures: List[Dict[str, any]]
@@ -18,7 +20,9 @@ class ExperimentData:
 
 
 class DManager:
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, sql_connector: SqlConnector):
+        print(f"Initializing DManager from {data_path}")
+        self.sql = sql_connector
         with open("resources/mapping.json") as f:
             self.mapping = json.load(f)
         self.data_path = data_path
@@ -48,12 +52,27 @@ class DManager:
             os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
             return 200
 
+    def store(
+        self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
+    ) -> int:
+        """ Inserts data to sql-database tables. Returns status code"""
+        for table_name, table_data in data.items():
+            self.sql.insert_data_in_table(table_name, animal_id, table_data)
+            # Test:
+            self.sql.get_data(table_name, animal_id)
+        return 200
+
+
     def get_animal_data(self, filter_tag=None, key=None):
         if filter_tag is None:
             return self.animal_data
         return [entry for entry in self.animal_data if entry[filter_tag] == key]
 
     def load_protocal_data(self, mouse_id: str) -> ExperimentData: 
+        # Check if data exists in database:
+
+
+        # Otherwise load default data
         data = self.__get_mouse_entry(mouse_id)
         for filename in os.listdir(self.protocol_path):
             if data["protocol_escaped"] in filename:
