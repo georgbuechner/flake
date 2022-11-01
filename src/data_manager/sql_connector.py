@@ -1,21 +1,12 @@
+import json
 import sqlite3
 from typing import Dict, List
 
-TABLES = {
-    "procedures": [
-        ["animal_id", "TEXT"], 
-        ["name", "TEXT"],
-        ["start_date", "TEXT"],
-        ["end_date", "TEXT"],
-        ["experimenter", "TEXT"]
-    ]
-}
- 
 class SqlConnector:
-    def __init__(self, path: str):
+    def __init__(self, db_path: str, tables_path: str):
         try:
             # Connect to DB and create a cursor
-            self.cnt = sqlite3.connect(path, check_same_thread=False)
+            self.cnt = sqlite3.connect(db_path, check_same_thread=False)
             self.cursor = self.cnt.cursor()
             print("DB Init")
             # Write a query and execute it with cursor
@@ -27,16 +18,20 @@ class SqlConnector:
             # Close the cursor
             self.cursor.close()
 
-            # Create tables:
-            # Create a exam_hall relation
-            self.cnt.execute('''CREATE TABLE IF NOT EXISTS procedures(
-                ANIMAL_ID TEXT,
-                NAME TEXT,
-                START_DATE TEXT,
-                END_DATE TEXT,
-                EXPERIMENTER TEXT,
-                PRIMARY KEY (ANIMAL_ID, NAME)
-                );''')
+            # Create tables from tables-json:
+            with open(tables_path) as f:
+                self.tables = json.load(f)
+            for table_name, table_data in self.tables.items():
+                print(f"Creating table: {table_name}")
+                # Create query:
+                query = f"CREATE TABLE IF NOT EXISTS {table_name}("
+                for row in table_data["rows"]:
+                    query += row["name"] + " " + row["type"] + ", "
+                query += f"PRIMARY KEY ({table_data['primary_keys']}));"
+                print(f"query: {query}")
+                # execute query:
+                self.cnt.execute(query)
+                print(f"Creating table: {table_name} done.")
 
         # Handle errors
         except sqlite3.Error as error:
@@ -45,25 +40,32 @@ class SqlConnector:
     def insert_data_in_table(
         self, table_name: str, animal_id: str, data: List[Dict[str, any]]
     ):
+        # Delete all current data for this animal (TODO: check overwrite option)
+        query = f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'"
+        self.cnt.execute(query)
         for entry in data:
-            # Delete all current data for this animal
-            query = f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'"
-            self.cnt.execute(query)
             # Create new data for this animal
             query = f"INSERT INTO {table_name} VALUES('{animal_id}'"
             for value in entry.values():
-                query += ", '" + value + "'"
+                query += f", '{value}'"
             query += ")"
             self.cnt.execute(query)
+        self.cnt.commit()
 
-    def get_data(self, table_name: str, animal_id: str):
-        cursor = self.cnt.execute(f"SELECT * FROM {table_name} WHERE ANIMAL_ID='{animal_id}';")
+    def get(self, table_name: str, animal_id: str):
+        try:
+            cursor = self.cnt.execute(f"SELECT * FROM {table_name} WHERE ANIMAL_ID='{animal_id}';")
+        except sqlite3.Error as error:
+            print(f"No data found in table {table_name} for {animal_id}")
+            return []
+        # print(f"Found {len([x for x in cursor])} entries in table {table_name} for {animal_id}")
         data = []
-        for i in range(TABLE[table_name]):
-        for i in cursor:
-            print(str(i[0])+" "+str(i[1])+" "+str(i[2])+" "+str(i[3])+ " "+str(i[4]))
-
-
+        for col in cursor:
+            entry = {}
+            for index, row in enumerate(self.tables[table_name]["rows"]):
+                entry[row["name"]] = col[index]
+            data.append(entry)
+        return data
 
     def __del__(self):
         self.close()

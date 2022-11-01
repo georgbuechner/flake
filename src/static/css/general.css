@@ -61,3 +61,8 @@ li {
 .active {
   background-color: rgba(163, 180, 196, 0.5);
 }
+
+/* animal-data table */
+.not_stored {
+  background-color: #992e32;
+}

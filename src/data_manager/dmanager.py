@@ -2,6 +2,7 @@ import clevercsv
 import json
 import os
 import math
+import random
 import pandas as pd
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
@@ -12,8 +13,11 @@ ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 @dataclass
 class ExperimentData: 
     stored: bool
+    general: Dict[str, any]
     anesthetic: List[Dict[str, any]]
+    availible_anesthetic: List[str]
     analgesic: List[Dict[str, any]]
+    availible_analgesic: List[str]
     procedures: List[Dict[str, any]]
     post_procedures: List[Dict[str, any]]
     surgery_start: int 
@@ -35,7 +39,7 @@ class DManager:
         # Iterate over all files in data-folder
         for filename in os.listdir(self.data_path):
             full_path = os.path.join(self.data_path, filename)
-            if os.path.isfile(full_path):
+            if os.path.isfile(full_path) and ".csv" in filename:
                 self.__load_csv(full_path)
     
     def upload_csv(self, tmp_path: str, file):
@@ -43,7 +47,7 @@ class DManager:
         file.save(tmp_path)
         # Load file
         data = self.__load_csv(tmp_path)
-        # If None (mouse_id already exists)
+        # If None (animal_id already exists)
         if data is None:
             os.remove(tmp_path)
             return 409
@@ -59,33 +63,60 @@ class DManager:
         for table_name, table_data in data.items():
             self.sql.insert_data_in_table(table_name, animal_id, table_data)
             # Test:
-            self.sql.get_data(table_name, animal_id)
+            # self.sql.get_data(table_name, animal_id)
         return 200
 
 
     def get_animal_data(self, filter_tag=None, key=None):
+        # Get animal data based on filter_tag and key
+        animal_data = []
         if filter_tag is None:
-            return self.animal_data
-        return [entry for entry in self.animal_data if entry[filter_tag] == key]
+            animal_data = self.animal_data
+        else:
+            animal_data = [entry for entry in self.animal_data if entry[filter_tag] == key]
+        # Add stored? information
+        for data in animal_data:
+            data["stored"] = self.is_stored(data["id"])
+        return animal_data
 
-    def load_protocal_data(self, mouse_id: str) -> ExperimentData: 
-        # Check if data exists in database:
+    def load_protocal_data(self, animal_id: str) -> ExperimentData: 
+        # Load animal-data and default-data for given protocol:
+        animal_data = self.__get_mouse_entry(animal_id)
+        experiment_data = self.__load_default_values(animal_data["protocol_escaped"])
+        # If data exists in database, overwrite default values.
+        if self.is_stored(animal_id):
+            experiment_data.stored = True
+            experiment_data.general = self.sql.get("general", animal_id)[0]
+            experiment_data.procedures = sort(self.sql.get("procedures", animal_id), "days_after_start")
+            experiment_data.post_procedures = sort(self.sql.get("post_procedures", animal_id), "days_after_start")
+            experiment_data.anesthetic= self.sql.get("anesthetic", animal_id)
+            experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "days_after_surgery")
+        return experiment_data
 
-
-        # Otherwise load default data
-        data = self.__get_mouse_entry(mouse_id)
+    def __load_default_values(self, protocol:str) -> ExperimentData:
         for filename in os.listdir(self.protocol_path):
-            if data["protocol_escaped"] in filename:
+            if protocol in filename:
                 full_path = os.path.join(self.protocol_path, filename)
-                medication = self.__parse_protocal_data(full_path, "medication", "Drug name")
+                # medication
+                medication = self.__parse_protocal_data(full_path, "medication")
                 anesthetic, analgesic = self.__medication(medication)
-                procedures = self.__parse_protocal_data(full_path, "procedure", "Procedure name")
+                availible_anesthetic = [x["name"] for x in anesthetic]
+                availible_analgesic = [x["name"] for x in analgesic]
+                # procedures
+                procedures = self.__parse_protocal_data(full_path, "procedure")
                 procedures, post_procedures, surgery_start = self.__procedure(procedures)
         # Create experiment-data from parsed values
-        experiment_data = ExperimentData(
-            anesthetic, analgesic, procedures, post_procedures, surgery_start
+        return ExperimentData(
+            stored=False, 
+            general={},
+            anesthetic=anesthetic, 
+            availible_anesthetic=availible_anesthetic, 
+            analgesic=analgesic,
+            availible_analgesic=availible_analgesic, 
+            procedures=procedures, 
+            post_procedures=post_procedures, 
+            surgery_start=surgery_start
         )
-        return experiment_data
 
     def __medication(
         self, medication: List[Dict[str, any]]
@@ -96,9 +127,9 @@ class DManager:
         durgs in ANESTHETIC field.
         """
         # Seperate anesthetic and analgesic
-        anesthetic = [entry for entry in medication if entry["Drug name"] in ANESTHETIC]
-        analgesic = [entry for entry in medication if entry["Drug name"] not in ANESTHETIC]
-        sort_obj_list_by(analgesic, "days_after_surgery")
+        anesthetic = [entry for entry in medication if entry["name"] in ANESTHETIC]
+        analgesic = [entry for entry in medication if entry["name"] not in ANESTHETIC]
+        sort(analgesic, "days_after_surgery")
         return anesthetic, analgesic
 
     def __procedure(
@@ -119,11 +150,13 @@ class DManager:
             value["days_after_start"] = int(value["days_after_start"])
             # And make sure duration_in_days is interger (user first element if range
             if isinstance(value["duration_in_days"], str) and "-" in value["duration_in_days"]:
-                value["duration_in_days"] = int(value["duration_in_days"].split("-")[0])
+                start = int(value["duration_in_days"].split("-")[0])
+                end = int(value["duration_in_days"].split("-")[0])
+                value["duration_in_days"] = random.randint(start, end)
             else:
                 value["duration_in_days"] = int(value["duration_in_days"])
         # Sort:
-        sort_obj_list_by(procedures, "days_after_start")
+        sort(procedures, "days_after_start")
         # Split in pre_procedures and post_procedures
         post_procedures = [
             entry for entry in procedures if entry["days_after_start"] > surgery_start
@@ -133,7 +166,7 @@ class DManager:
         ]
         return procedures, post_procedures, surgery_start
 
-    def __parse_protocal_data(self, path: str, sheet_name: str, index_name: str):
+    def __parse_protocal_data(self, path: str, sheet_name: str):
         df = pd.read_excel(path, sheet_name=sheet_name) 
         data = df.to_dict("records")
         # Remove all not allowed
@@ -163,14 +196,17 @@ class DManager:
         # Return data
         return data
 
-    def __get_mouse_entry(self, mouse_id: str):
+    def __get_mouse_entry(self, animal_id: str):
         for entry in self.animal_data:
-            if entry["id"] == mouse_id:
+            if entry["id"] == animal_id:
                 return entry
         return None
 
+    def is_stored(self, animal_id: str) -> bool:
+        return len(self.sql.get("general", animal_id)) > 0
 
-def sort_obj_list_by(obj_list, key):
+
+def sort(obj_list, key):
     def sort_by_key(e):
         return e[key]
     obj_list.sort(key=sort_by_key)

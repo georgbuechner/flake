@@ -11,19 +11,19 @@ async function UploadPyratData(user)
   const ctrl = new AbortController();    // timeout
   setTimeout(() => ctrl.abort(), 5000);
   
+  // Send request to server.
   try {
-   let r = await fetch('/upload/pyrat_csv', 
+    // Send request:
+    let r = await fetch('/upload/pyrat_csv', 
      {method: "POST", body: formData, signal: ctrl.signal}); 
+    // Handle response:
     console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200) {
+    if (r.status === 200)
       window.location=window.location;
-    }
-    if (r.status === 409) {
+    if (r.status === 409)
       alert("Animal with this id already exists!");
-    }
-    else {
+    else
       alert("Something went wrong: Error code: " + r.status);
-    }
   } catch(e) {
     alert("Something went wrong: " + e);
   }
@@ -69,36 +69,56 @@ function GenerateSurgerySheet(animal_id) {
 }
 
 async function Store(animal_id) {
-  const table = document.getElementById("procedures");
+  // Create new form:
   let formData = new FormData();
 
-
-  let data = {};
-  let procedures = [];
-  for (var i = 0, row; row = table.rows[i]; i++) {
-    let entry = new Object();
-    for (var j = 0, col; col = row.cells[j]; j++) {
-      // If has children (not th), add new entry:
-      if (col.children.length > 0) {
-        const input = col.children[0];
-        entry[input.id] = input.value;
-      }
-    }  
-    if (Object.keys(entry).length > 0)
-      procedures.push(entry);
+  // Create data with all elements to extract from html.
+  let data = {"anesthetic":[], "analgesic":[], "procedures":[], "post_procedures":[]};
+  let general_entry = new Object();
+  for (const id of ["start", "end", "experiment", "start_weight"]) {
+    console.log("ID: ", id);
+    general_entry[id] = document.getElementById(id).value;
   }
-  data["procedures"] = procedures;
+  data["general"] = [general_entry];
+  for (const key in data) {
+    // Get table from html DOM
+    const table = document.getElementById(key);
+    // Check if table was found
+    if (table !== undefined && table != null) {
+      // Iterate over all rows
+      for (var i = 0, row; row = table.rows[i]; i++) {
+        // Iterate over all colums and add to new entry
+        let entry = new Object();
+        for (var j = 0, col; col = row.cells[j]; j++) {
+          // If has children (not th), add new entry:
+          if (col.children.length > 0) {
+            const input = col.children[0];
+            if (input.hasAttribute("convert") && input.getAttribute("convert") === "int")
+              entry[input.id] = parseInt(input.value);
+            else if (input.hasAttribute("convert") && input.getAttribute("convert") === "bool")
+              entry[input.id] = (input.value === "yes") ? true : false;
+            else 
+              entry[input.id] = input.value;
+          }
+        }  
+        // If avoid empty lines, check if data was added to entry, then add:
+        if (Object.keys(entry).length > 0)
+          data[key].push(entry);
+      }
+    }
+  }
+  // Add extracted data to form.
   formData.append("data", JSON.stringify(data));
+  // Send request to server:
   try {
-    let r = await fetch('/store/'+animal_id, 
-     {method: "POST", body: formData}); 
+    // Send request:
+    let r = await fetch('/store/'+animal_id, {method: "POST", body: formData}); 
+    // Handle response:
     console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200) {
-      alert("Success!");
-    }
-    else {
+    if (r.status === 200)
+      window.location=window.location;
+    else
       alert("Something went wrong: Error code: " + r.status);
-    }
   } catch(e) {
     alert("Something went wrong: " + e);
   }

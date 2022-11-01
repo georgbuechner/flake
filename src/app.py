@@ -4,7 +4,7 @@ from data_manager.dmanager import DManager
 from data_manager.sql_connector import SqlConnector
 
 
-sql_connector = SqlConnector("data/database.db")
+sql_connector = SqlConnector("data/database.db", "resources/tables.json")
 dmanager = DManager("data/animal_data/", sql_connector)
 app = Flask(__name__)
 
@@ -17,7 +17,7 @@ def main():
 @app.route("/overview")
 def overview():
     return render_template(
-        "overview.html", animal_data=dmanager.animal_data
+        "overview.html", animal_data=dmanager.get_animal_data()
     )
 
 @app.route("/users/<user>")
@@ -39,10 +39,14 @@ def protocols(protocol):
 @app.route("/animal_data/<animal_id>")
 def input(animal_id: str):
     experiment_data = dmanager.load_protocal_data(animal_id)
+    print("analgesic:", experiment_data.analgesic)
     return render_template(
         "input.html", 
         stored=experiment_data.stored,
+        general=experiment_data.general,
         anesthesia=experiment_data.anesthetic, 
+        availible_anesthetic=experiment_data.availible_anesthetic,
+        availible_analgesic=experiment_data.availible_analgesic,
         analgesic=experiment_data.analgesic,
         procedures=experiment_data.procedures,
         post_procedures=experiment_data.post_procedures,
@@ -54,7 +58,6 @@ def input(animal_id: str):
 @app.route("/store/<animal_id>", methods=["POST"])
 def store_data(animal_id: str):
     data = json.loads(request.form.get("data"))
-    print("GOT DATA: ", animal_id, data)
     dmanager.store(animal_id, data)
     return "Success", 200
 
