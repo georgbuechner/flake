@@ -1,0 +1,178 @@
+import json
+import os
+import re
+from datetime import datetime, timedelta
+from docx import Document
+from typing import Dict, List, Tuple
+from data_manager.dmanager import ExperimentData
+
+SOURCE_DATE_FORMAT = "%Y-%m-%d"
+OUTPUT_DATE_FORMAT = "%d.%m.%y"
+
+class DCreator:
+
+    def __init__(
+        self, 
+        template_path: str, 
+        protocol: str, 
+        experiment_data: ExperimentData,
+        animal_data: Dict[str, any]
+    ):
+        # Load replacements
+        with open("resources/replacements.json") as f:
+            self.replacements = json.load(f)
+        # Try to load protocol-specific template, otherwise use default.
+        if os.path.exists(os.path.join(template_path, protocol)):
+            self.doc = Document(os.path.join(template_path, f"{protocol}.docx"))
+        else: 
+            self.doc = Document(os.path.join(template_path, "default.docx"))
+        # Data
+        self.fields = experiment_data.dict()
+        self.fields["general"].update(animal_data)
+
+    def create_from_template(self):
+        # Create document:
+        self.__edit_paragraphs()
+        self.__edit_tables()
+        self.__edit_list_tables()
+        # Save document:
+        self.doc.save("src/output/output.docx")
+
+    ### replacing [tag]-s in paragraphs
+    def __edit_paragraphs(self):
+        """! Iterates over all paragraphs in search for tags """
+        # Handle header
+        header = self.doc.sections[0].header
+        for par in header.paragraphs:
+            par = self.__edit_paragraph(par, self.fields["general"])
+        # Handle rest of document
+        for par in self.doc.paragraphs:
+            par = self.__edit_paragraph(par, self.fields["general"])
+
+    ### replacing [tag]-s in tables
+    def __edit_tables(self):
+        """! Iterates over all tables in search for tags """
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for par in cell.paragraphs:
+                        par = self.__edit_paragraph(par, self.fields["general"])
+
+    def __edit_paragraph(self, par, fields: Dict[str, List[Dict[str, any]]]):
+        """! Edits paragraph by checking for tags and eventually replacing tag with entry. """
+        result = re.search(r"\[(.*)\]", par.text)
+        if result is not None:
+            key = result.group(1)
+            # Tag found
+            if key in fields:
+                update_paragraph(par, result.group(0), fields[key])
+            # If signiture, add image 
+            elif key == "signiture":
+                update_paragraph(par, result.group(0), "")
+                p = par.insert_paragraph_before("")
+                r = p.add_run()
+                if os.path.exists(f"data/signitures/{fields['user']}.png"):
+                    r.add_picture(f"data/signitures/{fields['user']}.png")
+                else:
+                    r.add_picture(f"data/signitures/default.png")
+            # Empty (---) if tag not found.
+            else:
+                update_paragraph(par, result.group(0), "---")
+        return par
+
+    ### replacing <tag>-s in tables
+    def __edit_list_tables(self):
+        """! Iterates over tables in search for list-tags (adding rows per
+        matching entry). 
+        """
+        def parse_value(value): 
+            # Check for signal-word
+            if isinstance(value, str):
+                result = re.search(r"\{(.*)\}", value)
+                if result is not None:
+                    if result.group(1) in self.replacements:
+                        return self.replacements[result.group(1)]
+            # Convert datetime
+            elif isinstance(value, datetime):
+                return datetime.strftime(entry, OUTPUT_DATE_FORMAT)
+            # Otherwise return value unchanged
+            return value
+
+        def get_iterator_and_source(par) -> Tuple[str, List[any]]:
+            # range
+            result = re.search(r"{{(.*) in (.*)-(.*)}}", par.text)
+            if result is not None:
+                update_paragraph(par, result.group(0), "")
+                start = self.fields["general"][result.group(2)]
+                end = self.fields["general"][result.group(3)]
+                return result.group(1), daterange(start, end)
+            # list
+            result = re.search(r"\{{(.*) in (.*)}}", par.text)
+            if result is not None and result.group(2) in self.fields:
+                update_paragraph(par, result.group(0), "")
+                return result.group(1), self.fields[result.group(2)]
+            elif result is not None:
+                print(f"Name {result.group(2)} not in data: {self.fields.keys()}")
+            return None, None
+
+        def get_tags(row) -> List[str]:
+            tags = []
+            for i in range(0, len(row.cells)):
+                cell_par = row.cells[i].paragraphs[0]
+                result = re.search(r"{(.*)}", cell_par.text)
+                if result is not None:
+                    update_paragraph(row.cells[i].paragraphs[0], result.group(0), "")
+                    tags.append(result.group(1))
+                else: 
+                    print("Error in template: missing tag ({tag}) in table header")
+            return tags
+
+        def edit_table(table, tags: List[str], it: str, entry: any):
+            # Add row to table with given information
+            row = table.add_row().cells
+            name = tags[0]
+            for i, tag in enumerate(tags):
+                if "." in tag: 
+                    row[i].text = parse_value(entry[tag.split(".")[1]])
+                elif tag == it:
+                    row[i].text = parse_value(entry)
+                elif tag in self.fields["general"]:
+                    row[i].text = parse_value(self.fields["general"][tag])
+                elif re.search(r'“(.*)”', tag) is not None: 
+                    row[i].text = re.search(r'“(.*)”', tag).group(1)
+                else:
+                    print(f"For tag {tag} not found: {entry}!")
+
+        # Iteratre over all tables in search for list-tags
+        for table in self.doc.tables:
+            # Get infos from first row
+            row = table.rows[0]
+            iterator, source_list = get_iterator_and_source(row.cells[0].paragraphs[0])
+            if iterator is None: 
+                continue 
+            # if command found, but no matching data, add "None-Row"
+            if len(source_list) == 0:
+                row = table.add_row().cells
+                for i in range(0, len(tags)):
+                    row[i].text = "---"
+            # Otherwise, get tags and fill table.
+            tags = get_tags(row)
+            for entry in source_list:
+                edit_table(table, tags, iterator, entry)
+
+def update_paragraph(par, old, new): 
+    inline = par.runs 
+    max_part = [0, 0]
+    for i in range(len(inline)): 
+        if old in inline[i].text: 
+            text = inline[i].text.replace(old, new)
+            inline[i].text = text
+            return
+    # If not found (since runs split old-text):
+    par.text = par.text.replace(old, new)
+
+
+def daterange(date1, date2):
+    date1 = datetime.strptime(date1, SOURCE_DATE_FORMAT)
+    date2 = datetime.strptime(date2, SOURCE_DATE_FORMAT)
+    return [date1 + timedelta(days=x) for x in range(date2.day-date1.day+1)]

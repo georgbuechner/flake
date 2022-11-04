@@ -64,8 +64,29 @@ function GenerateScoreSheet(animal_id) {
   alert("Funcionality not yet implemented. Sorry :(");
 }
 
-function GenerateSurgerySheet(animal_id) {
-  alert("Funcionality not yet implemented. Sorry :(");
+async function GenerateSurgerySheet(protocol, animal_id) {
+  console.log("protocol: ", protocol, "animal_id: ", animal_id);
+  var req = new XMLHttpRequest();
+  req.open("POST", "/generate/surgery_sheet/"+protocol+"/"+animal_id, true);
+  req.responseType = "blob";
+  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  req.onreadystatechange = function(){
+  if (this.readyState == 4 && this.status == 200) {
+      var blob = new Blob([this.response], {type: "application/docx"});
+      var url = window.URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      document.body.appendChild(link);
+      link.style = "display: none";
+      link.href = url;
+      link.download = "surgery_sheet.docx";
+      link.click();
+
+      setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      link.remove(); } , 100);
+    }
+  };
+  req.send();
 }
 
 async function Store(animal_id) {

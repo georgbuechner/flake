@@ -203,7 +203,8 @@
   <br>
 
   <input 
-    type="submit" id="submit" value="Surgery Sheet" onclick="GenerateSurgerySheet('{{animal_id}}')"
+    type="submit" id="submit" value="Surgery Sheet" 
+    onclick="GenerateSurgerySheet('{{animal_data[0].protocol_escaped}}', '{{animal_id}}')"
   >
   <input 
     type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
