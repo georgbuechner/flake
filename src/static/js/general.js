@@ -85,6 +85,9 @@ async function GenerateSurgerySheet(protocol, animal_id) {
       window.URL.revokeObjectURL(url);
       link.remove(); } , 100);
     }
+    else if (this.readyState ===4) {
+      alert("Something went wrong. Status: " + this.status);
+    }
   };
   req.send();
 }

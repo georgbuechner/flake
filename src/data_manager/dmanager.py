@@ -107,6 +107,7 @@ class DManager:
         @return status code: 200 on success.
         """
         for table_name, table_data in data.items():
+            print(f"store {table_data} to {table_name}")
             self.sql.insert(table_name, animal_id, table_data)
         return 200
 

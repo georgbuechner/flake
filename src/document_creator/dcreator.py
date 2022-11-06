@@ -105,6 +105,7 @@ class DCreator:
                 update_paragraph(par, result.group(0), "")
                 start = self.fields["general"][result.group(2)]
                 end = self.fields["general"][result.group(3)]
+                print(f"daterange: {start}-{end}, {daterange(start, end)}")
                 return result.group(1), daterange(start, end)
             # list
             result = re.search(r"\{{(.*) in (.*)}}", par.text)
@@ -129,17 +130,16 @@ class DCreator:
 
         def edit_table(table, tags: List[str], it: str, entry: any):
             # Add row to table with given information
-            row = table.add_row().cells
-            name = tags[0]
+            columns = table.add_row().cells
             for i, tag in enumerate(tags):
                 if "." in tag: 
-                    row[i].text = parse_value(entry[tag.split(".")[1]])
+                    columns[i].text = parse_value(entry[tag.split(".")[1]])
                 elif tag == it:
-                    row[i].text = parse_value(entry)
+                    columns[i].text = parse_value(entry)
                 elif tag in self.fields["general"]:
-                    row[i].text = parse_value(self.fields["general"][tag])
+                    columns[i].text = parse_value(self.fields["general"][tag])
                 elif re.search(r'“(.*)”', tag) is not None: 
-                    row[i].text = re.search(r'“(.*)”', tag).group(1)
+                    columns[i].text = re.search(r'“(.*)”', tag).group(1)
                 else:
                     print(f"For tag {tag} not found: {entry}!")
 
@@ -150,15 +150,17 @@ class DCreator:
             iterator, source_list = get_iterator_and_source(row.cells[0].paragraphs[0])
             if iterator is None: 
                 continue 
+            # Get tags
+            tags = get_tags(row)
             # if command found, but no matching data, add "None-Row"
             if len(source_list) == 0:
-                row = table.add_row().cells
+                columns = table.add_row().cells
                 for i in range(0, len(tags)):
-                    row[i].text = "---"
+                    columns[i].text = "---"
             # Otherwise, get tags and fill table.
-            tags = get_tags(row)
-            for entry in source_list:
-                edit_table(table, tags, iterator, entry)
+            else:
+                for entry in source_list:
+                    edit_table(table, tags, iterator, entry)
 
 def update_paragraph(par, old, new): 
     inline = par.runs 

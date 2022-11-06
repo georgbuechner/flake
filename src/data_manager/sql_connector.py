@@ -54,7 +54,6 @@ class SqlConnector:
         for entry in data:
             # Create new data for this animal
             query = f"INSERT INTO {table_name} VALUES('{animal_id}'"
-            query = f"INSERT OVERWRITE {table_name} VALUES('{animal_id}'"
             for value in entry.values():
                 query += f", '{value}'"
             query += ")"
