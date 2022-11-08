@@ -7,12 +7,15 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 from data_manager.sql_connector import SqlConnector
+from utils import sort
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 # Some important keys
 DAYS_AFTER_START = "days_after_start"
 DAYS_AFTER_SURGERY = "days_after_surgery"
 DURATION_IN_DAYS = "duration_in_days"
+# Main tables
+T_ANIMAL_DATA = "animal_data"
 
 @dataclass
 class ExperimentData: 
@@ -57,25 +60,16 @@ class DManager:
         """
         print(f"Initializing DManager from {data_path}")
         self.sql = sql_connector
+        self.mapping = {}
+        self.keys_per_language = {}
         with open("resources/mapping.json") as f:
-            self.mapping = json.load(f)
+            mapping = json.load(f)
+            for language, fields in mapping.items():
+                self.mapping.update(fields)
+                self.keys_per_language[language] = fields.keys()
         self.data_path = data_path
         self.protocol_path = os.path.join("resources", "protocols")
-        self.animal_data = []
-        self.users = []
-        self.protocols = []
 
-    def load_animal_data(self):
-        """! Loads animal/ pyrat data from filesystem. 
-
-        This method should be called after initializing.
-        """
-        # Iterate over all files in data-folder
-        for filename in os.listdir(self.data_path):
-            full_path = os.path.join(self.data_path, filename)
-            if os.path.isfile(full_path) and ".csv" in filename:
-                self.__load_animal_data_from_csv(full_path)
-    
     def extract_animal_data(self, tmp_path: str, file) -> int:
         """! Extracts and stores animal-data from csv file.
 
@@ -86,15 +80,16 @@ class DManager:
         # temporarily store file
         file.save(tmp_path)
         # Load file
-        data = self.__load_animal_data_from_csv(tmp_path)
+        existed, total = self.__load_animal_data_from_csv(tmp_path)
+        if existed is None: 
+            return (f"CSV has missing keys, required: "
+                + f"{' '.join(x for x in self.keys['en'])}"
+                + f"or {' '.join(x for x in self.keys['en'])}")
         # If none (animal_id already exists)
-        if data is None:
-            os.remove(tmp_path)
-            return 409
-        # Otherwise, rename file to mouse-id and move to data folder
-        else:
-            os.rename(tmp_path, os.path.join(self.data_path, data["id"] + ".csv"))
-            return 200
+        os.remove(tmp_path)
+        if len(existed) == 0:
+            return "", 200
+        return f"{len(existed)}/{total} already existed: {' '.join(x for x in existed)}", 206 
 
     def store_experiment_data(
         self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
@@ -108,9 +103,8 @@ class DManager:
         """
         for table_name, table_data in data.items():
             print(f"store {table_data} to {table_name}")
-            self.sql.insert(table_name, animal_id, table_data)
+            self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
         return 200
-
 
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
         """! Gets animal-data with possibility to filter by keys.
@@ -121,11 +115,7 @@ class DManager:
         @return list of animal data.
         """
         # Get animal data based on filter_tag and key
-        animal_data = []
-        if filter_tag is None:
-            animal_data = self.animal_data
-        else:
-            animal_data = [entry for entry in self.animal_data if entry[filter_tag] == key]
+        animal_data = self.sql.get(T_ANIMAL_DATA, key, filter_tag)
         # Add stored? information
         for data in animal_data:
             data["stored"] = self.is_stored(data["id"])
@@ -256,26 +246,30 @@ class DManager:
         """
         # Load csv
         df = clevercsv.read_dataframe(path)
+        if self.__check_all_keys == False: 
+            return None, None
         # Iterate over keys and add to data useing mapping.
-        data = {}
-        for key in df.keys():
-            value = df[key].values[0]
-            if key in self.mapping:
-                data[self.mapping[key]] = value
-                if self.mapping[key] == "protocol":
-                    data["protocol_escaped"] = value.replace(" ", "").replace("/", "_")
-        # If already exists, return None.
-        if self.__get_animal_entry(data["id"]) is not None:
-            return None
-        # Add to animal data
-        self.animal_data.append(data)
-        # Check if new user was added.
-        if data["user"] not in self.users:
-            self.users.append(data["user"])
-        if data["protocol_escaped"] not in self.protocols:
-            self.protocols.append(data["protocol_escaped"])
-        # Return data
-        return data
+        existed = []
+        for _, row in df.iterrows():
+            data = {}
+            for key in df.keys():
+                value = row[key]
+                if key in self.mapping:
+                    data[self.mapping[key]] = value
+                    if self.mapping[key] == "protocol":
+                        data["protocol_escaped"] = value.replace(" ", "").replace("/", "_")
+            # If no already exists:
+            if len(self.sql.get(T_ANIMAL_DATA, data["id"], "id")) == 0:
+                self.sql.insert(T_ANIMAL_DATA, [data])
+            else: 
+                existed.append(data["id"])
+        return existed, len(df)
+
+    def __check_all_keys(self, df): 
+        for language_keys in self.keys_per_language.values():
+            if all(key in df.keys() for key in language_keys):
+                return True
+        return False
 
     def __get_animal_entry(self, animal_id: str):
         """! Gets single entry from animal-data matching given ID.
@@ -284,9 +278,9 @@ class DManager:
 
         @return Entry for given ID or `None` if ID was not found.
         """
-        for entry in self.animal_data:
-            if entry["id"] == animal_id:
-                return entry
+        animal_data = self.sql.get(T_ANIMAL_DATA, animal_id, "id")
+        if len(animal_data) > 0:
+            return animal_data[0]
         return None
 
     def is_stored(self, animal_id: str) -> bool:
@@ -298,18 +292,10 @@ class DManager:
         
         @return Boolean indicating whether data is stored or not.
         """
-        return len(self.sql.get("general", animal_id)) > 0
+        return len(self.sql.get("general", animal_id, "animal_id")) > 0
 
+    def users(self) -> List[str]: 
+        return self.sql.get_all(T_ANIMAL_DATA, "user")
 
-def sort(obj_list: List[Dict[str, any]], key: str):
-    """! Sorts a given list of objects by given key. 
-
-    @param obj_list  List of objects to sort.
-    @param key  Key by which to stort list.
-
-    @return Sorted list.
-    """
-    def sort_by_key(e):
-        return e[key]
-    obj_list.sort(key=sort_by_key)
-    return obj_list
+    def protocols(self) -> List[str]: 
+        return self.sql.get_all(T_ANIMAL_DATA, "protocol_escaped")

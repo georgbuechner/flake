@@ -18,10 +18,13 @@ async function UploadPyratData(user)
      {method: "POST", body: formData, signal: ctrl.signal}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200)
+    if (r.ok) {
+      if (r.status === 206) {
+        let response_text = await r.text()
+        alert(response_text);
+      }
       window.location=window.location;
-    if (r.status === 409)
-      alert("Animal with this id already exists!");
+    }
     else
       alert("Something went wrong: Error code: " + r.status);
   } catch(e) {

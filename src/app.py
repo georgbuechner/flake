@@ -16,7 +16,7 @@ def main():
     @return Rendered html main-page from jinja2-template.
     """
     return render_template(
-        "index.html", users=dmanager.users, protocols=dmanager.protocols
+        "index.html", users=dmanager.users(), protocols=dmanager.protocols()
     )
 
 @app.route("/overview")
@@ -93,11 +93,8 @@ def store_animal_data():
     user = json.loads(request.form.get("user"))["name"] 
     tmp_path = user + ".csv"
     # upload via data-manager
-    status = dmanager.extract_animal_data(tmp_path, content.get("csv"))
-    if status == 200:
-        return "successfully updloaded pyrat-data", status
-    elif status == 409:
-        return "Couldn't updload pyrat-data: animal exists", status
+    txt, status = dmanager.extract_animal_data(tmp_path, content.get("csv"))
+    return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])
 def store_experiment_data(animal_id: str):
@@ -124,5 +121,4 @@ def generate_surgery_sheet(protocol: str, animal_id: str):
 
 
 if __name__=="__main__":
-    dmanager.load_animal_data()
     app.run(debug=True)

@@ -52,6 +52,20 @@
             {"name":"concentration", "type":"TEXT"},
             {"name":"days_after_surgery", "type":"INTEGER"}
         ]
+    },
+    "animal_data": {
+        "primary_keys": "ID",
+        "rows": [
+          {"name":"id", "type":"TEXT"},
+          {"name":"sex", "type":"TEXT"},
+          {"name":"line", "type":"TEXT"},
+          {"name":"dob", "type":"TEXT"},
+          {"name":"death_date", "type":"TEXT"},
+          {"name":"user", "type":"TEXT"},
+          {"name":"protocol", "type":"TEXT"},
+          {"name":"protocol_escaped", "type":"TEXT"}
+        ]
     }
+
 }
  
