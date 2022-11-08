@@ -120,7 +120,15 @@ async function Store(animal_id) {
           // If has children (not th), add new entry:
           if (col.children.length > 0) {
             const input = col.children[0];
-            if (input.hasAttribute("convert") && input.getAttribute("convert") === "int")
+            if (input.value === "") {
+              input.style.borderColor = "red";
+              return;
+            }
+            if (input.hasAttribute("type") && input.getAttribute("type") === "date") {
+              const date = new Date(input.value);
+              entry[input.id] = date.toISOString().substring(0, 10);
+            }
+            else if (input.hasAttribute("convert") && input.getAttribute("convert") === "int")
               entry[input.id] = parseInt(input.value);
             else if (input.hasAttribute("convert") && input.getAttribute("convert") === "bool")
               entry[input.id] = (input.value === "yes") ? true : false;
@@ -129,8 +137,9 @@ async function Store(animal_id) {
           }
         }  
         // If avoid empty lines, check if data was added to entry, then add:
-        if (Object.keys(entry).length > 0)
+        if (Object.keys(entry).length > 0) {
           data[key].push(entry);
+        }
       }
     }
   }
@@ -148,5 +157,39 @@ async function Store(animal_id) {
       alert("Something went wrong: Error code: " + r.status);
   } catch(e) {
     alert("Something went wrong: " + e);
+  }
+}
+
+function Del(row, table) {
+  console.log(row);
+  console.log(table.children.length);
+  // last element (apart from th), simply clear element:
+  if (table.children.length < 3) {
+    reset_row(row)
+  }
+  // Otherwise: remove element:
+  else {
+    row.parentNode.removeChild(row);
+  }
+}
+
+function Add(row) {
+  let new_row = row.cloneNode(true);
+  reset_row(new_row);
+  row.after(new_row);
+}
+
+function reset_row(row) {
+  for (var i=0; i<row.children.length; i++) {
+    reset_input(row.children[i].children[0]);
+  }
+}
+
+function reset_input(elem) {
+  if (elem.nodeName === "SELECT") {
+    elem.options[0].selected = true;
+  }
+  else if (elem.nodeName === "INPUT") {
+    elem.value = "";
   }
 }

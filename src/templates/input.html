@@ -70,7 +70,7 @@
         </tr>
         {% for entry in procedures %}
         <tr>
-            <td><input id="procedure_name" value="{{entry.name}}"></input></td>
+            <td><input id="name" value="{{entry.name}}"></input></td>
             <td>
               <input id="start_date" type="date" value="{{entry.start_date}}"
                 {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
@@ -81,8 +81,15 @@
                 {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
               </input>
             </td>
-            <td><input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input></td>
-            <td hidden><input id="days_after_start" convert="int" value={{entry.days_after_start}}></input></td>
+            <td>
+              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+            </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
         <tr>
         {% endfor %}
       </table>
@@ -97,7 +104,7 @@
         </tr>
         {% for entry in post_procedures %}
         <tr>
-            <td><input id="procedure_name" value="{{entry.name}}"></input></td>
+            <td><input id="name" value="{{entry.name}}"></input></td>
             <td>
               <input id="start_date" type="date" value="{{entry.start_date}}"
                 {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
@@ -108,8 +115,15 @@
                 {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
               </input>
             </td>
-            <td><input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input></td>
-            <td hidden><input id="days_after_start" convert="int" value={{entry.days_after_start}}></input></td>
+            <td>
+              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+            </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
         <tr>
         {% endfor %}
       </table>
@@ -141,6 +155,12 @@
                 value={%- if entry.toe_pinch or stored==false -%}"yes"{%- else -%}"no"{%- endif -%}>
               </input>
             </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
           </tr>
         {% endfor %}
       </table>
@@ -161,7 +181,7 @@
             {% for i in range(entry.days_after_surgery+1) %}
               <tr>
                 <td>
-                  <select id="drug_name">
+                  <select id="name">
                     {% for e in availible_analgesic %}
                       <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
                     {% endfor %}
@@ -170,15 +190,18 @@
                 <td><input id="date" type="date" start_plus={{i}}></input></td>
                 <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
                 <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-                <td hidden>
-                  <input id="days_after_surgery" convert="int" value={{entry.days_after_surgery}}></input>
+                <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+                  <a class="mod" title="Remove entry.">-</a>
+                </td>
+                <td onclick="Add(this.parentNode);">
+                  <a class="mod" title="Add new entry below.">+</a>
                 </td>
               </tr>
             {% endfor %}
           {% else %}
             <tr>
               <td>
-                <select id="drug_name" type="list" autocomplete="off">
+                <select id="name" type="list" autocomplete="off">
                   {% for e in availible_analgesic %}
                     <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
                   {% endfor %}
@@ -187,8 +210,11 @@
               <td><input id="date" type="date" value={{entry.date}}></input></td>
               <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
               <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-              <td hidden>
-                <input id="days_after_surgery" convert="int" value={{entry.days_after_surgery}}></input>
+              <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+                <a class="mod" title="Remove entry.">-</a>
+              </td>
+              <td onclick="Add(this.parentNode);">
+                <a class="mod" title="Add new entry below.">+</a>
               </td>
             </tr>
           {% endif %}

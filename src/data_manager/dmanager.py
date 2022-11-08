@@ -102,7 +102,6 @@ class DManager:
         @return status code: 200 on success.
         """
         for table_name, table_data in data.items():
-            print(f"store {table_data} to {table_name}")
             self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
         return 200
 
@@ -138,16 +137,12 @@ class DManager:
         if self.is_stored(animal_id):
             experiment_data.stored = True
             experiment_data.general = self.sql.get("general", animal_id)[0]
-            experiment_data.procedures = sort(
-                self.sql.get("procedures", animal_id), DAYS_AFTER_START
-            )
+            experiment_data.procedures = sort(self.sql.get("procedures", animal_id), "start_date")
             experiment_data.post_procedures = sort(
-                self.sql.get("post_procedures", animal_id), DAYS_AFTER_START
+                self.sql.get("post_procedures", animal_id), "start_date"
             )
-            experiment_data.anesthetic= self.sql.get("anesthetic", animal_id)
-            experiment_data.analgesic = sort(
-                self.sql.get("analgesic", animal_id), DAYS_AFTER_SURGERY
-            )
+            experiment_data.anesthetic = self.sql.get("anesthetic", animal_id)
+            experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
         return experiment_data
 
     def __load_default_values(self, protocol:str) -> ExperimentData:

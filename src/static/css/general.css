@@ -66,3 +66,11 @@ li {
 .not_stored {
   background-color: #992e32;
 }
+
+.mod {
+  padding: 0.5rem;
+}
+
+.mod:hover {
+  cursor: pointer;
+}

@@ -77,7 +77,6 @@ class SqlConnector:
             for value in sorted_entry.values():
                 query += f"'{value}', "
             query = query[:-2] + ")"  # Remove trailing ', ' and add closing bracket.
-            print(query)
             self.cnt.execute(query)
         self.cnt.commit()
 
@@ -97,7 +96,6 @@ class SqlConnector:
             if key is not None and filter_tag is not None: 
                 query += f" WHERE {filter_tag}='{key}'"
             query + ";"
-            print(query)
             cursor = self.cnt.execute(query)
         except sqlite3.Error as error:
             print(f"No data found in table {table_name} for {key}")
@@ -108,7 +106,6 @@ class SqlConnector:
             for index, row in enumerate(self.tables[table_name]["rows"]):
                 entry[row["name"]] = col[index]
             data.append(entry)
-        print(f"-> {data}")
         return data
 
     def get_all(self, table_name: str, key: str) -> List[str]: 

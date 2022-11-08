@@ -16,8 +16,7 @@
             {"name":"name", "type":"TEXT"},
             {"name":"start_date", "type":"TEXT"},
             {"name":"end_date", "type":"TEXT"},
-            {"name":"experimenter", "type":"TEXT"},
-            {"name":"days_after_start", "type":"INTEGER"}
+            {"name":"experimenter", "type":"TEXT"}
         ]
     },
     "post_procedures": {
@@ -27,8 +26,7 @@
             {"name":"name", "type":"TEXT"},
             {"name":"start_date", "type":"TEXT"},
             {"name":"end_date", "type":"TEXT"},
-            {"name":"experimenter", "type":"TEXT"},
-            {"name":"days_after_start", "type":"INTEGER"}
+            {"name":"experimenter", "type":"TEXT"}
         ]
     },
     "anesthetic": {
@@ -49,8 +47,7 @@
             {"name":"name", "type":"TEXT"},
             {"name":"date", "type":"TEXT"},
             {"name":"amount", "type":"TEXT"},
-            {"name":"concentration", "type":"TEXT"},
-            {"name":"days_after_surgery", "type":"INTEGER"}
+            {"name":"concentration", "type":"TEXT"}
         ]
     },
     "animal_data": {
