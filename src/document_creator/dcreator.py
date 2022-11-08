@@ -99,23 +99,29 @@ class DCreator:
             return value
 
         def get_iterator_and_source(par) -> Tuple[str, List[any]]:
-            # range
-            result = re.search(r"{{(.*) in (.*)-(.*)}}", par.text)
+            result = re.search(r"\{{(.*) in (.*)}}", par.text)
             if result is not None:
                 update_paragraph(par, result.group(0), "")
-                start = self.fields["general"][result.group(2)]
-                end = self.fields["general"][result.group(3)]
-                print(f"daterange: {start}-{end}, {daterange(start, end)}")
-                return result.group(1), daterange(start, end)
-            # list
-            result = re.search(r"\{{(.*) in (.*)}}", par.text)
-            if result is not None and result.group(2) in self.fields:
-                update_paragraph(par, result.group(0), "")
-                return result.group(1), self.fields[result.group(2)]
-            elif result is not None:
-                print(f"Name {result.group(2)} not in data: {self.fields.keys()}")
+                iterator_name = result.group(1)
+                print(f"Got {iterator_name} for {result.group(0)} (g2: {result.group(2)})")
+                # range
+                res = re.search(r"(.*)-(.*)", result.group(2))
+                if res is not None:
+                    print("- Range:...")
+                    start = self.fields["general"][res.group(1)]
+                    end = self.fields["general"][res.group(2)]
+                    return iterator_name, daterange(start, end)
+                # conditional list (f.e. analgesic where name=Carprofen)...
+                res = re.search(r"(.*) where (.*)==(.*)", result.group(2))
+                if res is not None: #and res.group(1) in self.fields:
+                    source = self.fields[res.group(1)]
+                    filtered_source = [x for x in source if x[res.group(2)] == res.group(3)]
+                    return iterator_name, filtered_source
+                # list 
+                if result.group(2) in self.fields:
+                    return iterator_name, self.fields[result.group(2)]
             return None, None
-
+                
         def get_tags(row) -> List[str]:
             tags = []
             for i in range(0, len(row.cells)):
