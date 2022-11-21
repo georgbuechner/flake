@@ -6,7 +6,7 @@ from document_creator.dcreator import DCreator
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
-dmanager = DManager("data/animal_data/", sql_connector)
+dmanager = DManager(sql_connector)
 app = Flask(__name__)
 
 @app.route("/")

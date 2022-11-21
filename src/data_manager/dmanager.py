@@ -52,13 +52,12 @@ class DManager:
     filesystem (pyrat(=animal) -data) and sql-database (experiment-data).
     """
 
-    def __init__(self, data_path: str, sql_connector: SqlConnector):
+    def __init__(self, sql_connector: SqlConnector):
         """! The DManager class initializer. 
 
-        @param data_path  path to pyrat-data.
         @param sql_connector  sql-connector-class.
         """
-        print(f"Initializing DManager from {data_path}")
+        print(f"Initializing DManager...")
         self.sql = sql_connector
         self.mapping = {}
         self.keys_per_language = {}
@@ -67,7 +66,6 @@ class DManager:
             for language, fields in mapping.items():
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
-        self.data_path = data_path
         self.protocol_path = os.path.join("resources", "protocols")
 
     def extract_animal_data(self, tmp_path: str, file) -> int:
@@ -152,18 +150,26 @@ class DManager:
         
         @return Experiment-data
         """
+        # Find protocol
+        full_path = None
         for filename in os.listdir(self.protocol_path):
             if protocol in filename:
                 full_path = os.path.join(self.protocol_path, filename)
-                # medication
-                medication = self.__parse_protocal_data(full_path, "medication")
-                anesthetic, analgesic = self.__medication(medication)
-                # procedures
-                procedures = self.__parse_protocal_data(full_path, "procedure")
-                procedures, post_procedures, surgery_start = self.__procedure(procedures)
+        if full_path is None: 
+            return None 
+        else:
+            # medication
+            medication = self.__parse_protocal_data(full_path, "medication")
+            anesthetic, analgesic = self.__medication(medication)
+            # procedures
+            procedures = self.__parse_protocal_data(full_path, "procedure")
+            procedures, post_procedures, surgery_start = self.__procedure(procedures)
+            # General 
+            general = {} 
+            general["start_weight"] = random.randint(20, 30)
         # Create experiment-data from parsed values
         return ExperimentData(
-            False, {}, anesthetic, analgesic, procedures, post_procedures, surgery_start
+            False, general, anesthetic, analgesic, procedures, post_procedures, surgery_start
         )
 
     def __medication(
