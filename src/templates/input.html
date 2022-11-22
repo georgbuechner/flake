@@ -146,7 +146,7 @@
                 {% endfor %}
               </select>
             </td>
-            <td><input id="date" type="date" start_plus=0 value="{{entry.date}}"></input></td>
+            <td><input id="date" type="date" start_plus={{surgery_start}} value="{{entry.date}}"></input></td>
             <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
             <td><input id="concentration" value="{{entry.concentration}}"></input></td>
             <td>
@@ -187,7 +187,7 @@
                     {% endfor %}
                   </select>
                 </td>
-                <td><input id="date" type="date" start_plus={{i}}></input></td>
+                <td><input id="date" type="date" start_plus={{surgery_start+i}}></input></td>
                 <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
                 <td><input id="concentration" value="{{entry.concentration}}"></input></td>
                 <td onclick="Del(this.parentNode, this.parentNode.parentNode);">

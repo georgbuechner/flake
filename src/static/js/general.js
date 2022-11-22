@@ -33,6 +33,7 @@ async function UploadPyratData(user)
 }
 
 function UpdateDates(date_string, surgery_start) {
+  console.log("UpdateDates: surgery_start:", surgery_start);
   // Get all elements with `start_plus` (days to add/ days after surgery) attribute:
   var arr = document.querySelectorAll("[start_plus]");
   // Get current day and add surgery-start
