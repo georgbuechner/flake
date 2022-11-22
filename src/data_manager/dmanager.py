@@ -153,7 +153,7 @@ class DManager:
         # Find protocol
         full_path = None
         for filename in os.listdir(self.protocol_path):
-            if protocol in filename:
+            if protocol in filename and "~lock" not in filename:
                 full_path = os.path.join(self.protocol_path, filename)
         if full_path is None: 
             return None 
