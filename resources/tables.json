@@ -60,7 +60,8 @@
           {"name":"death_date", "type":"TEXT"},
           {"name":"user", "type":"TEXT"},
           {"name":"protocol", "type":"TEXT"},
-          {"name":"protocol_escaped", "type":"TEXT"}
+          {"name":"protocol_escaped", "type":"TEXT"},
+          {"name":"subprotocol", "type":"TEXT"}
         ]
     }
 

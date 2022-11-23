@@ -35,9 +35,9 @@
 
     <h3>Select Protocol:</h3>
     <ul>
-    {% for protocol in protocols %}
+    {% for name, data in protocols.items() %}
       <li>
-        <a href="/protocols/{{protocol}}">{{protocol}}</a>
+        <a href="/protocols/{{data.escaped}}">{{name}}</a>
       </li>
     {% endfor %}
     </ul>

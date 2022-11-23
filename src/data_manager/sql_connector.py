@@ -80,6 +80,18 @@ class SqlConnector:
             self.cnt.execute(query)
         self.cnt.commit()
 
+    def update(
+        self, table_name: str, entry_id: str, field_tag: str, field_value: str
+    ) -> bool:
+        query = f"UPDATE {table_name} SET {field_tag}='{field_value}' WHERE id='{entry_id}'"
+        try: 
+            self.cnt.execute(query)
+            self.cnt.commit()
+            return True
+        except sqlite3.Error as error:
+            print("Error occured - ", error)
+        return False
+
     def get(
         self, table_name: str, key: str, filter_tag: str="animal_id"
     ) -> List[Dict[str, any]]:

@@ -16,7 +16,7 @@ def main():
     @return Rendered html main-page from jinja2-template.
     """
     return render_template(
-        "index.html", users=dmanager.users(), protocols=dmanager.protocols()
+        "index.html", users=dmanager.users(), protocols=dmanager.protocols
     )
 
 @app.route("/overview")
@@ -26,7 +26,9 @@ def overview():
     @return Rendered html overview-page from jinja2-template.
     """
     return render_template(
-        "overview.html", animal_data=dmanager.get_animal_data()
+        "overview.html", 
+        animal_data=dmanager.get_animal_data(),
+        protocols=dmanager.protocols
     )
 
 @app.route("/users/<user>")
@@ -40,7 +42,8 @@ def user_overview(user: str):
     return render_template(
         "user_overview.html", 
         user=user, 
-        animal_data=dmanager.get_animal_data("user", user)
+        animal_data=dmanager.get_animal_data("user", user),
+        protocols=dmanager.protocols
     )
 
 @app.route("/protocols/<protocol>")
@@ -54,7 +57,8 @@ def protocol_overview(protocol: str):
     return render_template(
         "protocol_overview.html", 
         protocol=protocol,
-        animal_data=dmanager.get_animal_data("protocol_escaped", protocol)
+        animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
+        protocols=dmanager.protocols
     )
 
 @app.route("/animal_data/<animal_id>")
@@ -66,7 +70,6 @@ def input(animal_id: str):
     @return Rendered html experiment-data input page from jinja2-template.
     """
     experiment_data = dmanager.load_protocal_data(animal_id)
-    print("analgesic:", experiment_data.analgesic)
     return render_template(
         "input.html", 
         stored=experiment_data.stored,
@@ -79,8 +82,22 @@ def input(animal_id: str):
         post_procedures=experiment_data.post_procedures,
         surgery_start=experiment_data.surgery_start,
         animal_id=animal_id,
-        animal_data=dmanager.get_animal_data("id", animal_id)
+        animal_data=dmanager.get_animal_data("id", animal_id),
+        protocols=dmanager.protocols
     )
+
+@app.route("/update/animal_data/subprotocol", methods=["POST"])
+def update_animal_subprotocol(): 
+    """! Updates the subprotocol of an animal 
+
+    @param subprotocol  the new subprotocol
+
+    @return error-/ success-message and status code.
+    """
+    subprotocol = request.form.get("subprotocol")
+    animal_id = request.form.get("animal_id")
+    txt, status = dmanager.update_animal_subprotocol(animal_id, subprotocol) 
+    return txt, status
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 def store_animal_data():

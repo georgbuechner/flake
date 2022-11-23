@@ -50,6 +50,8 @@ class DManager:
 
     Provides access to sql-database and handles getting and storing data to
     filesystem (pyrat(=animal) -data) and sql-database (experiment-data).
+
+    @attribute protocols {"name": {"espaped":<str>, "subs":<Dict[str, str]>}
     """
 
     def __init__(self, sql_connector: SqlConnector):
@@ -59,6 +61,7 @@ class DManager:
         """
         print(f"Initializing DManager...")
         self.sql = sql_connector
+        self.protocols = {}
         self.mapping = {}
         self.keys_per_language = {}
         with open("resources/mapping.json") as f:
@@ -66,9 +69,11 @@ class DManager:
             for language, fields in mapping.items():
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
-        self.protocol_path = os.path.join("resources", "protocols")
+        # Update protocol information:
+        self.__update_availible_protocols()
+        print("PROTOCOLS: ", self.protocols)
 
-    def extract_animal_data(self, tmp_path: str, file) -> int:
+    def extract_animal_data(self, tmp_path: str, file) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
         @param tmp_path  Path for temporarily storing csv-file.
@@ -79,15 +84,24 @@ class DManager:
         file.save(tmp_path)
         # Load file
         existed, total = self.__load_animal_data_from_csv(tmp_path)
+        # If none, send user information on which fields where missing.
         if existed is None: 
             return (f"CSV has missing keys, required: "
                 + f"{' '.join(x for x in self.keys['en'])}"
                 + f"or {' '.join(x for x in self.keys['en'])}")
-        # If none (animal_id already exists)
+        # If success, update protocols (since new protocols might have been added)
+        self.__update_availible_protocols()
         os.remove(tmp_path)
         if len(existed) == 0:
             return "", 200
         return f"{len(existed)}/{total} already existed: {' '.join(x for x in existed)}", 206 
+
+    def update_animal_subprotocol(self, animal_id: str, subprotocol: str) -> Tuple[str, int]:
+        res = self.sql.update(T_ANIMAL_DATA, animal_id, "subprotocol", subprotocol)
+        if res:
+            return "", 200
+        return "An error occured, we're sorry", 500
+
 
     def store_experiment_data(
         self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
@@ -130,7 +144,9 @@ class DManager:
         """
         # Load animal-data and default-data for given animal-id:
         animal_data = self.__get_animal_entry(animal_id)
-        experiment_data = self.__load_default_values(animal_data["protocol_escaped"])
+        experiment_data = self.__load_default_values(
+            animal_data["protocol"], animal_data["subprotocol"]
+        )
         # If data exists in database, overwrite default values.
         if self.is_stored(animal_id):
             experiment_data.stored = True
@@ -143,30 +159,29 @@ class DManager:
             experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
         return experiment_data
 
-    def __load_default_values(self, protocol:str) -> ExperimentData:
+    def __load_default_values(self, protocol: str, subprotocol: str) -> ExperimentData:
         """! Loads default experiment-data for given protocol.
 
         @param protocol  Protocol for which to load data.
         
         @return Experiment-data
         """
-        # Find protocol
-        full_path = None
-        for filename in os.listdir(self.protocol_path):
-            if protocol in filename and "~lock" not in filename:
-                full_path = os.path.join(self.protocol_path, filename)
-        if full_path is None: 
-            return None 
+        # Check if protocol-data exists and get path to protocol-data: 
+        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
+            path = self.protocols[protocol]["subs"][subprotocol]
         else:
-            # medication
-            medication = self.__parse_protocal_data(full_path, "medication")
-            anesthetic, analgesic = self.__medication(medication)
-            # procedures
-            procedures = self.__parse_protocal_data(full_path, "procedure")
-            procedures, post_procedures, surgery_start = self.__procedure(procedures)
-            # General 
-            general = {} 
-            general["start_weight"] = random.randint(20, 30)
+            print(f"{protocol} or {subprotocol} not in {self.protocols}")
+            return None 
+        # medication
+        medication = self.__parse_protocal_data(path, "medication")
+        anesthetic, analgesic = self.__medication(medication)
+        # procedures
+        procedures = self.__parse_protocal_data(path, "procedure")
+        procedures, post_procedures, surgery_start = self.__procedure(procedures)
+        # General 
+        general = {} 
+        general["start_weight"] = random.randint(20, 30)
+        general["experiment"] = protocol + " " + subprotocol
         # Create experiment-data from parsed values
         return ExperimentData(
             False, general, anesthetic, analgesic, procedures, post_procedures, surgery_start
@@ -258,7 +273,8 @@ class DManager:
                 if key in self.mapping:
                     data[self.mapping[key]] = value
                     if self.mapping[key] == "protocol":
-                        data["protocol_escaped"] = value.replace(" ", "").replace("/", "_")
+                        data["protocol_escaped"] = escape_protocol(value)
+            data["subprotocol"] = "---"
             # If no already exists:
             if len(self.sql.get(T_ANIMAL_DATA, data["id"], "id")) == 0:
                 self.sql.insert(T_ANIMAL_DATA, [data])
@@ -284,6 +300,18 @@ class DManager:
             return animal_data[0]
         return None
 
+    def __update_availible_protocols(self):
+        protocol_path = os.path.join("resources", "protocols")
+        protocols = self.sql.get_all(T_ANIMAL_DATA, "protocol")
+        protocols_data = {}
+        for protocol in protocols:
+            espaped = escape_protocol(protocol)  # generate escaped name for url-display
+            data = {"escaped": espaped, "subs": {}}
+            for filename in os.listdir(protocol_path):
+                if espaped in filename and "~lock" not in filename:
+                    data["subs"][filename[-6]] = os.path.join(protocol_path, filename)
+            self.protocols[protocol] = data
+
     def is_stored(self, animal_id: str) -> bool:
         """! Checks if experiment-data is stored. 
 
@@ -293,10 +321,18 @@ class DManager:
         
         @return Boolean indicating whether data is stored or not.
         """
-        return len(self.sql.get("general", animal_id, "animal_id")) > 0
+        experiment_data = self.sql.get("general", animal_id, "animal_id")
+        animal_data = self.__get_animal_entry(animal_id)
+        print("IS STORED: ", experiment_data, animal_data)
+        return (
+            animal_data is not None 
+            and len(animal_data["death_date"]) == 10 
+            and len(experiment_data["start"]) == 10
+            and len(experiment_data["end"]) == 10
+        )
 
     def users(self) -> List[str]: 
         return self.sql.get_all(T_ANIMAL_DATA, "user")
 
-    def protocols(self) -> List[str]: 
-        return self.sql.get_all(T_ANIMAL_DATA, "protocol_escaped")
+def escape_protocol(protocol: str) -> str: 
+    return protocol.replace(" ", "").replace("/", "_")

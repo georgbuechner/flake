@@ -57,7 +57,27 @@ function UpdateDates(date_string, surgery_start) {
   let end_date_elem = document.getElementById("end");
   end_date_elem.setAttribute("value", endDate.toISOString().substring(0, 10));
   // Send message to user to double check all entries.
-  // TODO (activate this again!): alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
+  alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
+}
+
+async function UpdateSubprotocol(subprotocol, animal_id) {
+  console.log(subprotocol, animal_id);
+  let formData = new FormData();
+  // Add extracted data to form.
+  formData.append("subprotocol", subprotocol);
+  formData.append("animal_id", animal_id);
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/subprotocol', {method: "POST", body: formData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
 }
 
 function GenerateP9(protocol) {
