@@ -73,6 +73,9 @@ class DManager:
         self.__update_availible_protocols()
         print("PROTOCOLS: ", self.protocols)
 
+    def users(self) -> List[str]: 
+        return self.sql.get_all(T_ANIMAL_DATA, "user")
+
     def extract_animal_data(self, tmp_path: str, file) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
@@ -82,8 +85,9 @@ class DManager:
         """
         # temporarily store file
         file.save(tmp_path)
-        # Load file
+        # Load file and delete temp-file afterwards
         existed, total = self.__load_animal_data_from_csv(tmp_path)
+        os.remove(tmp_path)
         # If none, send user information on which fields where missing.
         if existed is None: 
             return (f"CSV has missing keys, required: "
@@ -91,7 +95,6 @@ class DManager:
                 + f"or {' '.join(x for x in self.keys['en'])}")
         # If success, update protocols (since new protocols might have been added)
         self.__update_availible_protocols()
-        os.remove(tmp_path)
         if len(existed) == 0:
             return "", 200
         return f"{len(existed)}/{total} already existed: {' '.join(x for x in existed)}", 206 
@@ -113,6 +116,9 @@ class DManager:
 
         @return status code: 200 on success.
         """
+        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
+        if len(data["general"][0]["end"]) == 10 and len(data["general"][0]["start"]) == 10:
+            self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", data["general"][0]["end"])
         for table_name, table_data in data.items():
             self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
         return 200
@@ -129,7 +135,7 @@ class DManager:
         animal_data = self.sql.get(T_ANIMAL_DATA, key, filter_tag)
         # Add stored? information
         for data in animal_data:
-            data["stored"] = self.is_stored(data["id"])
+            data["stored"] = self.__is_stored(data["id"])
         return animal_data
 
     def load_protocal_data(self, animal_id: str) -> ExperimentData: 
@@ -148,7 +154,7 @@ class DManager:
             animal_data["protocol"], animal_data["subprotocol"]
         )
         # If data exists in database, overwrite default values.
-        if self.is_stored(animal_id):
+        if self.__has_stored_data(animal_id):
             experiment_data.stored = True
             experiment_data.general = self.sql.get("general", animal_id)[0]
             experiment_data.procedures = sort(self.sql.get("procedures", animal_id), "start_date")
@@ -312,27 +318,32 @@ class DManager:
                     data["subs"][filename[-6]] = os.path.join(protocol_path, filename)
             self.protocols[protocol] = data
 
-    def is_stored(self, animal_id: str) -> bool:
+    def __is_stored(self, animal_id: str) -> bool:
         """! Checks if experiment-data is stored. 
 
         Only table "general" is check to reduced database access.
 
         @param animal_id  ID of animal.
+        @param check_all  If False returns True if ANY data is stored
         
         @return Boolean indicating whether data is stored or not.
         """
         experiment_data = self.sql.get("general", animal_id, "animal_id")
+        # Take first element, since 'general' has only one entry for each animal
+        experiment_data = experiment_data[0] if len(experiment_data) > 0 else None
         animal_data = self.__get_animal_entry(animal_id)
-        print("IS STORED: ", experiment_data, animal_data)
         return (
-            animal_data is not None 
+            animal_data is not None and experiment_data is not None
             and len(animal_data["death_date"]) == 10 
-            and len(experiment_data["start"]) == 10
+            and len(experiment_data["start"]) == 10  
             and len(experiment_data["end"]) == 10
         )
 
-    def users(self) -> List[str]: 
-        return self.sql.get_all(T_ANIMAL_DATA, "user")
+    def __has_stored_data(self, animal_id: str) -> bool: 
+        for table_name in self.sql.tables.keys():
+            if len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
+                return True
+        return False
 
 def escape_protocol(protocol: str) -> str: 
     return protocol.replace(" ", "").replace("/", "_")

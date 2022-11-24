@@ -78,6 +78,7 @@ class SqlConnector:
                 query += f"'{value}', "
             query = query[:-2] + ")"  # Remove trailing ', ' and add closing bracket.
             self.cnt.execute(query)
+            print(query)
         self.cnt.commit()
 
     def update(
@@ -131,7 +132,6 @@ class SqlConnector:
         for col in cursor:
             all_xs.add(col[0])
         return list(all_xs)
-
 
     def __del__(self):
         """! Destructor closing database connection."""
