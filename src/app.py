@@ -25,6 +25,9 @@ def overview():
 
     @return Rendered html overview-page from jinja2-template.
     """
+    protocols = dmanager.protocols
+    print(protocols, protocols["G 0241/19"])
+    print(protocols["G 0241/19"]["subs"]["D"]["users"])
     return render_template(
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
@@ -96,7 +99,20 @@ def update_animal_subprotocol():
     """
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
-    txt, status = dmanager.update_animal_subprotocol(animal_id, subprotocol) 
+    txt, status = dmanager.update_animal_field(animal_id, "subprotocol", subprotocol) 
+    return txt, status
+
+@app.route("/update/animal_data/user", methods=["POST"])
+def update_animal_user(): 
+    """! Updates the user of an animal 
+
+    @param user  the new user
+
+    @return error-/ success-message and status code.
+    """
+    user = request.form.get("user")
+    animal_id = request.form.get("animal_id")
+    txt, status = dmanager.update_animal_field(animal_id, "user", user) 
     return txt, status
 
 @app.route("/upload/pyrat_csv", methods=["POST"])

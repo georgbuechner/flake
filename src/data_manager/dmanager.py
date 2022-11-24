@@ -99,8 +99,10 @@ class DManager:
             return "", 200
         return f"{len(existed)}/{total} already existed: {' '.join(x for x in existed)}", 206 
 
-    def update_animal_subprotocol(self, animal_id: str, subprotocol: str) -> Tuple[str, int]:
-        res = self.sql.update(T_ANIMAL_DATA, animal_id, "subprotocol", subprotocol)
+    def update_animal_field(
+        self, animal_id: str, field: str, subprotocol: str
+    ) -> Tuple[str, int]:
+        res = self.sql.update(T_ANIMAL_DATA, animal_id, field, subprotocol)
         if res:
             return "", 200
         return "An error occured, we're sorry", 500
@@ -203,7 +205,7 @@ class DManager:
         """
         # Check if protocol-data exists and get path to protocol-data: 
         if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
-            path = self.protocols[protocol]["subs"][subprotocol]
+            path = self.protocols[protocol]["subs"][subprotocol]["path"]
         else:
             print(f"{protocol} or {subprotocol} not in {self.protocols}")
             return None 
@@ -287,7 +289,7 @@ class DManager:
         df = pd.read_excel(path, sheet_name=sheet_name) 
         data = df.to_dict("records")
         # Remove all not allowed
-        return [entry for entry in data if entry["allowed"] == "yes"]
+        return [entry for entry in data if "allowed" not in entry or entry["allowed"] == "yes"]
 
     def __load_animal_data_from_csv(self, path: str):
         """! Loads animal-data from CSV file.
@@ -344,7 +346,14 @@ class DManager:
             data = {"escaped": espaped, "subs": {}}
             for filename in os.listdir(protocol_path):
                 if espaped in filename and "~lock" not in filename:
-                    data["subs"][filename[-6]] = os.path.join(protocol_path, filename)
+                    # Get path and subprotocol-letter
+                    path = os.path.join(protocol_path, filename)
+                    subprotocol_letter = filename[-6]
+                    # Get allowed users
+                    users = self.__parse_protocal_data(path, "users")
+                    # Generate subprotocol-data with path and empty users-list
+                    sub_data = {"path": path, "users": [x["name"] for x in users]}
+                    data["subs"][subprotocol_letter] = sub_data
             self.protocols[protocol] = data
 
     def __is_stored(self, animal_id: str) -> bool:

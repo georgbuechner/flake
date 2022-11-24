@@ -80,6 +80,26 @@ async function UpdateSubprotocol(subprotocol, animal_id) {
   }
 }
 
+async function UpdateUser(user, animal_id) {
+  console.log(subprotocol, animal_id);
+  let formData = new FormData();
+  // Add extracted data to form.
+  formData.append("user", user);
+  formData.append("animal_id", animal_id);
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/user', {method: "POST", body: formData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
+
 function GenerateP9(protocol) {
   alert("Funcionality not yet implemented. Sorry :(");
 }
