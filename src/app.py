@@ -125,6 +125,17 @@ def store_experiment_data(animal_id: str):
     dmanager.store_experiment_data(animal_id, data)
     return "Success", 200
 
+@app.route("/clear/<animal_id>", methods=["POST"])
+def clear_experiment_data(animal_id: str):
+    """! Adds new experiment-data from for given animal-id.
+
+    @param animal_id  ID of animal for which to add data.
+
+    @return error-/ success-message and status code.
+    """
+    dmanager.clear_experiment_data(animal_id)
+    return "Success", 200
+
 @app.route("/generate/surgery_sheet/<protocol>/<animal_id>", methods=["POST"])
 def generate_surgery_sheet(protocol: str, animal_id: str):
     dcreator = DCreator(

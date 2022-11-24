@@ -181,6 +181,22 @@ async function Store(animal_id) {
   }
 }
 
+async function Clear(animal_id) {
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/clear/'+animal_id, {method: "POST", body: new FormData()}); 
+    // Handle response:
+    console.log('HTTP response code: ' + r.status); 
+    if (r.status === 200)
+      window.location=window.location;
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
+
 function Del(row, table) {
   console.log(row);
   console.log(table.children.length);

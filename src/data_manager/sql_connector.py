@@ -56,7 +56,7 @@ class SqlConnector:
         @param data  Data to store.
         """
         # Delete all current data for this animal (TODO: check UPSERT option)
-        self.cnt.execute(f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'")
+        delete(animal_id, table_name)
         # Add animal_id to each entry
         for x in data: 
             x["animal_id"] = animal_id
@@ -79,6 +79,13 @@ class SqlConnector:
             query = query[:-2] + ")"  # Remove trailing ', ' and add closing bracket.
             self.cnt.execute(query)
             print(query)
+        self.cnt.commit()
+
+    def delete(self, animal_id: str, table_name: str=None):
+        tables = [table_name] if table_name is not None else self.tables.keys()
+        for table_name in tables:
+            if table_name != "animal_data":
+                self.cnt.execute(f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'")
         self.cnt.commit()
 
     def update(

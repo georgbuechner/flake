@@ -123,6 +123,35 @@ class DManager:
             self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
         return 200
 
+    def store_experiment_data(
+        self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
+    ) -> int:
+        """! Inserts data to sql-database tables. 
+
+        @param animal_id  ID of animal
+        @param data  experiment-data.
+
+        @return status code: 200 on success.
+        """
+        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
+        if len(data["general"][0]["end"]) == 10 and len(data["general"][0]["start"]) == 10:
+            self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", data["general"][0]["end"])
+        for table_name, table_data in data.items():
+            self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
+        return 200
+
+    def clear_experiment_data( self, animal_id: str) -> int:
+        """! Clears experiment-data for animal
+
+        @param animal_id  ID of animal
+
+        @return status code: 200 on success.
+        """
+        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
+        self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", "nan")
+        self.sql.delete(animal_id)
+        return 200
+
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
         """! Gets animal-data with possibility to filter by keys.
 
