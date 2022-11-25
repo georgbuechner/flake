@@ -56,7 +56,7 @@ class SqlConnector:
         @param data  Data to store.
         """
         # Delete all current data for this animal (TODO: check UPSERT option)
-        delete(animal_id, table_name)
+        self.delete(animal_id, table_name)
         # Add animal_id to each entry
         for x in data: 
             x["animal_id"] = animal_id

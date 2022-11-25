@@ -74,13 +74,17 @@ class DManager:
         print("PROTOCOLS: ", self.protocols)
 
     def users(self) -> List[str]: 
+        """! Gets list of all users (pyrat: 'Responsible') which are currently
+        responsible for an animal.
+
+        @return List of users.
+        """
         return self.sql.get_all(T_ANIMAL_DATA, "user")
 
     def extract_animal_data(self, tmp_path: str, file) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
         @param tmp_path  Path for temporarily storing csv-file.
-
         @return status code: 409 if data for animal_id already exists 200 otherwise.
         """
         # temporarily store file
@@ -102,6 +106,7 @@ class DManager:
     def update_animal_field(
         self, animal_id: str, field: str, subprotocol: str
     ) -> Tuple[str, int]:
+        """! Updates a field of in an animal entry. """
         res = self.sql.update(T_ANIMAL_DATA, animal_id, field, subprotocol)
         if res:
             return "", 200
@@ -118,26 +123,6 @@ class DManager:
 
         @return status code: 200 on success.
         """
-        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
-        if len(data["general"][0]["end"]) == 10 and len(data["general"][0]["start"]) == 10:
-            self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", data["general"][0]["end"])
-        for table_name, table_data in data.items():
-            self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
-        return 200
-
-    def store_experiment_data(
-        self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
-    ) -> int:
-        """! Inserts data to sql-database tables. 
-
-        @param animal_id  ID of animal
-        @param data  experiment-data.
-
-        @return status code: 200 on success.
-        """
-        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
-        if len(data["general"][0]["end"]) == 10 and len(data["general"][0]["start"]) == 10:
-            self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", data["general"][0]["end"])
         for table_name, table_data in data.items():
             self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
         return 200
@@ -149,8 +134,6 @@ class DManager:
 
         @return status code: 200 on success.
         """
-        # If start-and end are filled auto-add sacrifice-data (TODO (fux): find better solution!
-        self.sql.update(T_ANIMAL_DATA, animal_id, "death_date", "nan")
         self.sql.delete(animal_id)
         return 200
 
@@ -283,7 +266,6 @@ class DManager:
 
         @param path  Path to protocol-data.
         @param sheet_name  Sheet which to get data from.
-
         @return All default-data with attribute where `allowed` is `yes`.
         """
         df = pd.read_excel(path, sheet_name=sheet_name) 
@@ -329,7 +311,6 @@ class DManager:
         """! Gets single entry from animal-data matching given ID.
 
         @param animal_id  ID of animal to search for.
-
         @return Entry for given ID or `None` if ID was not found.
         """
         animal_data = self.sql.get(T_ANIMAL_DATA, animal_id, "id")
@@ -359,11 +340,12 @@ class DManager:
     def __is_stored(self, animal_id: str) -> bool:
         """! Checks if experiment-data is stored. 
 
-        Only table "general" is check to reduced database access.
+        Checks if animal is dead (`death_date` is filled) and whether
+        all experiment-steps are done (assuming that everything is done when
+        `start` and `end` or filled)
 
         @param animal_id  ID of animal.
         @param check_all  If False returns True if ANY data is stored
-        
         @return Boolean indicating whether data is stored or not.
         """
         experiment_data = self.sql.get("general", animal_id, "animal_id")
@@ -378,10 +360,22 @@ class DManager:
         )
 
     def __has_stored_data(self, animal_id: str) -> bool: 
+        """! Checks if there is any data stored for a animal sofar.
+
+        @param animal_id  ID of animal 
+        @return Boolean indicating whether ANY experiment-data exists for given animal.
+        """
         for table_name in self.sql.tables.keys():
             if len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
                 return True
         return False
 
 def escape_protocol(protocol: str) -> str: 
+    """! Escape protocol-string to be url compatible. 
+
+    Removes whitespaces (" ") and replaces slashs ("/") underscore ("_").
+    
+    @param protocol  Protocol-name.
+    @return Escaped protocol-name.
+    """
     return protocol.replace(" ", "").replace("/", "_")

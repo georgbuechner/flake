@@ -12,23 +12,7 @@
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
         <td>{{entry.id}}</td>
-        <td>
-          <select 
-            id="subprotocol" autocomplete="off" 
-            onchange="UpdateUser(this.value, this.parentNode.parentNode.children[0].innerHTML)"
-          >
-            <option value="---" selected>---</option>
-            {% if entry.subprotocol == "---" %}
-              <option value="{{entry.user}}" selected>{{entry.user}}</option>
-            {% else %}
-              {% for user in protocols[entry.protocol].subs[entry.subprotocol].users %}
-                <option 
-                  value="{{user}}" {%- if user == entry.user -%}selected{%- endif -%}>{{user}}
-                </option>
-              {% endfor %}
-            {% endif %}
-          </select>
-        </td>
+        <td>{{entry.user}}</td>
         <td>{{entry.sex}}</td>
         <td>{{entry.line}}</td>
         <td>{{entry.dob}}</td>
