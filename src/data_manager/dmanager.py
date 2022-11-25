@@ -3,6 +3,7 @@ import json
 import os
 import math
 import random
+import string
 import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
@@ -81,37 +82,41 @@ class DManager:
         """
         return self.sql.get_all(T_ANIMAL_DATA, "user")
 
-    def extract_animal_data(self, tmp_path: str, file) -> Tuple[str, int]:
+    def extract_animal_data(self, file) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
         @param tmp_path  Path for temporarily storing csv-file.
         @return status code: 409 if data for animal_id already exists 200 otherwise.
         """
+        # Genrate temporary path
+        tmp_path = "".join(random.choice(string.ascii_letters) for x in range(10))
+        tmp_path += ".csv"
         # temporarily store file
         file.save(tmp_path)
-        # Load file and delete temp-file afterwards
-        existed, total = self.__load_animal_data_from_csv(tmp_path)
+        # Load file and delete tmp-file afterwards
+        updated, total = self.__load_animal_data_from_csv(tmp_path)
         os.remove(tmp_path)
         # If none, send user information on which fields where missing.
-        if existed is None: 
+        if updated is None: 
             return (f"CSV has missing keys, required: "
                 + f"{' '.join(x for x in self.keys['en'])}"
                 + f"or {' '.join(x for x in self.keys['en'])}")
         # If success, update protocols (since new protocols might have been added)
         self.__update_availible_protocols()
-        if len(existed) == 0:
-            return "", 200
-        return f"{len(existed)}/{total} already existed: {' '.join(x for x in existed)}", 206 
+        inserted_msg =f"{total-len(updated)} inserted."
+        if len(updated) == 0:
+            return inserted_msg, 200
+        updated_msg = f"{len(updated)} updated ({' '.join(x for x in updated)})"
+        return inserted_msg + " " + updated_msg, 206 
 
     def update_animal_field(
         self, animal_id: str, field: str, subprotocol: str
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
-        res = self.sql.update(T_ANIMAL_DATA, animal_id, field, subprotocol)
+        res = self.sql.update_animal_data(T_ANIMAL_DATA, animal_id, {field:subprotocol})
         if res:
             return "", 200
         return "An error occured, we're sorry", 500
-
 
     def store_experiment_data(
         self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
@@ -124,7 +129,13 @@ class DManager:
         @return status code: 200 on success.
         """
         for table_name, table_data in data.items():
-            self.sql.insert_plus_animal_id(table_name, animal_id, table_data)
+            # Add animal_id to each entry
+            for x in table_data: 
+                x["animal_id"] = animal_id
+            # Remove old data (TODO check UPSERT option)
+            self.sql.delete(animal_id, [table_name])
+            # Insert data
+            self.sql.insert(table_name, table_data)
         return 200
 
     def clear_experiment_data( self, animal_id: str) -> int:
@@ -134,7 +145,7 @@ class DManager:
 
         @return status code: 200 on success.
         """
-        self.sql.delete(animal_id)
+        self.sql.delete(animal_id, self.sql.experiment_data_tables)
         return 200
 
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
@@ -277,14 +288,21 @@ class DManager:
         """! Loads animal-data from CSV file.
 
         @param path  Path to CSV. 
-        @return Newly created animal-data, None if data already existed.
+        @return List of animal-ids which where updated, and total number of
+            animal-ids in dataframe.
         """
+        # Checks whether all neccesarry keys are included.
+        def check_all_keys(df: pd.DataFrame) -> bool: 
+            for language_keys in self.keys_per_language.values():
+                if all(key in df.keys() for key in language_keys):
+                    return True
+            return False
         # Load csv
         df = clevercsv.read_dataframe(path)
-        if self.__check_all_keys == False: 
+        if check_all_keys(df) == False: 
             return None, None
-        # Iterate over keys and add to data useing mapping.
-        existed = []
+        # Iterate over keys and add to data using mapping.
+        updated = []
         for _, row in df.iterrows():
             data = {}
             for key in df.keys():
@@ -293,19 +311,16 @@ class DManager:
                     data[self.mapping[key]] = value
                     if self.mapping[key] == "protocol":
                         data["protocol_escaped"] = escape_protocol(value)
-            data["subprotocol"] = "---"
-            # If no already exists:
+            # If not already exists, include "empty" subprotocol and insert to sql.
             if len(self.sql.get(T_ANIMAL_DATA, data["id"], "id")) == 0:
+                data["subprotocol"] = "---"
                 self.sql.insert(T_ANIMAL_DATA, [data])
+            # Otherwise, update data.
             else: 
-                existed.append(data["id"])
-        return existed, len(df)
+                self.sql.update_animal_data(T_ANIMAL_DATA, data["id"], data)
+                updated.append(data["id"])
+        return updated, len(df)
 
-    def __check_all_keys(self, df): 
-        for language_keys in self.keys_per_language.values():
-            if all(key in df.keys() for key in language_keys):
-                return True
-        return False
 
     def __get_animal_entry(self, animal_id: str):
         """! Gets single entry from animal-data matching given ID.

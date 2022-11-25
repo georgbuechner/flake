@@ -13,6 +13,11 @@ class SqlConnector:
         @param db_path  Path to database.
         @param tables_path  Path to json defining tables to create.
         """
+        # Create tables from tables-json:
+        with open(tables_path) as f:
+            self.tables = json.load(f)
+        self.experiment_data_tables = [x for x in self.tables.keys() if x != "animal_data"]
+
         try:
             # Connect to DB and create a cursor
             self.cnt = sqlite3.connect(db_path, check_same_thread=False)
@@ -26,9 +31,6 @@ class SqlConnector:
             # Close the cursor
             self.cursor.close()
 
-            # Create tables from tables-json:
-            with open(tables_path) as f:
-                self.tables = json.load(f)
             # Make sure table names are sorted alphabetically.
             for table_name, table_data in self.tables.items():
                 # Create query:
@@ -43,30 +45,10 @@ class SqlConnector:
         except sqlite3.Error as error:
             print("Error occured - ", error)
 
-    def insert_plus_animal_id(
-        self, table_name: str, animal_id: str, data: List[Dict[str, any]]
-    ):
-        """! Inserts new experiment-data into database.
-
-        Deletes all existing experiment-data for this animal, then adds
-        animal-id to each entry in data and calls regular insert-method.
-
-        @param table_name  Name of table into which to insert data.
-        @param animal_id  ID of animal.
-        @param data  Data to store.
-        """
-        # Delete all current data for this animal (TODO: check UPSERT option)
-        self.delete(animal_id, table_name)
-        # Add animal_id to each entry
-        for x in data: 
-            x["animal_id"] = animal_id
-        self.insert(table_name, data)
-
     def insert(self, table_name: str, data: List[Dict[str, any]]):
-        """! Inserts new experiment-data into database.
+        """! Inserts new data into database.
 
         @param table_name  Name of table into which to insert data.
-        @param animal_id  ID of animal.
         @param data  Data to store.
         """
         for entry in data:
@@ -81,17 +63,36 @@ class SqlConnector:
             print(query)
         self.cnt.commit()
 
-    def delete(self, animal_id: str, table_name: str=None):
-        tables = [table_name] if table_name is not None else self.tables.keys()
+    def delete(self, animal_id: str, tables: List[str]):
         for table_name in tables:
-            if table_name != "animal_data":
-                self.cnt.execute(f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'")
+            self.cnt.execute(f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'")
         self.cnt.commit()
 
-    def update(
-        self, table_name: str, entry_id: str, field_tag: str, field_value: str
+    def update_animal_data(
+        self, table_name: str, entry_id: str, fields: Dict[str, any]
     ) -> bool:
-        query = f"UPDATE {table_name} SET {field_tag}='{field_value}' WHERE id='{entry_id}'"
+        """! Updates entry in animal-data table. 
+
+        If fields are not specified updates all fields in table, except primary keys.
+        
+        @param table_name  Name of the table for which entries shall be updated.
+        @param entry_id  ID of entry which shall be updated.
+        @param values  List of values which to update. 
+        @param fields  List of fields which to update.
+        @return Boolean indicating success/ failure.
+        """
+        # Avoid updating primary fields
+        primary_keys = self.tables[table_name]["primary_keys"].split(", ")
+        print(primary_keys)
+        fields = {k:v for (k,v) in fields.items() if k.upper() not in primary_keys}
+        print(fields)
+        # Generate query to update only given fields and only of given entry_id:
+        query = f"UPDATE {table_name} SET"
+        for field, value in fields.items(): 
+            query += f" {field}='{value}',"
+        query = query[:-1] + f" WHERE id='{entry_id}';"  # Remove trailing ',' and WHERE part.
+        print(query)
+        # Execute:
         try: 
             self.cnt.execute(query)
             self.cnt.commit()
@@ -139,6 +140,22 @@ class SqlConnector:
         for col in cursor:
             all_xs.add(col[0])
         return list(all_xs)
+
+    def __get_table_fields(
+        self, table_name: str, no_primary_keys: bool=False
+    ) -> List[str]:
+        """! Gets all fields of given table. 
+
+        If `no_primary_keys` is True, excludes primary-keys from result list.
+        @param table_name  Name of table to get fields from. 
+        @param no_primary_keys  Whether or not to include primary_keys (default: False)
+        @return List of all fields of given table.
+        """
+        table_fields = [row["name"] for row in self.tables[table_name]["rows"]]
+        if no_primary_keys:
+            primary_keys = self.tables[table_name]["primary_keys"].split(", ")
+            table_fields = [field for field in table_fields if field not in primary_keys]
+        return table_fields
 
     def __del__(self):
         """! Destructor closing database connection."""

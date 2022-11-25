@@ -26,8 +26,6 @@ def overview():
     @return Rendered html overview-page from jinja2-template.
     """
     protocols = dmanager.protocols
-    print(protocols, protocols["G 0241/19"])
-    print(protocols["G 0241/19"]["subs"]["D"]["users"])
     return render_template(
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
@@ -102,19 +100,6 @@ def update_animal_subprotocol():
     txt, status = dmanager.update_animal_field(animal_id, "subprotocol", subprotocol) 
     return txt, status
 
-@app.route("/update/animal_data/user", methods=["POST"])
-def update_animal_user(): 
-    """! Updates the user of an animal 
-
-    @param user  the new user
-
-    @return error-/ success-message and status code.
-    """
-    user = request.form.get("user")
-    animal_id = request.form.get("animal_id")
-    txt, status = dmanager.update_animal_field(animal_id, "user", user) 
-    return txt, status
-
 @app.route("/upload/pyrat_csv", methods=["POST"])
 def store_animal_data():
     """! Adds new animal-data from .CSV.
@@ -122,11 +107,8 @@ def store_animal_data():
     @return error-/ success-message and status code.
     """
     content = request.files
-    # Create path for this user to avoid overwriting when muliple users perform action.
-    user = json.loads(request.form.get("user"))["name"] 
-    tmp_path = user + ".csv"
     # upload via data-manager
-    txt, status = dmanager.extract_animal_data(tmp_path, content.get("csv"))
+    txt, status = dmanager.extract_animal_data(content.get("csv"))
     return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])
@@ -134,7 +116,6 @@ def store_experiment_data(animal_id: str):
     """! Adds new experiment-data from for given animal-id.
 
     @param animal_id  ID of animal for which to add data.
-
     @return error-/ success-message and status code.
     """
     data = json.loads(request.form.get("data"))

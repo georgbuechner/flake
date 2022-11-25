@@ -1,12 +1,15 @@
-async function UploadPyratData(user) 
+async function UploadPyratData() 
 {
-  let user_infos = { "name": user.replace(" ", "-").toLowerCase()};
-  let pyrat_csv = document.getElementById("pyrat_csv").files[0];
+  const elem = document.getElementById("pyrat_csv");
+  if (elem.files.length == 0) {
+    alert("No file selected!");
+    return;
+  }
+  let pyrat_csv = elem.files[0];
   console.log(pyrat_csv);
   let formData = new FormData();
 
   formData.append("csv", pyrat_csv);
-  formData.append("user", JSON.stringify(user_infos));
   
   const ctrl = new AbortController();    // timeout
   setTimeout(() => ctrl.abort(), 5000);
