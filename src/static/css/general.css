@@ -74,3 +74,10 @@ li {
 .mod:hover {
   cursor: pointer;
 }
+
+/* graph */ 
+.graph {
+  margin-top: 1em;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  background-color: #b5b5b5;
+}

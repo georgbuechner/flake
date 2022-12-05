@@ -1,13 +1,10 @@
 import json
 import os
 import re
-from datetime import datetime, timedelta
 from docx import Document
 from typing import Dict, List, Tuple
 from data_manager.dmanager import ExperimentData
-
-SOURCE_DATE_FORMAT = "%Y-%m-%d"
-OUTPUT_DATE_FORMAT = "%d.%m.%y"
+from utils.dt_utils import strtodate, datetostr, daterange
 
 class DCreator:
 
@@ -94,7 +91,7 @@ class DCreator:
                         return self.replacements[result.group(1)]
             # Convert datetime
             elif isinstance(value, datetime):
-                return datetime.strftime(entry, OUTPUT_DATE_FORMAT)
+                return datetostr(entry)
             # Otherwise return value unchanged
             return value
 
@@ -178,9 +175,3 @@ def update_paragraph(par, old, new):
             return
     # If not found (since runs split old-text):
     par.text = par.text.replace(old, new)
-
-
-def daterange(date1, date2):
-    date1 = datetime.strptime(date1, SOURCE_DATE_FORMAT)
-    date2 = datetime.strptime(date2, SOURCE_DATE_FORMAT)
-    return [date1 + timedelta(days=x) for x in range(date2.day-date1.day+1)]

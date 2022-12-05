@@ -2,7 +2,7 @@ import json
 import sqlite3
 from collections import OrderedDict
 from typing import Dict, List
-from utils import sort
+from utils.utils import sort
 
 class SqlConnector:
     """! The sql-connection class."""

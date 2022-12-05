@@ -6,7 +6,9 @@
             {"name":"start", "type":"TEXT"},
             {"name":"end", "type":"TEXT"},
             {"name":"experiment", "type":"TEXT"},
-            {"name":"start_weight", "type":"TEXT"}
+            {"name":"start_weight", "type":"TEXT"},
+            {"name":"watercontrol", "type":"TEXT"},
+            {"name":"weights", "type":"TEXT"}
         ]
     },
     "procedures": {

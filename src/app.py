@@ -111,6 +111,11 @@ def store_animal_data():
     txt, status = dmanager.extract_animal_data(content.get("csv"))
     return txt, status
 
+@app.route("/generate/weights/<animal_id>", methods=["POST"])
+def generate_weightlist(animal_id: str): 
+    txt, status = dmanager.generate_weightlist(animal_id)
+    return txt, status
+
 @app.route("/store/<animal_id>", methods=["POST"])
 def store_experiment_data(animal_id: str):
     """! Adds new experiment-data from for given animal-id.

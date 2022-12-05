@@ -8,7 +8,13 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 from data_manager.sql_connector import SqlConnector
-from utils import sort
+from utils.parser_weights_and_water import (
+    get_water_control_mask, 
+    get_estimated_weight_list,
+    apply_noise
+)
+from utils.utils import sort
+from utils.dt_utils import strtodate, datetostr, incdate
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 # Some important keys
@@ -17,6 +23,9 @@ DAYS_AFTER_SURGERY = "days_after_surgery"
 DURATION_IN_DAYS = "duration_in_days"
 # Main tables
 T_ANIMAL_DATA = "animal_data"
+
+SOURCE_DATE_FORMAT = "%Y-%m-%d"
+OUTPUT_DATE_FORMAT = "%d.%m.%y"
 
 @dataclass
 class ExperimentData: 
@@ -35,6 +44,11 @@ class ExperimentData:
         """! Generates availible anesthetic/ anesthetic from given data. """
         self.availible_anesthetic = [x["name"] for x in self.anesthetic]
         self.availible_analgesic = [x["name"] for x in self.analgesic]
+
+    def set_general(self, general: List[Dict[str, any]]):
+        self.general = general
+        # self.general["watercontrol"] = json.loads(general["watercontrol"])
+        # self.general["weights"] = json.loads(general["weights"])
 
     def dict(self):
         return {
@@ -175,13 +189,11 @@ class DManager:
         """
         # Load animal-data and default-data for given animal-id:
         animal_data = self.__get_animal_entry(animal_id)
-        experiment_data = self.__load_default_values(
-            animal_data["protocol"], animal_data["subprotocol"]
-        )
+        experiment_data = self.__load_default_values(animal_id)
         # If data exists in database, overwrite default values.
         if self.__has_stored_data(animal_id):
             experiment_data.stored = True
-            experiment_data.general = self.sql.get("general", animal_id)[0]
+            experiment_data.set_general(self.sql.get("general", animal_id)[0])
             experiment_data.procedures = sort(self.sql.get("procedures", animal_id), "start_date")
             experiment_data.post_procedures = sort(
                 self.sql.get("post_procedures", animal_id), "start_date"
@@ -190,7 +202,46 @@ class DManager:
             experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
         return experiment_data
 
-    def __load_default_values(self, protocol: str, subprotocol: str) -> ExperimentData:
+    def generate_weightlist(self, animal_id) -> Tuple[str, int]:
+        animal_data = self.__get_animal_entry(animal_id)
+        # Get start-date from general data
+        general = self.sql.get("general", animal_id)
+        if len(general) == 0:
+            return "general data entry (start, end, ...) missing", 401
+        general = general[0]  # Only one element. Use this.
+        start_date = general["start"]
+        if not date_filled(start_date): 
+            return "Missing start-date", 401
+        # Get protocol-information (watercontrol)
+        path = self.__get_protocol_path(animal_id)
+        if path is None: 
+            return "Protocol or subprotocol not found", 401
+        infos = self.__parse_protocal_data(path, "watercontrol")
+        if len(infos) == 0:
+            return "No watercontrol allowed", 401
+        infos = infos[0]  # Only one element. Use this.
+
+        # Get start date, date of bearth and calculate age at start
+        start_date = strtodate(start_date)  # Check what 'days after start' refers to
+        dob = strtodate(animal_data["dob"])
+        age_at_start = (start_date - dob).days
+        surgery_dates = [incdate(start_date, 2)]  # TODO: find surgery_dates
+        duration = infos["duration"]
+        water_control_mask = get_water_control_mask(
+            start_date, duration, surgery_dates, sacrificed=date_filled(animal_data["death_date"])
+        )
+        individual_weight_faktor = 1 + random.uniform(-0.1, 0.1)
+        estimated_weights = get_estimated_weight_list(
+            age_at_start, animal_data["sex"], duration, water_control_mask, individual_weight_faktor
+        )
+        weights = apply_noise(estimated_weights, 0.070, False);
+        general["watercontrol"] = json.dumps(water_control_mask)
+        general["weights"] = json.dumps(weights)
+        self.store_experiment_data(animal_id, {"general": [general]})
+        return "success", 200
+
+
+    def __load_default_values(self, animal_id: str) -> ExperimentData:
         """! Loads default experiment-data for given protocol.
 
         @param protocol  Protocol for which to load data.
@@ -198,11 +249,9 @@ class DManager:
         @return Experiment-data
         """
         # Check if protocol-data exists and get path to protocol-data: 
-        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
-            path = self.protocols[protocol]["subs"][subprotocol]["path"]
-        else:
-            print(f"{protocol} or {subprotocol} not in {self.protocols}")
-            return None 
+        path = self.__get_protocol_path(animal_id)
+        if path is None: 
+            return None
         # medication
         medication = self.__parse_protocal_data(path, "medication")
         anesthetic, analgesic = self.__medication(medication)
@@ -212,7 +261,8 @@ class DManager:
         # General 
         general = {} 
         general["start_weight"] = random.randint(20, 30)
-        general["experiment"] = protocol + " " + subprotocol
+        animal_data = self.__get_animal_entry(animal_id)
+        general["experiment"] = animal_data["protocol"] + " " + animal_data["subprotocol"]
         # Create experiment-data from parsed values
         return ExperimentData(
             False, general, anesthetic, analgesic, procedures, post_procedures, surgery_start
@@ -322,7 +372,7 @@ class DManager:
         return updated, len(df)
 
 
-    def __get_animal_entry(self, animal_id: str):
+    def __get_animal_entry(self, animal_id: str) -> Dict[str, any]:
         """! Gets single entry from animal-data matching given ID.
 
         @param animal_id  ID of animal to search for.
@@ -369,9 +419,9 @@ class DManager:
         animal_data = self.__get_animal_entry(animal_id)
         return (
             animal_data is not None and experiment_data is not None
-            and len(animal_data["death_date"]) == 10 
-            and len(experiment_data["start"]) == 10  
-            and len(experiment_data["end"]) == 10
+            and date_filled(animal_data["death_date"])
+            and date_filled(experiment_data["start"])
+            and date_filled(experiment_data["end"])
         )
 
     def __has_stored_data(self, animal_id: str) -> bool: 
@@ -384,6 +434,25 @@ class DManager:
             if len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
                 return True
         return False
+
+    def __get_protocol_path(self, animal_id: str) -> str: 
+        """! Gets path to protocol-infos from animal id. 
+
+        @param animal_id  ID of animal
+        @return Path to protocol-spreadsheet if exists, None otherwise.
+        """
+        animal_data = self.__get_animal_entry(animal_id)
+        protocol = animal_data["protocol"]
+        subprotocol = animal_data["subprotocol"]
+        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
+            return self.protocols[protocol]["subs"][subprotocol]["path"]
+        else:
+            print(f"{protocol} or {subprotocol} not in {self.protocols}")
+            return None 
+
+def date_filled(date_str: str) -> bool: 
+    return len(date_str) == 10
+
 
 def escape_protocol(protocol: str) -> str: 
     """! Escape protocol-string to be url compatible. 

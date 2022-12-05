@@ -6,7 +6,8 @@
   <title>Input</title>
 
   <link href="/static/css/general.css" rel="stylesheet">
-  <script src="/static/js/general.js"></script>
+  <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+  <script src="/static/js/input.js"></script>
 </head>
 
 <body>
@@ -53,8 +54,19 @@
         <tr>
           <td> <label>Start weight: </label>
           <td> <input id="start_weight" value="{{general.start_weight}}"></input> </td>
+          <td>
+            <input 
+              type="submit" id="submit_weightlist" value="generate weight-list" 
+              onclick="GenerateWeightList('{{animal_id}}')"
+            >
+            <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()">
+          </td>
         </tr>
       </table>
+      <input id="weights" value="{{general.weights}}" hidden>
+      <input id="watercontrol" value="{{general.watercontrol}}" hidden>
+
+      <div id="weight_graph" class="graph" style="height: 250px; width: 100%;"></div>
 
       <br>
       <br>
