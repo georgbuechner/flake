@@ -32,6 +32,7 @@ class ExperimentData:
     """! The experiment-data DTO class."""
     stored: bool
     general: Dict[str, any]
+    viruses: Dict[str, any]
     anesthetic: List[Dict[str, any]]
     analgesic: List[Dict[str, any]]
     procedures: List[Dict[str, any]]
@@ -39,11 +40,13 @@ class ExperimentData:
     surgery_start: int 
     availible_anesthetic: List[str] = field(default_factory=list)
     availible_analgesic: List[str] = field(default_factory=list)
+    availible_viruses: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         """! Generates availible anesthetic/ anesthetic from given data. """
         self.availible_anesthetic = [x["name"] for x in self.anesthetic]
         self.availible_analgesic = [x["name"] for x in self.analgesic]
+        self.availible_viruses = [x["name"] for x in self.viruses]
 
     def set_general(self, general: List[Dict[str, any]]):
         self.general = general
@@ -200,6 +203,8 @@ class DManager:
             )
             experiment_data.anesthetic = self.sql.get("anesthetic", animal_id)
             experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
+            experiment_data.viruses = sort(self.sql.get("viruses", animal_id), "date")
+            print("Viruses (ed): ", experiment_data.viruses)
         return experiment_data
 
     def generate_weightlist(self, animal_id) -> Tuple[str, int]:
@@ -265,6 +270,8 @@ class DManager:
         # procedures
         procedures = self.__parse_protocal_data(path, "procedure")
         procedures, post_procedures, surgery_start = self.__procedure(procedures)
+        # viruses 
+        viruses = self.__parse_protocal_data(path, "Virus")
         # General 
         general = {} 
         general["start_weight"] = random.randint(20, 30)
@@ -272,7 +279,14 @@ class DManager:
         general["experiment"] = animal_data["protocol"] + " " + animal_data["subprotocol"]
         # Create experiment-data from parsed values
         return ExperimentData(
-            False, general, anesthetic, analgesic, procedures, post_procedures, surgery_start
+            stored=False, 
+            general=general, 
+            viruses=viruses, 
+            anesthetic=anesthetic, 
+            analgesic=analgesic, 
+            procedures=procedures, 
+            post_procedures=post_procedures, 
+            surgery_start=surgery_start
         )
 
     def __medication(

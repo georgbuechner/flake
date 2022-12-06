@@ -63,8 +63,6 @@ class DCreator:
                 }
             last_date = cur_date
         monthly_weights.append(data)
-        print(monthly_weights)
-        # print(self.fields["general"]["start"], monthly_weights, len(monthly_weights), len(weights))
         def copy_table_after(table, paragraph):
             tbl, p = table._tbl, paragraph._p
             new_tbl = copy.deepcopy(tbl)
@@ -78,7 +76,6 @@ class DCreator:
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
             for row in table.rows:
                 for x, data in month["data"].items():
-                    print(f"Searching {{{x}}} in {row.cells[0].paragraphs[0].text}")
                     for cell_i in range(2):
                         if f"{{{x}}}" in row.cells[cell_i].paragraphs[0].text:
                             update_paragraph(row.cells[cell_i].paragraphs[0], f"{{{x}}}", "")  # remove tag
@@ -151,11 +148,9 @@ class DCreator:
             if result is not None:
                 update_paragraph(par, result.group(0), "")  # remove tag
                 iterator_name = result.group(1)
-                print(f"Got {iterator_name} for {result.group(0)} (g2: {result.group(2)})")
                 # range
                 res = re.search(r"(.*)-(.*)", result.group(2))
                 if res is not None:
-                    print("- Range:...")
                     start = self.fields["general"][res.group(1)]
                     end = self.fields["general"][res.group(2)]
                     return iterator_name, daterange(start, end)
@@ -228,7 +223,6 @@ def update_paragraph(par, old, new):
     par.text = par.text.replace(old, new)
 
 def add_signiture(par, user: str, height: float):
-    print("Adding signiture")
     p = par.insert_paragraph_before("")
     r = p.add_run()
     if os.path.exists(f"data/signitures/{user}.png"):

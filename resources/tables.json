@@ -31,6 +31,15 @@
             {"name":"experimenter", "type":"TEXT"}
         ]
     },
+    "viruses": {
+        "primary_keys": "ANIMAL_ID, NAME",
+        "rows": [
+            {"name":"animal_id", "type":"TEXT"}, 
+            {"name":"name", "type":"TEXT"},
+            {"name":"date", "type":"TEXT"},
+            {"name":"amount", "type":"TEXT"}
+        ]
+    },
     "anesthetic": {
         "primary_keys": "ANIMAL_ID, NAME, DATE",
         "rows": [

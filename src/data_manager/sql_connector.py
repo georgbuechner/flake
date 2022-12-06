@@ -2,6 +2,7 @@ import json
 import sqlite3
 from collections import OrderedDict
 from typing import Dict, List
+from exceptions.exceptions import ParserException
 from utils.utils import sort
 
 class SqlConnector:
@@ -51,17 +52,23 @@ class SqlConnector:
         @param table_name  Name of table into which to insert data.
         @param data  Data to store.
         """
-        for entry in data:
-            # Create new data for this animal
-            query = f"INSERT INTO {table_name} VALUES("
-            # Make sure data is inserted alphabetically.
-            sorted_entry = OrderedDict(sorted(entry.items()))
-            for value in sorted_entry.values():
-                query += f"'{value}', "
-            query = query[:-2] + ")"  # Remove trailing ', ' and add closing bracket.
-            self.cnt.execute(query)
-            print(query)
-        self.cnt.commit()
+        try:
+            for entry in data:
+                # Create new data for this animal
+                query = f"INSERT INTO {table_name} VALUES("
+                # Make sure data is inserted alphabetically.
+                sorted_entry = OrderedDict(sorted(entry.items()))
+                for value in sorted_entry.values():
+                    query += f"'{value}', "
+                query = query[:-2] + ")"  # Remove trailing ', ' and add closing bracket.
+                self.cnt.execute(query)
+                print(query)
+            self.cnt.commit()
+        except sqlite3.IntegrityError as err: 
+            raise ParserException(
+                f"Unique constraint failed in table: {table_name}. Entry already exists?", 
+                409
+            )
 
     def delete(self, animal_id: str, tables: List[str]):
         for table_name in tables:

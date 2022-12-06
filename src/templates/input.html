@@ -140,6 +140,39 @@
         {% endfor %}
       </table>
 
+      <h3>Viruses</h3>
+      <table id="viruses">
+        <tr>
+          <th>Virus</th>
+          <th>Date</th>
+          <th>Amount</th>
+        </tr>
+        {% for entry in viruses %}
+          <tr>
+            <td>
+              <select id="name" autocomplete="off">
+                {% for e in availible_viruses %}
+                  <option value="{{e}}" {%- if e == entry.name -%} selected{%- endif -%}>{{e}}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <input 
+                id="date" type="date" value="{{entry.date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
+              </input>
+            </td>
+            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+
       <h3>Anesthesia</h3>
       <table id="anesthetic">
         <tr>

@@ -154,7 +154,7 @@ async function Store(animal_id) {
   let formData = new FormData();
 
   // Create data with all elements to extract from html.
-  let data = {"anesthetic":[], "analgesic":[], "procedures":[], "post_procedures":[]};
+  let data = {"anesthetic":[], "analgesic":[], "procedures":[], "post_procedures":[], "viruses":[]};
   let general_entry = new Object();
   for (const id of ["start", "end", "experiment", "start_weight", "watercontrol", "weights"]) {
     console.log("ID: ", id);
@@ -207,8 +207,13 @@ async function Store(animal_id) {
     console.log('HTTP response code: ' + r.status); 
     if (r.status === 200)
       window.location=window.location;
-    else
+    else if (r.status >=400 && r.status < 500) {
+      let response_text = await r.text()
+      alert(r.status + ": " + response_text);
+    }
+    else {
       alert("Something went wrong: Error code: " + r.status);
+    }
   } catch(e) {
     alert("Something went wrong: " + e);
   }
