@@ -138,16 +138,27 @@ def clear_experiment_data(animal_id: str):
     dmanager.clear_experiment_data(animal_id)
     return "Success", 200
 
-@app.route("/generate/surgery_sheet/<protocol>/<animal_id>", methods=["POST"])
-def generate_surgery_sheet(protocol: str, animal_id: str):
+@app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
+def generate_surgery_sheet(animal_id: str):
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
-        protocol=protocol, 
+        protocol=dmanager.get_protocol(animal_id), 
         experiment_data=dmanager.load_protocal_data(animal_id),
         animal_data=dmanager.get_animal_data("id", animal_id)[0]
     )
     dcreator.create_from_template()
-    return send_file("output/output.docx", as_attachment=True)
+    return send_file("output/surgery_sheet.docx", as_attachment=True)
+
+@app.route("/generate/score_sheet/<animal_id>", methods=["POST"])
+def generate_score_sheet(animal_id: str):
+    dcreator = DCreator(
+        template_path="templates/score_sheet", 
+        protocol=dmanager.get_protocol(animal_id), 
+        experiment_data=dmanager.load_protocal_data(animal_id),
+        animal_data=dmanager.get_animal_data("id", animal_id)[0]
+    )
+    dcreator.create_score_sheet()
+    return send_file("output/score_sheet.docx", as_attachment=True)
 
 
 if __name__=="__main__":

@@ -23,7 +23,7 @@ window.onload = function() {
     copiedDate.setDate(i+parseInt(day));
     // Set color according to watercontrol and exeeded bounds (+/- 10%)
     var color = "#053769";
-    if (Math.abs(initial_weight-weights[i])/initial_weight > 0.1)
+    if (Math.abs(initial_weight-weights[i])/initial_weight > 0.2)
       color = "Red";
     else if (watercontrol[i])
       color = "#992e32";
@@ -54,9 +54,9 @@ window.onload = function() {
       suffix: "g",
       margin: 10,
       stripLines: [
-        { value: initial_weight+0.1*initial_weight, label: "upper"},
+        { value: initial_weight+0.2*initial_weight, label: "upper"},
         { value: initial_weight, label: "initial weight"},
-        { value: initial_weight-0.1*initial_weight, label: "lower"}
+        { value: initial_weight-0.2*initial_weight, label: "lower"}
       ]
     },
     data: data,
@@ -121,14 +121,10 @@ async function GenerateWeightList(animal_id) {
   }
 }
 
-function GenerateScoreSheet(animal_id) {
-  alert("Funcionality not yet implemented. Sorry :(");
-}
-
-async function GenerateSurgerySheet(protocol, animal_id) {
-  console.log("protocol: ", protocol, "animal_id: ", animal_id);
+async function GenerateMainSheet(animal_id, type) {
+  console.log("animal_id: ", animal_id);
   var req = new XMLHttpRequest();
-  req.open("POST", "/generate/surgery_sheet/"+protocol+"/"+animal_id, true);
+  req.open("POST", "/generate/"+type+"/"+animal_id, true);
   req.responseType = "blob";
   req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   req.onreadystatechange = function(){
@@ -139,7 +135,7 @@ async function GenerateSurgerySheet(protocol, animal_id) {
       document.body.appendChild(link);
       link.style = "display: none";
       link.href = url;
-      link.download = "surgery_sheet.docx";
+      link.download = type + ".docx";
       link.click();
 
       setTimeout(() => {

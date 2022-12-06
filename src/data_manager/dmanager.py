@@ -240,6 +240,13 @@ class DManager:
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200
 
+    def get_protocol(self, animal_id: str) -> str: 
+        animal_data = self.__get_animal_entry(animal_id)
+        protocol = animal_data["protocol"]
+        subprotocol = animal_data["subprotocol"]
+        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
+            return self.protocols[protocol]["escaped"] + "_" + subprotocol
+        return "";
 
     def __load_default_values(self, animal_id: str) -> ExperimentData:
         """! Loads default experiment-data for given protocol.

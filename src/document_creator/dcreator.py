@@ -1,10 +1,12 @@
+import copy
 import json
 import os
 import re
 from docx import Document
+from docx.shared import Cm
 from typing import Dict, List, Tuple
 from data_manager.dmanager import ExperimentData
-from utils.dt_utils import strtodate, datetostr, daterange
+from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate
 
 class DCreator:
 
@@ -33,7 +35,61 @@ class DCreator:
         self.__edit_tables()
         self.__edit_list_tables()
         # Save document:
-        self.doc.save("src/output/output.docx")
+        self.doc.save("src/output/surgery_sheet.docx")
+
+    def create_score_sheet(self): 
+        self.__edit_paragraphs()
+        self.__edit_tables()
+        user = self.fields["general"]["user"]
+        start = strtodate(self.fields["general"]["start"]) 
+        last_date = copy.deepcopy(start)
+        weights = json.loads(self.fields["general"]["weights"])
+        watercontrols = json.loads(self.fields["general"]["watercontrol"])
+        monthly_weights = []
+        data = {
+            "data": {"weights": [], "watercontrol": [], "sig": []}, 
+            "month_str": datetostr_month(last_date)
+        }
+        for i, w in enumerate(weights):
+            data["data"]["weights"].append((last_date.day+1, f"{w:.1f}")) 
+            data["data"]["watercontrol"].append((last_date.day+1, "W" if watercontrols[i] else "")) 
+            data["data"]["sig"].append((last_date.day+1, "")) 
+            cur_date = incdate(last_date, 1)
+            if cur_date.month != last_date.month:
+                monthly_weights.append(data)
+                data = {
+                    "data": {"weights": [], "watercontrol": [], "sig": []}, 
+                    "month_str": datetostr_month(cur_date)
+                }
+            last_date = cur_date
+        monthly_weights.append(data)
+        print(monthly_weights)
+        # print(self.fields["general"]["start"], monthly_weights, len(monthly_weights), len(weights))
+        def copy_table_after(table, paragraph):
+            tbl, p = table._tbl, paragraph._p
+            new_tbl = copy.deepcopy(tbl)
+            p.addnext(new_tbl)
+        tbl = self.doc.tables[0]
+        for x in range(len(monthly_weights)-1): 
+            paragraph = self.doc.add_paragraph()
+            copy_table_after(tbl, paragraph)
+        for i, month in enumerate(monthly_weights):
+            table = self.doc.tables[i]
+            table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
+            for row in table.rows:
+                for x, data in month["data"].items():
+                    print(f"Searching {{{x}}} in {row.cells[0].paragraphs[0].text}")
+                    for cell_i in range(2):
+                        if f"{{{x}}}" in row.cells[cell_i].paragraphs[0].text:
+                            update_paragraph(row.cells[cell_i].paragraphs[0], f"{{{x}}}", "")  # remove tag
+                            for i, val in data:
+                                if x == "sig":
+                                    add_signiture(row.cells[i].paragraphs[0], user, 0.29)
+                                else:
+                                    update_paragraph(row.cells[i].paragraphs[0], "", val)
+                            break
+        # Save document:
+        self.doc.save("src/output/score_sheet.docx")
 
     ### replacing [tag]-s in paragraphs
     def __edit_paragraphs(self):
@@ -66,12 +122,7 @@ class DCreator:
             # If signiture, add image 
             elif key == "signiture":
                 update_paragraph(par, result.group(0), "")
-                p = par.insert_paragraph_before("")
-                r = p.add_run()
-                if os.path.exists(f"data/signitures/{fields['user']}.png"):
-                    r.add_picture(f"data/signitures/{fields['user']}.png")
-                else:
-                    r.add_picture(f"data/signitures/default.png")
+                add_signiture(par, fields['user'], 2)
             # Empty (---) if tag not found.
             else:
                 update_paragraph(par, result.group(0), "---")
@@ -98,7 +149,7 @@ class DCreator:
         def get_iterator_and_source(par) -> Tuple[str, List[any]]:
             result = re.search(r"\{{(.*) in (.*)}}", par.text)
             if result is not None:
-                update_paragraph(par, result.group(0), "")
+                update_paragraph(par, result.group(0), "")  # remove tag
                 iterator_name = result.group(1)
                 print(f"Got {iterator_name} for {result.group(0)} (g2: {result.group(2)})")
                 # range
@@ -175,3 +226,12 @@ def update_paragraph(par, old, new):
             return
     # If not found (since runs split old-text):
     par.text = par.text.replace(old, new)
+
+def add_signiture(par, user: str, height: float):
+    print("Adding signiture")
+    p = par.insert_paragraph_before("")
+    r = p.add_run()
+    if os.path.exists(f"data/signitures/{user}.png"):
+        r.add_picture(f"data/signitures/{user}.png", height=Cm(height))
+    else:
+        r.add_picture(f"data/signitures/default.png", height=Cm(height))

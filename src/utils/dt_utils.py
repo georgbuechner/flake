@@ -3,6 +3,7 @@ from typing import List
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
+OUTPUT_DATE_FORMAT_2  = "%b %Y"
 
 def strtodate(date_str: str) -> datetime: 
     return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
@@ -10,8 +11,8 @@ def strtodate(date_str: str) -> datetime:
 def datetostr(date: datetime) -> str: 
     return datetime.strftime(date, OUTPUT_DATE_FORMAT)
 
-def incdatestr(date: str, days: int) -> datetime: 
-    return strtodate(date) + timedelta(days=days) 
+def datetostr_month(date: datetime) -> str: 
+    return datetime.strftime(date, OUTPUT_DATE_FORMAT_2)
 
 def incdate(date: datetime, days: int) -> datetime: 
     return date + timedelta(days=days) 
