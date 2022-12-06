@@ -1,0 +1,83 @@
+/* General css */
+
+body {
+  font-family: SFMono-Regular, Menlo, Conolas,"Leberation Mono", "Courier New", monospace;
+  font-size: 9px;
+  background-color: #f0f0e8;
+}
+
+input {
+  font-size: 8px;
+}
+select{
+  font-size: 8px;
+}
+
+a {
+  color: #053769;
+}
+
+/* tables */ 
+th, td {
+  padding: 5px;
+  padding: text-align;
+  border-bottom: 1px solid #ddd;
+}
+
+ul {
+  list-style-type:none; 
+  padding-inline-start: 0px;
+}
+li {
+  margin-bottom: 0.5rem;
+}
+
+.short {
+  width: 40px;
+}
+
+.center_in_box {
+  margin: auto;
+  margin-top: 5em;
+  width: 80%;
+  min-width: 45em;
+  border: 2px solid black;
+  padding: 50px;
+  text-align: center;
+  background-color: rgba(163, 180, 196, 0.5);
+  color: #053769;
+}
+.center_in_box h1 {
+  color: #ffffff;
+  margin-bottom: 3rem;
+}
+
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* topnav */ 
+.active {
+  background-color: rgba(163, 180, 196, 0.5);
+}
+
+/* animal-data table */
+.not_stored {
+  background-color: #992e32;
+}
+
+.mod {
+  padding: 0.5rem;
+}
+
+.mod:hover {
+  cursor: pointer;
+}
+
+/* graph */ 
+.graph {
+  margin-top: 1em;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+  background-color: #b5b5b5;
+}

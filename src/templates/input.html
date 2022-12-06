@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Input</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+  <script src="/static/js/input.js"></script>
+</head>
+
+<body>
+  <div>
+    <a href="/">Home</a>
+    <a href="/overview">Overview</a>
+    <a class="active" href="/animal_data/{{animal_id}}">{{animal_id}}</a>
+  </div>
+
+  <div class="center_in_box">
+
+    <h1>LARKUM DATABASE INPUT</h1>
+
+    {% include "overview_table.html" %}
+
+    <br>
+    <br>
+    <br>
+    <br>
+
+
+    <div style="text-align: left">
+
+      <h3>General</h3>
+      <table>
+        <tr>
+          <td> <label>Sub Experiment: </label> </td>
+          <td> <input id="experiment" value="{{general.experiment}}" readonly></input> </td>
+        </tr>
+        <tr>
+          <td> <label>Start date: </label> </td>
+          <td>
+            <input 
+              id="start" type="date" value="{{general.start}}"
+              {%- if stored==false -%} onchange="UpdateDates(this.value, {{surgery_start}}) {%- endif -%}"
+            >
+            </input>
+          </td>
+        </tr>
+        <tr>
+          <td> <label>End date: </label> </td>
+          <td> <input id="end" type="date" value="{{general.end}}"></input> </td>
+        </tr>
+        <tr>
+          <td> <label>Start weight: </label>
+          <td> <input id="start_weight" value="{{general.start_weight}}"></input> </td>
+          <td>
+            <input 
+              type="submit" id="submit_weightlist" value="generate weight-list" 
+              onclick="GenerateWeightList('{{animal_id}}')"
+            >
+            <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()">
+          </td>
+        </tr>
+      </table>
+      <input id="weights" value="{{general.weights}}" hidden>
+      <input id="watercontrol" value="{{general.watercontrol}}" hidden>
+
+      <div id="weight_graph" class="graph" style="height: 250px; width: 100%;"></div>
+
+      <br>
+      <br>
+
+      <h3>Procedures</h3>
+      <h4>Conducted Procedures</h4>
+      <table id="procedures">
+        <tr>
+          <th>Procedure name</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Experimenter</th>
+        </tr>
+        {% for entry in procedures %}
+        <tr>
+            <td><input id="name" value="{{entry.name}}"></input></td>
+            <td>
+              <input id="start_date" type="date" value="{{entry.start_date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
+              </input>
+            </td>
+            <td>
+              <input id="end_date" type="date" value="{{entry.end_date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
+              </input>
+            </td>
+            <td>
+              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+            </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+        <tr>
+        {% endfor %}
+      </table>
+
+      <h4>Post-operative Procedures</h4>
+      <table id="post_procedures">
+        <tr>
+          <th>Procedure name</th>
+          <th>Start date</th>
+          <th>End date</th>
+          <th>Experimenter</th>
+        </tr>
+        {% for entry in post_procedures %}
+        <tr>
+            <td><input id="name" value="{{entry.name}}"></input></td>
+            <td>
+              <input id="start_date" type="date" value="{{entry.start_date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
+              </input>
+            </td>
+            <td>
+              <input id="end_date" type="date" value="{{entry.end_date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
+              </input>
+            </td>
+            <td>
+              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+            </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+        <tr>
+        {% endfor %}
+      </table>
+
+      <h3>Viruses</h3>
+      <table id="viruses">
+        <tr>
+          <th>Virus</th>
+          <th>Date</th>
+          <th>Amount</th>
+        </tr>
+        {% for entry in viruses %}
+          <tr>
+            <td>
+              <select id="name" autocomplete="off">
+                {% for e in availible_viruses %}
+                  <option value="{{e}}" {%- if e == entry.name -%} selected{%- endif -%}>{{e}}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <input 
+                id="date" type="date" value="{{entry.date}}"
+                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
+              </input>
+            </td>
+            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+
+      <h3>Anesthesia</h3>
+      <table id="anesthetic">
+        <tr>
+          <th>Anesthesia</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Concentration</th>
+          <th>Toe pinch</th>
+        </tr>
+        {% for entry in anesthesia %}
+          <tr>
+            <td>
+              <select id="name" autocomplete="off">
+                {% for e in availible_anesthetic %}
+                  <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input id="date" type="date" start_plus={{surgery_start}} value="{{entry.date}}"></input></td>
+            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+            <td><input id="concentration" value="{{entry.concentration}}"></input></td>
+            <td>
+              <input 
+                id="toe_pinch" class="short" convert="bool" 
+                value={%- if entry.toe_pinch or stored==false -%}"yes"{%- else -%}"no"{%- endif -%}>
+              </input>
+            </td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+
+      <br>
+      <br>
+  
+      <h3>Analgesia</h3>
+      <table id="analgesic">
+        <tr>
+          <th>Analgesia</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Concentration</th>
+        </tr>
+        {% for entry in analgesic %}
+          {% if stored==false %} 
+            {% for i in range(entry.days_after_surgery+1) %}
+              <tr>
+                <td>
+                  <select id="name">
+                    {% for e in availible_analgesic %}
+                      <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td><input id="date" type="date" start_plus={{surgery_start+i}}></input></td>
+                <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+                <td><input id="concentration" value="{{entry.concentration}}"></input></td>
+                <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+                  <a class="mod" title="Remove entry.">-</a>
+                </td>
+                <td onclick="Add(this.parentNode);">
+                  <a class="mod" title="Add new entry below.">+</a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td>
+                <select id="name" type="list" autocomplete="off">
+                  {% for e in availible_analgesic %}
+                    <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input id="date" type="date" value={{entry.date}}></input></td>
+              <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+              <td><input id="concentration" value="{{entry.concentration}}"></input></td>
+              <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+                <a class="mod" title="Remove entry.">-</a>
+              </td>
+              <td onclick="Add(this.parentNode);">
+                <a class="mod" title="Add new entry below.">+</a>
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </table>
+
+    </div>
+    
+  <br>
+  <br>
+  <br>
+  <br>
+
+  <input 
+    type="submit" id="submit" value="Surgery Sheet" 
+    onclick="GenerateMainSheet('{{animal_id}}', 'surgery_sheet')"
+  >
+  <input 
+    type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
+  >
+  <input 
+    type="submit" id="submit" value="Clear data" onclick="Clear('{{animal_id}}')"
+  >
+  <input 
+    type="submit" id="submit" value="Score Sheet" 
+    onclick="GenerateMainSheet('{{animal_id}}', 'score_sheet')"
+  >
+
+  </div>
+</body>
+
+</html>

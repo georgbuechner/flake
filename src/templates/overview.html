@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Overview</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="/static/js/general.js"></script>
+</head>
+
+<body>
+  <div>
+    <a href="/">Home</a>
+    <a class="active" href="/overview">Overview</a>
+  </div>
+
+  <div class="center_in_box">
+    <h1>LARKUM DATABASE:</h1>
+
+    {% include "overview_table.html" %}
+
+    <br><br>
+
+    <label>Upload pyrat csv: <label>
+    <input type="file" id="pyrat_csv" accept=".csv" /></input>
+    <input type="submit" id="submit" value="upload" onclick="UploadPyratData()">
+
+  </div>
+</body>
+
+</html>

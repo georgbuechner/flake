@@ -1,0 +1,40 @@
+  <table class="center">
+    <tr>
+      <th>ID</th>
+      <th>Responsible</th>
+      <th>Sex</th>
+      <th>Line / Strain (Name)</th>
+      <th>DOB</th>
+      <th>Sacrifice date</th>
+      <th>Protocol</th>
+      <th>Sub Protocol</th>
+    </tr>
+    {% for entry in animal_data %}
+      <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
+        <td>{{entry.id}}</td>
+        <td>{{entry.user}}</td>
+        <td>{{entry.sex}}</td>
+        <td>{{entry.line}}</td>
+        <td>{{entry.dob}}</td>
+        <td>{{entry.death_date}}</td>
+        <td>{{entry.protocol}}</td>
+        <td>
+          <select 
+            id="subprotocol" autocomplete="off" 
+            onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[0].innerHTML)"
+          >
+            <option value="---" selected>---</option>
+            {% for sub in protocols[entry.protocol].subs %}
+              <option 
+                value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}>{{sub}}
+              </option>
+            {% endfor %}
+          </select>
+        </td>
+        {% if entry.subprotocol != "---" %}
+          <td><a href="/animal_data/{{entry.id}}">edit experiment</a></td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+  </table>
+
