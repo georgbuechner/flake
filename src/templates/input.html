@@ -7,6 +7,7 @@
 
   <link href="/static/css/general.css" rel="stylesheet">
   <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+  <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
   <script src="/static/js/input.js"></script>
 </head>
 
@@ -31,7 +32,12 @@
 
     <div style="text-align: left">
 
-      <h3>General</h3>
+      <h3>General 
+        <button class="pure_btn" onclick="openModal('general', '{{notes.general}}')">
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
+
       <table>
         <tr>
           <td> <label>Sub Experiment: </label> </td>
@@ -71,7 +77,11 @@
       <br>
       <br>
 
-      <h3>Procedures</h3>
+      <h3>Procedures
+        <button class="pure_btn" onclick="openModal('procedures', '{{notes.procedures}}')">
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
       <h4>Conducted Procedures</h4>
       <table id="procedures">
         <tr>
@@ -140,7 +150,11 @@
         {% endfor %}
       </table>
 
-      <h3>Viruses</h3>
+      <h3>Viruses
+        <button class="pure_btn" onclick="openModal('viruses', '{{notes.viruses}}')">
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
       <table id="viruses">
         <tr>
           <th>Virus</th>
@@ -173,7 +187,11 @@
         {% endfor %}
       </table>
 
-      <h3>Anesthesia</h3>
+      <h3>Anesthesia
+        <button class="pure_btn" onclick="openModal('anesthesia', '{{notes.anesthesia}}')">
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
       <table id="anesthetic">
         <tr>
           <th>Anesthesia</th>
@@ -213,7 +231,11 @@
       <br>
       <br>
   
-      <h3>Analgesia</h3>
+      <h3>Analgesia
+        <button class="pure_btn" onclick="openModal('analgesia', '{{notes.analgesia}}')">
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
       <table id="analgesic">
         <tr>
           <th>Analgesia</th>
@@ -289,6 +311,12 @@
   >
 
   </div>
+  <dialog id="notes" style="height: 250px; width: 80%;" type="">
+    <h2>Notes</h4>
+    <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
+    <br>
+    <button onclick="closeModal('{{animal_id}}')" class="right">Close and Save</button>
+  </dialog>
 </body>
 
 </html>

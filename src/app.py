@@ -72,6 +72,7 @@ def input(animal_id: str):
     @return Rendered html experiment-data input page from jinja2-template.
     """
     experiment_data = dmanager.load_protocal_data(animal_id)
+    notes = dmanager.get_notes(animal_id)
     return render_template(
         "input.html", 
         stored=experiment_data.stored,
@@ -87,7 +88,8 @@ def input(animal_id: str):
         surgery_start=experiment_data.surgery_start,
         animal_id=animal_id,
         animal_data=dmanager.get_animal_data("id", animal_id),
-        protocols=dmanager.protocols
+        protocols=dmanager.protocols,
+        notes=notes
     )
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
@@ -132,6 +134,19 @@ def store_experiment_data(animal_id: str):
     except ParserException as ex:
         return ex.msg, ex.status
     return "Success", 200
+
+@app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
+def store_notes(animal_id: str, category: str):
+    """! Adds new experiment-data from for given animal-id.
+
+    @param animal_id  ID of animal for which to add data.
+    @return error-/ success-message and status code.
+    """
+    note_txt = request.form.get("note")
+    print("Store/note: ", animal_id, category, note_txt)
+    if dmanager.store_note(animal_id, category, note_txt):
+        return "Success", 200
+    return "Something went wrong", 500
 
 @app.route("/clear/<animal_id>", methods=["POST"])
 def clear_experiment_data(animal_id: str):

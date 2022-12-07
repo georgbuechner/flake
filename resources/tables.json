@@ -74,6 +74,15 @@
           {"name":"protocol_escaped", "type":"TEXT"},
           {"name":"subprotocol", "type":"TEXT"}
         ]
+    },
+    "notes": {
+      "primary_keys": "id",
+      "rows": [
+        {"name":"id", "type":"TEXT"}, 
+        {"name":"animal_id", "type":"TEXT"}, 
+        {"name":"category", "type":"TEXT"}, 
+        {"name":"note", "type":"TEXT"}
+      ]
     }
 }
  

@@ -32,6 +32,15 @@ li {
   margin-bottom: 0.5rem;
 }
 
+.pure_btn {
+  background-color: inherit;
+  border: none;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
 .short {
   width: 40px;
 }
@@ -80,4 +89,19 @@ li {
   margin-top: 1em;
   box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
   background-color: #b5b5b5;
+}
+
+/* modal */
+dialog {
+  height: 250px;
+  width: 80%;
+  border: 2px solid black;
+  padding: 20px;
+  text-align: center;
+  background-color: #f0f0e8;
+  color: #053769;
+}
+
+.notes_txt {
+  margin-bottom: 10px;
 }

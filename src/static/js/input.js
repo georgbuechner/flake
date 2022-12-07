@@ -268,3 +268,42 @@ function reset_input(elem) {
     elem.value = "";
   }
 }
+
+// Modal //
+
+function openModal(type, note) { 
+  var dialog = document.getElementById("notes"); 
+  dialog.setAttribute("type", type);
+  document.getElementById("notes_txt").value = unescape(note);
+  // dailog.show(); 
+  dialog.showModal();
+} 
+
+async function closeModal(animal_id) { 
+  var dialog = document.getElementById("notes"); 
+  const type = dialog.getAttribute("type");
+  let formData = new FormData();
+  let txt = document.getElementById("notes_txt").value;
+  formData.append("note", escape(txt)); 
+  console.log("closeModal: ", animal_id, type);
+  console.log("formData: ", formData);
+
+  try {
+    // Send request:
+    let r = await fetch('/store/notes/'+animal_id+'/'+type, {method: "POST", body: formData}); 
+    // Handle response:
+    console.log('HTTP response code: ' + r.status); 
+    if (r.status === 200)
+      window.location=window.location;
+    else if (r.status > 400 && r.status < 500) {
+      let response_text = await r.text()
+      alert("Error code: " + r.status + ": " + response_text);
+    }
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+  dialog.close(); 
+} 
+

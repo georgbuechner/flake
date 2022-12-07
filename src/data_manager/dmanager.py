@@ -23,6 +23,7 @@ DAYS_AFTER_SURGERY = "days_after_surgery"
 DURATION_IN_DAYS = "duration_in_days"
 # Main tables
 T_ANIMAL_DATA = "animal_data"
+T_NOTES = "notes"
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
@@ -164,6 +165,27 @@ class DManager:
         """
         self.sql.delete(animal_id, self.sql.experiment_data_tables)
         return 200
+
+    def store_note(self, animal_id: str, category: str, note: str) -> bool: 
+        """! Stores a given note under animal_id and category in database. 
+
+        @param animal_id  ID of animal 
+        @param category  Category (like general, procedures, ...)
+        @param note  The actual note
+        @return Boolean indicating success/ failure.
+        """
+        joined_id = animal_id + "/" + category
+        if len(self.sql.get(T_NOTES, joined_id, "id")) == 0: 
+            data = {"id": joined_id, "animal_id": animal_id, "category": category, "note": note}
+            self.sql.insert(T_NOTES, [data])
+        else:
+            self.sql.update_animal_data(T_NOTES, joined_id, {"note": note})
+        return True
+
+    def get_notes(self, animal_id): 
+        notes = self.sql.get(T_NOTES, animal_id)
+        print(notes) 
+        return { note["category"]:note["note"] for note in notes }
 
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
         """! Gets animal-data with possibility to filter by keys.
@@ -452,7 +474,7 @@ class DManager:
         @return Boolean indicating whether ANY experiment-data exists for given animal.
         """
         for table_name in self.sql.tables.keys():
-            if len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
+            if table_name != T_NOTES and len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
                 return True
         return False
 
