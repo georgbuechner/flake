@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import math
+from typing import Dict, List, Tuple
 
 
 def weight_male(age):
@@ -252,8 +253,14 @@ def get_water_control_mask(start_date, duration, surgery_dates, sacrificed):
     water_control_mask = apply_short_control_filter(water_control_mask)
     return water_control_mask
 
-
-def get_estimated_weight_list(age, sex, duration, water_control_mask, weight_factor):
+def get_estimated_weight_list(
+    age: int, sex: str, duration: int, water_control_mask: List[bool], start_weight: float
+) -> List[float]:
+    # Calculate weight factor
+    weight_factor = 1 + random.uniform(-0.1, 0.1)
+    if start_weight > 0:
+        weight_curve = weight_male if sex == "M" else weight_female
+        weight_factor = float(start_weight) / weight_curve(age)
     estimated_weight_list = generate_raw_weight_list(age, sex, duration)
     estimated_weight_list = apply_water_control_mask(estimated_weight_list, water_control_mask)
     estimated_weight_list = apply_weight_factor(estimated_weight_list, weight_factor)

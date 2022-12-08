@@ -205,8 +205,8 @@ def store_animal_data():
 
 @app.route("/generate/weights/<animal_id>", methods=["POST"])
 @login_required
-def generate_weightlist(animal_id: str): 
-    txt, status = dmanager.generate_weightlist(animal_id)
+def generate_weight_list(animal_id: str): 
+    txt, status = dmanager.generate_weight_list(animal_id)
     return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])

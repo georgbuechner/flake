@@ -51,8 +51,6 @@ class ExperimentData:
 
     def set_general(self, general: List[Dict[str, any]]):
         self.general = general
-        # self.general["watercontrol"] = json.loads(general["watercontrol"])
-        # self.general["weights"] = json.loads(general["weights"])
 
     def dict(self):
         return {
@@ -130,7 +128,7 @@ class DManager:
         self, animal_id: str, field: str, subprotocol: str
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
-        res = self.sql.update_animal_data(T_ANIMAL_DATA, animal_id, {field:subprotocol})
+        res = self.sql.update_animal_data(T_ANIMAL_DATA, {"id":animal_id}, {field:subprotocol})
         if res:
             return "", 200
         return "An error occured, we're sorry", 500
@@ -178,7 +176,7 @@ class DManager:
             data = {"id": joined_id, "animal_id": animal_id, "category": category, "note": note}
             self.sql.insert(T_NOTES, [data])
         else:
-            self.sql.update_animal_data(T_NOTES, joined_id, {"note": note})
+            self.sql.update(T_NOTES, {"id": joined_id}, {"note": note})
         return True
 
     def get_notes(self, animal_id): 
@@ -227,7 +225,7 @@ class DManager:
             experiment_data.viruses = sort(self.sql.get("viruses", animal_id), "date")
         return experiment_data
 
-    def generate_weightlist(self, animal_id) -> Tuple[str, int]:
+    def generate_weight_list(self, animal_id) -> Tuple[str, int]:
         animal_data = self.__get_animal_entry(animal_id)
         # Get start-date from general data
         general = self.sql.get("general", animal_id)
@@ -246,22 +244,31 @@ class DManager:
             return "No watercontrol allowed", 401
         infos = infos[0]  # Only one element. Use this.
 
+        # Get some values 
+        duration = infos["duration"]
+        start_weight = float(general["start_weight"])
+        is_sacrificed = date_filled(animal_data["death_date"])
+
         # Get start date, date of bearth and calculate age at start
         start_date = strtodate(start_date)  # Check what 'days after start' refers to
         dob = strtodate(animal_data["dob"])
         age_at_start = (start_date - dob).days
         surgery_dates = [incdate(start_date, 2)]  # TODO: find surgery_dates
-        duration = infos["duration"]
+        # Calculate water-control-mask and estimated weights
         water_control_mask = get_water_control_mask(
-            start_date, duration, surgery_dates, sacrificed=date_filled(animal_data["death_date"])
+            start_date, duration, surgery_dates, sacrificed=is_sacrificed
         )
-        individual_weight_faktor = 1 + random.uniform(-0.1, 0.1)
         estimated_weights = get_estimated_weight_list(
-            age_at_start, animal_data["sex"], duration, water_control_mask, individual_weight_faktor
+            age_at_start, animal_data["sex"], duration, water_control_mask, start_weight
         )
         weights = apply_noise(estimated_weights, 0.070, False);
+
+        # Update general data
         general["watercontrol"] = json.dumps(water_control_mask)
         general["weights"] = json.dumps(weights)
+        # Update start-weight if it was not set before.
+        if start_weight <= 0:
+            general["start_weight"] = round(estimated_weights[0], 2)
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200
 
@@ -294,7 +301,6 @@ class DManager:
         viruses = self.__parse_protocal_data(path, "Virus")
         # General 
         general = {} 
-        general["start_weight"] = random.randint(20, 30)
         animal_data = self.__get_animal_entry(animal_id)
         general["experiment"] = animal_data["protocol"] + " " + animal_data["subprotocol"]
         # Create experiment-data from parsed values
@@ -408,7 +414,7 @@ class DManager:
                 self.sql.insert(T_ANIMAL_DATA, [data])
             # Otherwise, update data.
             else: 
-                self.sql.update_animal_data(T_ANIMAL_DATA, data["id"], data)
+                self.sql.update_animal_data(T_ANIMAL_DATA, {"id":data["id"]}, data)
                 updated.append(data["id"])
         return updated, len(df)
 
