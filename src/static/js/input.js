@@ -271,39 +271,44 @@ function reset_input(elem) {
 
 // Modal //
 
-function openModal(type, note) { 
+function openModal(category, note) { 
   var dialog = document.getElementById("notes"); 
-  dialog.setAttribute("type", type);
+  dialog.setAttribute("category", category);
   document.getElementById("notes_txt").value = unescape(note);
   // dailog.show(); 
   dialog.showModal();
 } 
 
-async function closeModal(animal_id) { 
+async function closeModal(animal_id, save) { 
+  var save_notes_error = document.getElementById("save_notes_error");
   var dialog = document.getElementById("notes"); 
-  const type = dialog.getAttribute("type");
-  let formData = new FormData();
-  let txt = document.getElementById("notes_txt").value;
-  formData.append("note", escape(txt)); 
-  console.log("closeModal: ", animal_id, type);
-  console.log("formData: ", formData);
-
-  try {
-    // Send request:
-    let r = await fetch('/store/notes/'+animal_id+'/'+type, {method: "POST", body: formData}); 
-    // Handle response:
-    console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200)
-      window.location=window.location;
-    else if (r.status > 400 && r.status < 500) {
-      let response_text = await r.text()
-      alert("Error code: " + r.status + ": " + response_text);
-    }
-    else
-      alert("Something went wrong: Error code: " + r.status);
-  } catch(e) {
-    alert("Something went wrong: " + e);
+  if (!save) {
+    save_notes_error.innerHTML = "";
+    dialog.close(); 
   }
-  dialog.close(); 
+  else {
+    const category = dialog.getAttribute("category");
+    let formData = new FormData();
+    let txt = document.getElementById("notes_txt").value;
+    formData.append("note", escape(txt)); 
+    try {
+      // Send request:
+      let r = await fetch('/store/notes/'+animal_id+'/'+category, {method: "POST", body: formData}); 
+      // Handle response:
+      console.log('HTTP response code: ' + r.status); 
+      if (r.status === 200) {
+        window.location=window.location;
+      }
+      else if (r.status > 400 && r.status < 500) {
+        let response_text = await r.text()
+        save_notes_error.innerHTML = response_text;
+      }
+      else {
+        save_notes_error.innerHTML = "Unkown error. Sorry";
+      }
+    } catch(e) {
+      save_notes_error.innerHTML = "Unkown error. Sorry";
+    }
+  }
 } 
 

@@ -90,7 +90,6 @@ class DManager:
                 self.keys_per_language[language] = fields.keys()
         # Update protocol information:
         self.__update_availible_protocols()
-        print("PROTOCOLS: ", self.protocols)
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
@@ -184,7 +183,7 @@ class DManager:
 
     def get_notes(self, animal_id): 
         notes = self.sql.get(T_NOTES, animal_id)
-        print(notes) 
+        print("get_notes: ", notes);
         return { note["category"]:note["note"] for note in notes }
 
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
@@ -226,7 +225,6 @@ class DManager:
             experiment_data.anesthetic = self.sql.get("anesthetic", animal_id)
             experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
             experiment_data.viruses = sort(self.sql.get("viruses", animal_id), "date")
-            print("Viruses (ed): ", experiment_data.viruses)
         return experiment_data
 
     def generate_weightlist(self, animal_id) -> Tuple[str, int]:

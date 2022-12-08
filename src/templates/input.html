@@ -315,11 +315,13 @@
   >
 
   </div>
-  <dialog id="notes" style="height: 250px; width: 80%;" type="">
+  <dialog id="notes" style="height: 250px; width: 80%;" category="">
     <h2>Notes</h4>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
     <br>
-    <button onclick="closeModal('{{animal_id}}')" class="right">Close and Save</button>
+    <label id="save_notes_error" style="color: red;"></label><br>
+    <button onclick="closeModal('{{animal_id}}', true)" class="right">Close and Save</button>
+    <button onclick="closeModal('{{animal_id}}', false)" class="right">Close</button>
   </dialog>
 </body>
 
