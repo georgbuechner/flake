@@ -75,16 +75,15 @@ class SqlConnector:
             self.cnt.execute(f"DELETE FROM {table_name} WHERE animal_id='{animal_id}'")
         self.cnt.commit()
 
-    def update_animal_data(
-        self, table_name: str, entry_id: str, fields: Dict[str, any]
+    def update(
+        self, table_name: str, keys: Dict[str, any], fields: Dict[str, any]
     ) -> bool:
         """! Updates entry in animal-data table. 
 
         If fields are not specified updates all fields in table, except primary keys.
         
         @param table_name  Name of the table for which entries shall be updated.
-        @param entry_id  ID of entry which shall be updated.
-        @param values  List of values which to update. 
+        @param keys  Keys by which to search (primary-keys)
         @param fields  List of fields which to update.
         @return Boolean indicating success/ failure.
         """
@@ -94,10 +93,13 @@ class SqlConnector:
         fields = {k:v for (k,v) in fields.items() if k.upper() not in primary_keys}
         print(fields)
         # Generate query to update only given fields and only of given entry_id:
-        query = f"UPDATE {table_name} SET"
+        sets = ""
         for field, value in fields.items(): 
-            query += f" {field}='{value}',"
-        query = query[:-1] + f" WHERE id='{entry_id}';"  # Remove trailing ',' and WHERE part.
+            sets += f"{field}='{value}', "
+        wheres = ""
+        for key, value in keys.items(): 
+            wheres += f"{key}='{value}', "
+        query = f"UPDATE {table_name} SET {sets[:-2]} WHERE {wheres[:-2]};"
         print(query)
         # Execute:
         try: 
