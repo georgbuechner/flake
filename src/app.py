@@ -1,26 +1,104 @@
 import json
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, redirect
+from flask_login import LoginManager, login_required, login_user, logout_user, current_user
+from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager
 from data_manager.sql_connector import SqlConnector
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
+from users.user import User, db
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
 dmanager = DManager(sql_connector)
 app = Flask(__name__)
+app.secret_key = 'super secret string'  # Change this!
+login_manager = LoginManager()
+login_manager.init_app(app)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
+db.init_app(app)
+with app.app_context():
+    print("Creating tables")
+    db.create_all()
+    print("Done")
+
+LARKUM_PASSWORD = "larkum"
+
+@login_manager.user_loader 
+def user_loader(user_id): 
+    """! Given *user_id*, return the associated User object.
+
+    @param user_id  user_id (email) user to retrieve
+    """
+    return User.query.get(user_id)
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    return redirect("/login")
 
 @app.route("/")
+@login_required
 def main():
     """! Serves main-page showing all users, protocols. 
 
     @return Rendered html main-page from jinja2-template.
     """
     return render_template(
-        "index.html", users=dmanager.users(), protocols=dmanager.protocols
+        "index.html", users=dmanager.users(), 
+        protocols=dmanager.protocols,
+        user_email=current_user.email
     )
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """! Serves login-page.
+
+    @return Rendered html login-page from jinja2-template.
+    """
+    if request.method == "GET":
+        return render_template("login.html", msg="")
+    user = User.query.get(request.form["email"])
+    if user:
+        print(user.password, request.form["password"], str(hash(request.form["password"])))
+        if user.password == str(hash(request.form["password"])):
+            login_user(user)
+            return redirect("/")
+        return render_template("login.html", msg="Password incorrect")
+    return render_template("login.html", msg="User not found")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """! Serves registration-page.
+
+    @return Rendered html registration-page from jinja2-template.
+    """
+    if request.method == "GET":
+        return render_template("register.html", msg="")
+    if User.query.get(request.form["email"]):
+        return render_template("register.html", msg="User with this email already exists!")
+    if request.form["password"] != request.form["password2"]:
+        return render_template("register.html", msg="Passwords don't match!")
+    if request.form["lab_password"] != LARKUM_PASSWORD:
+        return render_template("register.html", msg="Lab password incorrect!")
+    user = User( 
+        email=request.form["email"],
+        sirname=request.form["sirname"],
+        name=request.form["name"],
+        password=str(hash(request.form["password"])),
+    )
+    db.session.add(user)
+    db.session.commit()
+    login_user(user)
+    return redirect("/")
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/login")
+
 @app.route("/overview")
+@login_required
 def overview():
     """! Serves general overview of all animal-data. 
 
@@ -30,10 +108,12 @@ def overview():
     return render_template(
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
-        protocols=dmanager.protocols
+        protocols=dmanager.protocols,
+        user_email=current_user.email
     )
 
 @app.route("/users/<user>")
+@login_required
 def user_overview(user: str):
     """! Serves overview of all animal-data of a single user 
 
@@ -45,10 +125,12 @@ def user_overview(user: str):
         "user_overview.html", 
         user=user, 
         animal_data=dmanager.get_animal_data("user", user),
-        protocols=dmanager.protocols
+        protocols=dmanager.protocols,
+        user_email=current_user.email
     )
 
 @app.route("/protocols/<protocol>")
+@login_required
 def protocol_overview(protocol: str):
     """! Serves overview of all animal-data of a single protocol.
 
@@ -60,10 +142,12 @@ def protocol_overview(protocol: str):
         "protocol_overview.html", 
         protocol=protocol,
         animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
-        protocols=dmanager.protocols
+        protocols=dmanager.protocols,
+        user_email=current_user.email
     )
 
 @app.route("/animal_data/<animal_id>")
+@login_required
 def input(animal_id: str):
     """! Serves page to input experiment-data.
 
@@ -89,10 +173,12 @@ def input(animal_id: str):
         animal_id=animal_id,
         animal_data=dmanager.get_animal_data("id", animal_id),
         protocols=dmanager.protocols,
-        notes=notes
+        notes=notes,
+        user_email=current_user.email
     )
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
+@login_required
 def update_animal_subprotocol(): 
     """! Updates the subprotocol of an animal 
 
@@ -106,6 +192,7 @@ def update_animal_subprotocol():
     return txt, status
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
+@login_required
 def store_animal_data():
     """! Adds new animal-data from .CSV.
 
@@ -117,11 +204,13 @@ def store_animal_data():
     return txt, status
 
 @app.route("/generate/weights/<animal_id>", methods=["POST"])
+@login_required
 def generate_weightlist(animal_id: str): 
     txt, status = dmanager.generate_weightlist(animal_id)
     return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])
+@login_required
 def store_experiment_data(animal_id: str):
     """! Adds new experiment-data from for given animal-id.
 
@@ -136,6 +225,7 @@ def store_experiment_data(animal_id: str):
     return "Success", 200
 
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
+@login_required
 def store_notes(animal_id: str, category: str):
     """! Adds new experiment-data from for given animal-id.
 
@@ -149,6 +239,7 @@ def store_notes(animal_id: str, category: str):
     return "Something went wrong", 500
 
 @app.route("/clear/<animal_id>", methods=["POST"])
+@login_required
 def clear_experiment_data(animal_id: str):
     """! Adds new experiment-data from for given animal-id.
 
@@ -160,6 +251,7 @@ def clear_experiment_data(animal_id: str):
     return "Success", 200
 
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
+@login_required
 def generate_surgery_sheet(animal_id: str):
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
@@ -171,6 +263,7 @@ def generate_surgery_sheet(animal_id: str):
     return send_file("output/surgery_sheet.docx", as_attachment=True)
 
 @app.route("/generate/score_sheet/<animal_id>", methods=["POST"])
+@login_required
 def generate_score_sheet(animal_id: str):
     dcreator = DCreator(
         template_path="templates/score_sheet", 

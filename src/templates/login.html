@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Login</title>
+
+  <link href="static/css/general.css" rel="stylesheet">
+</head>
+
+<body>
+  <div class="topnav">
+    <a href="/">Home</a>
+    <a href="/register">Register</a>
+    <a class="active" href="/login">Login</a>
+  </div>
+
+  <div class="center_in_box">
+    <h1>LARKUM DATABASE</h1>
+
+    <h3>Login</h3>
+      <form action='login' method='POST'>
+        <input type='text' name='email' id='email' placeholder='email'/><br><br>
+        <input type='password' name='password' id='password' placeholder='password'/><br><br>
+        <label id="msg" style="color: red;">{{msg}}</label><br>
+        <input type='submit' name='submit'/>
+      </form>
+  </div>
+</body>
+
+</html>
