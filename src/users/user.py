@@ -13,7 +13,8 @@ class User(db.Model):
 
     email = db.Column(db.String, primary_key=True)
     name = db.Column(db.String, primary_key=False)
-    password = db.Column(db.String)
+    password = db.Column(db.String, primary_key=False)
+    salt = db.Column(db.String, primary_key=False)
     authenticated = db.Column(db.Boolean, default=False)
 
     def is_active(self):

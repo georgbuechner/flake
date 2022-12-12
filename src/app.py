@@ -21,14 +21,6 @@ db.init_app(app)
 with app.app_context():
     # Create tables
     db.create_all()
-    # Add admin user
-    if not User.query.get("root"):
-        hashed_pw = str(hash_pw(ROOT_PW))
-        print(ROOT_PW, hashed_pw, str(hash_pw(ROOT_PW)))
-        user = User(email=ROOT_ID, name=ROOT_NAME, password=hashed_pw, admin=True)
-        db.session.add(user)
-        db.session.commit()
-
 
 LARKUM_PASSWORD = "larkum"
 
@@ -54,7 +46,8 @@ def main():
     return render_template(
         "index.html", users=dmanager.users(), 
         protocols=dmanager.protocols,
-        user_email=current_user.email
+        user_email=current_user.email,
+        user_name=current_user.name
     )
 
 @app.route("/login", methods=["GET", "POST"])
@@ -67,8 +60,8 @@ def login():
         return render_template("login.html", msg="")
     user = User.query.get(request.form["email"])
     if user:
-        print(user.password, request.form["password"], str(hash_pw(request.form["password"])))
-        if user.password == str(hash_pw(request.form["password"])):
+        hashed_password, _ = hash_pw(request.form["password"], user.salt)
+        if user.password == str(hashed_password):
             login_user(user)
             return redirect("/")
         return render_template("login.html", msg="Password incorrect")
@@ -81,17 +74,19 @@ def register():
     @return Rendered html registration-page from jinja2-template.
     """
     if request.method == "GET":
-        return render_template("register.html", msg="")
+        return render_template("register.html", msg="", users=dmanager.users())
     if User.query.get(request.form["email"]):
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:
         return render_template("register.html", msg="Passwords don't match!")
     if request.form["lab_password"] != LARKUM_PASSWORD:
         return render_template("register.html", msg="Lab password incorrect!")
+    hashed_password, salt = hash_pw(request.form["password"])
     user = User( 
         email=request.form["email"],
         name=request.form["name"],
-        password=str(hash_pw(request.form["password"])),
+        password=str(hashed_password),
+        salt=salt
     )
     db.session.add(user)
     db.session.commit()
@@ -116,7 +111,8 @@ def overview():
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
         protocols=dmanager.protocols,
-        user_email=current_user.email
+        user_email=current_user.email,
+        user_name=current_user.name
     )
 
 @app.route("/users/<user>")
@@ -133,7 +129,8 @@ def user_overview(user: str):
         user=user, 
         animal_data=dmanager.get_animal_data("user", user),
         protocols=dmanager.protocols,
-        user_email=current_user.email
+        user_email=current_user.email,
+        user_name=current_user.name
     )
 
 @app.route("/protocols/<protocol>")
@@ -150,7 +147,8 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
         protocols=dmanager.protocols,
-        user_email=current_user.email
+        user_email=current_user.email,
+        user_name=current_user.name
     )
 
 @app.route("/animal_data/<animal_id>")
@@ -181,7 +179,8 @@ def input(animal_id: str):
         animal_data=dmanager.get_animal_data("id", animal_id),
         protocols=dmanager.protocols,
         notes=notes,
-        user_email=current_user.email
+        user_email=current_user.email,
+        user_name=current_user.name
     )
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
@@ -240,7 +239,6 @@ def store_notes(animal_id: str, category: str):
     @return error-/ success-message and status code.
     """
     note_txt = request.form.get("note")
-    print("Store/note: ", animal_id, category, note_txt)
     if dmanager.store_note(animal_id, category, note_txt):
         return "Success", 200
     return "Something went wrong", 500

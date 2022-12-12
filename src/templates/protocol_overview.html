@@ -15,10 +15,7 @@
     <a href="/overview">Overview</a>
     <a class="active" href="/protocols/{{protocol}}">Protocol-Overview</a>
   </div>
-  <div style="float: right;">
-    <i>{{user_email}}</i>
-    <a href="/logout">Logout</a>
-  </div>
+  {% include "userinfos_header.html" %}
 
   <div class="center_in_box">
     <h1>LARKUM DATABASE: <i>{{protocol}}</i></h1>

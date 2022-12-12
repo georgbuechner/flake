@@ -17,10 +17,7 @@
     <a href="/overview">Overview</a>
     <a class="active" href="/animal_data/{{animal_id}}">{{animal_id}}</a>
   </div>
-  <div style="float: right;">
-    <i>{{user_email}}</i>
-    <a href="/logout">Logout</a>
-  </div>
+  {% include "userinfos_header.html" %}
 
   <div class="center_in_box">
 

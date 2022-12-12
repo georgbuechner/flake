@@ -14,9 +14,16 @@ def sort(obj_list: List[Dict[str, any]], key: str):
     obj_list.sort(key=sort_by_key)
     return obj_list
 
-def hash_pw(password: str) -> str: 
-    # Adding the salt to password
-    salt = bcrypt.gensalt()
-    # Hashing the password
-    return bcrypt.hashpw(password.encode("utf-8"), salt)
+def hash_pw(password: str, salt: str = None) -> str: 
+    """! Creates hash from given password with salt and retuns hash and salt 
 
+    @param password  The password to be hashed 
+    @param salt  The salt. If not given, generates new salt. 
+    @return password and salt (this should be stored when creating hash for the
+    first time!)
+    """
+    # Adding the salt to password
+    if salt is None:
+        salt = bcrypt.gensalt()
+    # Hashing the password
+    return bcrypt.hashpw(password.encode("utf-8"), salt), salt
