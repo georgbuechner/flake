@@ -153,7 +153,7 @@ class DCreator:
                 if res is not None:
                     start = self.fields["general"][res.group(1)]
                     end = self.fields["general"][res.group(2)]
-                    return iterator_name, daterange(start, end)
+                    return iterator_name, daterange(strtodate(start), strtodate(end))
                 # conditional list (f.e. analgesic where name=Carprofen)...
                 res = re.search(r"(.*) where (.*)==(.*)", result.group(2))
                 if res is not None: #and res.group(1) in self.fields:

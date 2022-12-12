@@ -18,8 +18,4 @@ def incdate(date: datetime, days: int) -> datetime:
     return date + timedelta(days=days) 
 
 def daterange(date1: str, date2: str) -> List[datetime]:
-    date1 = strtodate(date1)
-    date2 = strtodate(date2)
-    return [date1 + timedelta(days=x) for x in range(date2.day-date1.day+1)]
-
-
+    return [date1 + timedelta(days=x) for x in range((date2-date1).days+1)]

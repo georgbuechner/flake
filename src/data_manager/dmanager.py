@@ -14,7 +14,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from utils.utils import sort
-from utils.dt_utils import strtodate, datetostr, incdate
+from utils.dt_utils import strtodate, datetostr, incdate, daterange
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 # Some important keys
@@ -181,7 +181,6 @@ class DManager:
 
     def get_notes(self, animal_id): 
         notes = self.sql.get(T_NOTES, animal_id)
-        print("get_notes: ", notes);
         return { note["category"]:note["note"] for note in notes }
 
     def get_animal_data(self, filter_tag: str=None, key: str=None) -> List[Dict[str, any]]:
@@ -240,34 +239,45 @@ class DManager:
         if path is None: 
             return "Protocol or subprotocol not found", 401
         infos = self.__parse_protocal_data(path, "watercontrol")
-        if len(infos) == 0:
-            return "No watercontrol allowed", 401
-        infos = infos[0]  # Only one element. Use this.
 
         # Get some values 
-        duration = infos["duration"]
-        start_weight = float(general["start_weight"])
+        start_weight = float(general["start_weight"]) if general["start_weight"] != "" else -1
+        sacrifice_date = strtodate(animal_data["death_date"])
         is_sacrificed = date_filled(animal_data["death_date"])
-
         # Get start date, date of bearth and calculate age at start
-        start_date = strtodate(start_date)  # Check what 'days after start' refers to
+        start_date = strtodate(start_date) 
         dob = strtodate(animal_data["dob"])
         age_at_start = (start_date - dob).days
-        surgery_dates = [incdate(start_date, 2)]  # TODO: find surgery_dates
-        # Calculate water-control-mask and estimated weights
-        water_control_mask = get_water_control_mask(
-            start_date, duration, surgery_dates, sacrificed=is_sacrificed
-        )
+        duration = len(daterange(start_date, sacrifice_date))
+        print(f"duration form {start_date} to {sacrifice_date}: {duration}")
+
+        # Generate water-control-mask
+        if len(infos) > 0:
+            infos = infos[0] # Only one element. Use this.
+            days_after_start = infos["days_after_start"]
+            water_restriction_start = incdate(start_date, days_after_start)
+            surgery_dates = [incdate(start_date, 2)]  # TODO: find surgery_dates
+            duration_water = len(daterange(water_restriction_start, sacrifice_date))
+            # Calculate water-control-mask and estimated weights
+            water_control_mask = get_water_control_mask(
+                water_restriction_start, duration_water, surgery_dates, sacrificed=is_sacrificed
+            )
+            # Add `False`-values for days_after_start  
+            water_control_mask = [False for _ in range(days_after_start)] + water_control_mask
+        else:
+            water_control_mask = [False for _ in range(duration+1)]
+        # Generate estimated weights 
         estimated_weights = get_estimated_weight_list(
             age_at_start, animal_data["sex"], duration, water_control_mask, start_weight
         )
-        weights = apply_noise(estimated_weights, 0.070, False);
+        weights = apply_noise(estimated_weights, 0.070, start_weight!=-1);
 
         # Update general data
         general["watercontrol"] = json.dumps(water_control_mask)
         general["weights"] = json.dumps(weights)
+        print(weights)
         # Update start-weight if it was not set before.
-        if start_weight <= 0:
+        if start_weight == -1:
             general["start_weight"] = round(estimated_weights[0], 2)
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200

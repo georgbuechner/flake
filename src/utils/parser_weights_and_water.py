@@ -110,9 +110,16 @@ def quadratic_approach(y_start, x_value, x_max, y_end):
         return y_start + oblique_throw(x_value, x_max, y_end - y_start)
 
 
-def apply_water_control_mask(weight_list, water_control_mask, target_weight_percentage=0.85, days_until_target_weight=3,
-                             days_until_normal_weight=2):
-    assert len(weight_list) == len(water_control_mask), "Weights and mask have unequal lengths! No alignment possible."
+def apply_water_control_mask(
+    weight_list, 
+    water_control_mask, 
+    target_weight_percentage=0.85, 
+    days_until_target_weight=3,
+    days_until_normal_weight=2
+):
+    assert len(weight_list) == len(water_control_mask), \
+        f"Weights and mask have unequal lengths! No alignment possible. " + \
+        f"{len(weight_list)}, {len(water_control_mask)}"
 
     enumerated_mask = enumerate_blocks(water_control_mask)
 
@@ -124,26 +131,32 @@ def apply_water_control_mask(weight_list, water_control_mask, target_weight_perc
 
         if water_control_mask[day]:
             """
-            Calculate the daily weight, when the mouse is put on water control. Between the point where the mouse has 
-            just been put on water control and the estimated arrival at the target_weight, there is a quadratic approach
-            used to calculate the daily weight. Outside the limits it returns the normal_weight (before water control) 
-            or target_weight (during water control).
+            Calculate the daily weight, when the mouse is put on water control. 
+            Between the point where the mouse has just been put on water control and the 
+            estimated arrival at the target_weight, there is a quadratic approach used to 
+            calculate the daily weight. Outside the limits it returns the normal_weight 
+            (before water control) or target_weight (during water control).
             """
             days_without_water = enumerated_mask[day]
             new_weight_list.append(
-                quadratic_approach(normal_weight, days_without_water, days_until_target_weight, target_weight))
-
+                quadratic_approach(
+                    normal_weight, days_without_water, days_until_target_weight, target_weight
+                )
+            )
         else:
             """
-            Calculate the daily weight, when the mouse is off water control. Between the point where the mouse gets free
-            access to water again and the time where we expect it to have returned to normal_weight, there is a 
-            quadratic approach used to calculate the daily weight. Outside the limits it returns the target_weight (with
-             water control) or normal_weight (after water control).
+            Calculate the daily weight, when the mouse is off water control. 
+            Between the point where the mouse gets free access to water again and the time 
+            where we expect it to have returned to normal_weight, there is a quadratic 
+            approach used to calculate the daily weight. Outside the limits it returns the 
+            target_weight (with water control) or normal_weight (after water control).
             """
             days_with_water = enumerated_mask[day]
             new_weight_list.append(
-                quadratic_approach(target_weight, days_with_water, days_until_normal_weight, normal_weight))
-
+                quadratic_approach(
+                    target_weight, days_with_water, days_until_normal_weight, normal_weight
+                )
+            )
     return new_weight_list
 
 
@@ -258,7 +271,7 @@ def get_estimated_weight_list(
 ) -> List[float]:
     # Calculate weight factor
     weight_factor = 1 + random.uniform(-0.1, 0.1)
-    if start_weight > 0:
+    if start_weight != -1:
         weight_curve = weight_male if sex == "M" else weight_female
         weight_factor = float(start_weight) / weight_curve(age)
     estimated_weight_list = generate_raw_weight_list(age, sex, duration)
