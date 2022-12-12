@@ -34,7 +34,7 @@
     <div style="text-align: left">
 
       <h3>General 
-        <button class="pure_btn" onclick="openModal('general', '{{notes.general}}')">
+        <button class="pure_btn" onclick="OpenModalNotes('general', '{{notes.general}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
@@ -66,6 +66,10 @@
               type="submit" id="submit_weightlist" value="generate weight-list" 
               onclick="GenerateWeightList('{{animal_id}}')"
             >
+            <input 
+              type="submit" id="edit_weightlist" value="edit weight-list" 
+              onclick="EditWeightList()"
+            >
             <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()">
           </td>
         </tr>
@@ -79,7 +83,7 @@
       <br>
 
       <h3>Procedures
-        <button class="pure_btn" onclick="openModal('procedures', '{{notes.procedures}}')">
+        <button class="pure_btn" onclick="OpenModalNotes('procedures', '{{notes.procedures}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
@@ -152,7 +156,7 @@
       </table>
 
       <h3>Viruses
-        <button class="pure_btn" onclick="openModal('viruses', '{{notes.viruses}}')">
+        <button class="pure_btn" onclick="OpenModalNotes('viruses', '{{notes.viruses}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
@@ -189,7 +193,7 @@
       </table>
 
       <h3>Anesthesia
-        <button class="pure_btn" onclick="openModal('anesthesia', '{{notes.anesthesia}}')">
+        <button class="pure_btn" onclick="OpenModalNotes('anesthesia', '{{notes.anesthesia}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
@@ -233,7 +237,7 @@
       <br>
   
       <h3>Analgesia
-        <button class="pure_btn" onclick="openModal('analgesia', '{{notes.analgesia}}')">
+        <button class="pure_btn" onclick="OpenModalNotes('analgesia', '{{notes.analgesia}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
@@ -312,14 +316,31 @@
   >
 
   </div>
-  <dialog id="notes" style="height: 250px; width: 80%;" category="">
+  <dialog id="notes_modal" style="height: 250px; width: 80%;" category="">
     <h2>Notes</h4>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
     <br>
     <label id="save_notes_error" style="color: red;"></label><br>
-    <button onclick="closeModal('{{animal_id}}', true)" class="right">Close and Save</button>
-    <button onclick="closeModal('{{animal_id}}', false)" class="right">Close</button>
+    <button onclick="CloseModalNotes('{{animal_id}}', true)" class="right">Close and Save</button>
+    <button onclick="CloseModalNotes('{{animal_id}}', false)" class="right">Close</button>
   </dialog>
+
+  <dialog id="edit_weights_modal" style="height: 450px; width: 80%;" category="">
+    <h2>Edit weights</h4>
+    <table id="weights_table" class="center">
+      <tbody>
+        <tr>
+          <th>Date</td>
+          <th>Weight</td>
+          <th>Waterrestriction?</td>
+        </tr>
+      </tbody>
+    </table>
+    <label id="save_notes_error" style="color: red;"></label><br>
+    <button onclick="CloseModalWeights('{{animal_id}}', true)" class="right">Close and Save</button>
+    <button onclick="CloseModalWeights('{{animal_id}}', false)" class="right">Close</button>
+  </dialog>
+
 </body>
 
 </html>

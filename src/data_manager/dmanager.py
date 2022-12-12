@@ -133,6 +133,20 @@ class DManager:
             return "", 200
         return "An error occured, we're sorry", 500
 
+    def update_weights_and_watercontrol(
+        self, animal_id: str, weights: str, water_control_mask: str
+    ) -> Tuple[str, int]:
+        """! Updates a field of in an animal entry. """
+        general = self.sql.get("general", animal_id)
+        if len(general) == 0:
+            return "general data entry (start, end, ...) missing", 401
+        general = general[0] 
+        general["watercontrol"] = water_control_mask
+        general["weights"] = weights
+        general["start_weight"] = json.loads(weights)[0]
+        self.store_experiment_data(animal_id, {"general": [general]})
+        return "success", 200
+
     def store_experiment_data(
         self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
     ) -> int:
@@ -249,7 +263,6 @@ class DManager:
         dob = strtodate(animal_data["dob"])
         age_at_start = (start_date - dob).days
         duration = len(daterange(start_date, sacrifice_date))
-        print(f"duration form {start_date} to {sacrifice_date}: {duration}")
 
         # Generate water-control-mask
         if len(infos) > 0:
@@ -270,15 +283,13 @@ class DManager:
         estimated_weights = get_estimated_weight_list(
             age_at_start, animal_data["sex"], duration, water_control_mask, start_weight
         )
-        weights = apply_noise(estimated_weights, 0.070, start_weight!=-1);
+        weights = apply_noise(estimated_weights, 0.070, start_weight==-1);
 
         # Update general data
         general["watercontrol"] = json.dumps(water_control_mask)
         general["weights"] = json.dumps(weights)
-        print(weights)
-        # Update start-weight if it was not set before.
-        if start_weight == -1:
-            general["start_weight"] = round(estimated_weights[0], 2)
+        # Update start-weight as it might have changed
+        general["start_weight"] = round(estimated_weights[0], 2)
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200
 

@@ -202,6 +202,23 @@ def update_animal_subprotocol():
     txt, status = dmanager.update_animal_field(animal_id, "subprotocol", subprotocol) 
     return txt, status
 
+@app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
+@login_required
+def update_weights(animal_id: str): 
+    """! Updates the weight and watercontrol of an animal 
+
+    @param animal_id  ID of animal for which to add data.
+
+    @return error-/ success-message and status code.
+    """
+    weights = request.form.get("weights")
+    watercontrol = request.form.get("watercontrol")
+    txt, status = dmanager.update_weights_and_watercontrol(
+        animal_id, weights, watercontrol
+    ) 
+    return txt, status
+
+
 @app.route("/upload/pyrat_csv", methods=["POST"])
 @login_required
 def store_animal_data():

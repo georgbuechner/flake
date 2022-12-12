@@ -271,17 +271,17 @@ function reset_input(elem) {
 
 // Modal //
 
-function openModal(category, note) { 
-  var dialog = document.getElementById("notes"); 
+function OpenModalNotes(category, note) { 
+  var dialog = document.getElementById("notes_modal"); 
   dialog.setAttribute("category", category);
   document.getElementById("notes_txt").value = unescape(note);
   // dailog.show(); 
   dialog.showModal();
 } 
 
-async function closeModal(animal_id, save) { 
+async function CloseModalNotes(animal_id, save) { 
   var save_notes_error = document.getElementById("save_notes_error");
-  var dialog = document.getElementById("notes"); 
+  var dialog = document.getElementById("notes_modal"); 
   if (!save) {
     save_notes_error.innerHTML = "";
     dialog.close(); 
@@ -312,3 +312,95 @@ async function closeModal(animal_id, save) {
   }
 } 
 
+function EditWeightList(category, note) { 
+  // Fill weight-table
+  const date_string = document.getElementById("start").value
+  const day = new Date(date_string).getDate();
+  const start_date = new Date().getDate();
+
+  const weights = JSON.parse(document.getElementById("weights").value);
+  const watercontrol = JSON.parse(document.getElementById("watercontrol").value);
+  var tbl = document.getElementById("weights_table"); 
+  var tbody = tbl.getElementsByTagName("tbody")[0];
+
+  for (var i=0; i<weights.length; i++) {
+    var row = document.createElement("tr");
+    // date 
+    var cell1 = document.createElement("td");
+    const copiedDate = new Date(date_string);
+    copiedDate.setDate(i+parseInt(day));
+    cell1.innerHTML = copiedDate.toISOString().substring(0, 10);
+
+    var cell2 = document.createElement("td");
+    var inp = document.createElement("input");
+    inp.setAttribute("type", "number");
+    inp.step = 0.1;
+    inp.value = weights[i].toFixed(2);
+    if (Math.abs(weights[0]-weights[i])/weights[0]> 0.2)
+      inp.style.borderColor = "red";
+    inp.onchange = CheckWeightLimit;
+    inp.setAttribute("initial", weights[0]);
+    cell2.appendChild(inp);
+
+    var cell3 = document.createElement("td");
+    var checkbox = document.createElement('input');
+    checkbox.type = "checkbox";
+    checkbox.checked = watercontrol[i];
+    cell3.appendChild(checkbox);
+
+    row.appendChild(cell1);
+    row.appendChild(cell2);
+    row.appendChild(cell3);
+    tbody.appendChild(row);
+  }
+
+  // Show modal
+  var dialog = document.getElementById("edit_weights_modal"); 
+  dialog.showModal();
+} 
+
+function CheckWeightLimit() {
+  const initial = this.getAttribute("initial")
+  if (Math.abs(initial-this.value)/initial > 0.2)
+    this.style.borderColor = "red";
+  else 
+    this.style.borderColor = "black";
+}
+
+async function CloseModalWeights(animal_id, save) {
+  if (!save) {
+    var dialog = document.getElementById("edit_weights_modal"); 
+    dialog.close(); 
+  }
+  else {
+    var tbl = document.getElementById("weights_table"); 
+    var tbody = tbl.getElementsByTagName("tbody")[0];
+    var weights = [];
+    var watercontrol = [];
+    for (var i=1; i< tbody.children.length; i++) {
+      weights.push(tbody.children[i].children[1].getElementsByTagName("input")[0].valueAsNumber);
+      watercontrol.push(tbody.children[i].children[2].getElementsByTagName("input")[0].checked);
+    }
+    let formData = new FormData();
+    formData.append("weights", JSON.stringify(weights)); 
+    formData.append("watercontrol", JSON.stringify(watercontrol)); 
+    try {
+      // Send request:
+      let r = await fetch('/update/animal_data/weights/'+animal_id, {method: "POST", body: formData}); 
+      // Handle response:
+      console.log('HTTP response code: ' + r.status); 
+      if (r.status === 200) {
+        window.location=window.location;
+      }
+      else if (r.status > 400 && r.status < 500) {
+        let response_text = await r.text()
+        save_notes_error.innerHTML = response_text;
+      }
+      else {
+        save_notes_error.innerHTML = "Unkown error. Sorry";
+      }
+    } catch(e) {
+      save_notes_error.innerHTML = "Unkown error. Sorry";
+    }
+  }
+}
