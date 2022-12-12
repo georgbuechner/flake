@@ -1,5 +1,5 @@
 import json
-from flask import Flask, render_template, request, send_file, redirect
+from flask import Flask, render_template, request, send_file, redirect, url_for
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager
@@ -160,6 +160,11 @@ def input(animal_id: str):
     
     @return Rendered html experiment-data input page from jinja2-template.
     """
+    animal_data = dmanager.get_animal_data("id", animal_id)
+    # Redirect 
+    if animal_data[0]["user"] != current_user.name:
+        return redirect("/")
+
     experiment_data = dmanager.load_protocal_data(animal_id)
     notes = dmanager.get_notes(animal_id)
     return render_template(
@@ -176,7 +181,7 @@ def input(animal_id: str):
         post_procedures=experiment_data.post_procedures,
         surgery_start=experiment_data.surgery_start,
         animal_id=animal_id,
-        animal_data=dmanager.get_animal_data("id", animal_id),
+        animal_data=animal_data,
         protocols=dmanager.protocols,
         notes=notes,
         user_email=current_user.email,

@@ -31,10 +31,11 @@
             {% endfor %}
           </select>
         </td>
-        {% if entry.subprotocol != "---" %}
-          <td><a href="/animal_data/{{entry.id}}">edit experiment</a></td>
+        {% if entry.subprotocol != "---" and entry.user == user_name %}
+          <td><a href="/animal_data/{{entry.id}}" >edit experiment</a></td>
+        {% elif entry.subprotocol != "---" and entry.user != user_name %}
+          <td><a href="/animal_data/{{entry.id}}" onclick="return NotResponsible();">edit experiment</a></td>
         {% endif %}
       </tr>
     {% endfor %}
   </table>
-

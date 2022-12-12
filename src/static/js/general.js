@@ -58,3 +58,8 @@ async function UpdateSubprotocol(subprotocol, animal_id) {
     alert("Something went wrong: " + e);
   }
 }
+
+function NotResponsible() {
+  alert("You're not responsible for this animal!")
+  return false;
+}
