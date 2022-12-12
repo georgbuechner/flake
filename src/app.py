@@ -7,6 +7,7 @@ from data_manager.sql_connector import SqlConnector
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
 from users.user import User, db
+from utils.utils import hash_pw
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
@@ -18,9 +19,16 @@ login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
-    print("Creating tables")
+    # Create tables
     db.create_all()
-    print("Done")
+    # Add admin user
+    if not User.query.get("root"):
+        hashed_pw = str(hash_pw(ROOT_PW))
+        print(ROOT_PW, hashed_pw, str(hash_pw(ROOT_PW)))
+        user = User(email=ROOT_ID, name=ROOT_NAME, password=hashed_pw, admin=True)
+        db.session.add(user)
+        db.session.commit()
+
 
 LARKUM_PASSWORD = "larkum"
 
@@ -59,8 +67,8 @@ def login():
         return render_template("login.html", msg="")
     user = User.query.get(request.form["email"])
     if user:
-        print(user.password, request.form["password"], str(hash(request.form["password"])))
-        if user.password == str(hash(request.form["password"])):
+        print(user.password, request.form["password"], str(hash_pw(request.form["password"])))
+        if user.password == str(hash_pw(request.form["password"])):
             login_user(user)
             return redirect("/")
         return render_template("login.html", msg="Password incorrect")
@@ -82,9 +90,8 @@ def register():
         return render_template("register.html", msg="Lab password incorrect!")
     user = User( 
         email=request.form["email"],
-        sirname=request.form["sirname"],
         name=request.form["name"],
-        password=str(hash(request.form["password"])),
+        password=str(hash_pw(request.form["password"])),
     )
     db.session.add(user)
     db.session.commit()

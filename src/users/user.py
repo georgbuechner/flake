@@ -12,7 +12,6 @@ class User(db.Model):
     __tablename__ = 'user'
 
     email = db.Column(db.String, primary_key=True)
-    sirname = db.Column(db.String, primary_key=False)
     name = db.Column(db.String, primary_key=False)
     password = db.Column(db.String)
     authenticated = db.Column(db.Boolean, default=False)

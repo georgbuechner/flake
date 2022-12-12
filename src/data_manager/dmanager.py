@@ -128,7 +128,7 @@ class DManager:
         self, animal_id: str, field: str, subprotocol: str
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
-        res = self.sql.update_animal_data(T_ANIMAL_DATA, {"id":animal_id}, {field:subprotocol})
+        res = self.sql.update(T_ANIMAL_DATA, {"id":animal_id}, {field:subprotocol})
         if res:
             return "", 200
         return "An error occured, we're sorry", 500
