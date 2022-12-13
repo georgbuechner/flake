@@ -8,6 +8,7 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 from data_manager.sql_connector import SqlConnector
+from exceptions.exceptions import ParserException
 from utils.parser_weights_and_water import (
     get_water_control_mask, 
     get_estimated_weight_list,
@@ -149,7 +150,7 @@ class DManager:
 
     def store_experiment_data(
         self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
-    ) -> int:
+    ):
         """! Inserts data to sql-database tables. 
 
         @param animal_id  ID of animal
@@ -157,6 +158,11 @@ class DManager:
 
         @return status code: 200 on success.
         """
+        start_date = data["general"][0]["start"] 
+        animal_data = self.__get_animal_entry(animal_id)
+        sacrifice_date = animal_data["death_date"]
+        if start_date > sacrifice_date:
+            raise ParserException("start_date must lie before sacrifice_date!", 400)
         for table_name, table_data in data.items():
             # Add animal_id to each entry
             for x in table_data: 
@@ -165,7 +171,6 @@ class DManager:
             self.sql.delete(animal_id, [table_name])
             # Insert data
             self.sql.insert(table_name, table_data)
-        return 200
 
     def clear_experiment_data( self, animal_id: str) -> int:
         """! Clears experiment-data for animal
