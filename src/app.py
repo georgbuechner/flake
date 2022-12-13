@@ -4,9 +4,9 @@ from flask_login import LoginManager, login_required, login_user, logout_user, c
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager
 from data_manager.sql_connector import SqlConnector
+from data_manager.tables import User, db
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from users.user import User, db
 from utils.utils import hash_pw
 
 # Create global instance of sql-connector, data-manager and flask-app.
@@ -284,7 +284,8 @@ def generate_surgery_sheet(animal_id: str):
         template_path="templates/surgery_sheet", 
         protocol=dmanager.get_protocol(animal_id), 
         experiment_data=dmanager.load_protocal_data(animal_id),
-        animal_data=dmanager.get_animal_data("id", animal_id)[0]
+        animal_data=dmanager.get_animal_data("id", animal_id)[0],
+        user_email=current_user.email
     )
     dcreator.create_from_template()
     return send_file("output/surgery_sheet.docx", as_attachment=True)

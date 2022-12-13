@@ -15,7 +15,8 @@ class DCreator:
         template_path: str, 
         protocol: str, 
         experiment_data: ExperimentData,
-        animal_data: Dict[str, any]
+        animal_data: Dict[str, any],
+        user_email
     ):
         # Load replacements
         with open("resources/replacements.json") as f:
@@ -28,6 +29,7 @@ class DCreator:
         # Data
         self.fields = experiment_data.dict()
         self.fields["general"].update(animal_data)
+        self.fields["general"]["user-email"] = user_email
 
     def create_from_template(self):
         # Create document:
