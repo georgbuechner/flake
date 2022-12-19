@@ -1,10 +1,11 @@
 import json
+import html
 from flask import Flask, render_template, request, send_file, redirect, url_for
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
-from data_manager.dmanager import DManager
+from data_manager.dmanager import DManager, escape_protocol, date_filled
 from data_manager.sql_connector import SqlConnector
-from data_manager.tables import User, db
+from data_manager.tables import User, AMedication, AProcedure, AVirus, Protocol, db
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
 from utils.utils import hash_pw
@@ -20,6 +21,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
+    # Protocol.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -188,6 +190,68 @@ def input(animal_id: str):
         user_name=current_user.name
     )
 
+@app.route("/settings")
+@login_required
+def settings():
+    return render_template(
+        "settings.html", user_email=current_user.email, user_name=current_user.name
+    )
+
+@app.route("/settings/definitions", defaults={"category": ""})
+@app.route("/settings/definitions/<category>")
+@login_required
+def availible(category: str):
+    data = {}
+    if category == "medication":
+        data=AMedication.query.all()
+    if category == "procedures":
+        data=AProcedure.query.all()
+    if category == "viruses":
+        data=AVirus.query.all()
+    return render_template(
+        "definitions.html", 
+        user_email=current_user.email, 
+        user_name=current_user.name,
+        category=category,
+        data=data
+    )
+
+@app.route("/settings/protocols", methods=["GET"])
+@login_required
+def protocols():
+    return render_template(
+        "protocols.html", 
+        user_email=current_user.email, 
+        user_name=current_user.name,
+        protocols=Protocol.query.all(),
+        msg=""
+    )
+
+@app.route("/settings/protocols/<escaped_protocol>", methods=["GET"])
+@login_required
+def protocol(escaped_protocol: str):
+    protocol = Protocol.query.get(escaped_protocol)
+    print("GOT protocol: ", protocol)
+    if protocol:
+        print("GOT subprotocols: ", protocol.get_subprotocols())
+        return render_template(
+            "protocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            subprotocols=protocol.get_subprotocols(),
+            msg=""
+        )
+
+    return render_template(
+        "protocols.html", 
+        user_email=current_user.email, 
+        user_name=current_user.name,
+        protocols=Protocol.query.all(),
+        msg="Protocol not found"
+    )
+
+
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 def update_animal_subprotocol(): 
@@ -280,11 +344,14 @@ def clear_experiment_data(animal_id: str):
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
 @login_required
 def generate_surgery_sheet(animal_id: str):
+    animal_data = dmanager.get_animal_data("id", animal_id)[0]
+    if not date_filled(animal_data["death_date"]): 
+        return "Animal is not yet sacrificed", 401
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
         protocol=dmanager.get_protocol(animal_id), 
         experiment_data=dmanager.load_protocal_data(animal_id),
-        animal_data=dmanager.get_animal_data("id", animal_id)[0],
+        animal_data=animal_data,
         user_email=current_user.email
     )
     dcreator.create_from_template()
@@ -293,14 +360,165 @@ def generate_surgery_sheet(animal_id: str):
 @app.route("/generate/score_sheet/<animal_id>", methods=["POST"])
 @login_required
 def generate_score_sheet(animal_id: str):
+    animal_data = dmanager.get_animal_data("id", animal_id)[0]
+    if not date_filled(animal_data["death_date"]): 
+        return "Animal is not yet sacrificed", 401
+
     dcreator = DCreator(
         template_path="templates/score_sheet", 
         protocol=dmanager.get_protocol(animal_id), 
         experiment_data=dmanager.load_protocal_data(animal_id),
-        animal_data=dmanager.get_animal_data("id", animal_id)[0]
+        animal_data=animal_data,
+        user_email=current_user.email
     )
     dcreator.create_score_sheet()
     return send_file("output/score_sheet.docx", as_attachment=True)
+
+@app.route("/settings/definitions/medication", methods=["POST"])
+@login_required 
+def update_medication_definitions():
+    medication = AMedication.query.get(request.form["name"])
+    if medication:
+        medication.amount = request.form["amount"]
+        medication.concentration = request.form["concentration"]
+        medication.days_after_surgery = request.form["days_after_surgery"]
+    else: 
+        medication = AMedication(
+            name=request.form["name"],
+            amount=request.form["amount"],
+            concentration=request.form["concentration"],
+            days_after_surgery=request.form["days_after_surgery"]
+        )
+        db.session.add(medication)
+    db.session.commit()
+    return redirect("/settings/definitions/medication")
+
+@app.route("/settings/definitions/procedure", methods=["POST"])
+@login_required 
+def update_procedure_definitions():
+    procedure = AProcedure.query.get(request.form["name"])
+    is_surgery = "surgery" in request.form
+    if procedure:
+        procedure.days_after_start = request.form["days_after_start"]
+        procedure.duration = request.form["duration"]
+        procedure.surgery = is_surgery
+    else: 
+        procedure = AProcedure(
+            name=request.form["name"],
+            days_after_start=request.form["days_after_start"],
+            duration=request.form["duration"],
+            surgery=is_surgery
+        )
+        db.session.add(procedure)
+    db.session.commit()
+    return redirect("/settings/definitions/procedures")
+
+@app.route("/settings/definitions/virus", methods=["POST"])
+@login_required 
+def update_virus_definitions():
+    virus = AVirus.query.get(request.form["name"])
+    is_surgery = "surgery" in request.form
+    if virus:
+        print("updating existing virus enty: ", request.form)
+        virus.days_after_start = request.form["days_after_start"]
+        virus.amount = request.form["amount"]
+    else: 
+        print("adding new virus enty: ", request.form)
+        virus = AVirus(
+            name=request.form["name"],
+            days_after_start=request.form["days_after_start"],
+            amount=request.form["amount"],
+        )
+        db.session.add(virus)
+    db.session.commit()
+    return redirect("/settings/definitions/viruses")
+
+
+@app.route("/definitions/delete/<category>/<name>", methods=["POST"])
+@login_required 
+def delete_definition(category, name): 
+    name = html.unescape(name).replace("_", "/")
+    if category == "medication":
+        medication = AMedication.query.get(name)
+        print(name, medication)
+        if medication:
+            db.session.delete(medication)
+    db.session.commit()
+    return redirect("/settings/definitions/"+category)
+
+@app.route("/settings/add_protocol", methods=["POST"]) 
+@login_required 
+def add_protocal():
+    escaped_name = escape_protocol(request.form["name"])
+    protocol = Protocol.query.get(escaped_name)
+    if protocol:
+        return render_template(
+            "protocols.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocols=Protocol.query.all(),
+            msg="A protocol with this name already exists!"
+        )
+
+    protocol = Protocol(
+        name=request.form["name"],
+        escaped=escaped_name,
+        subprotocols=""
+    )
+    db.session.add(protocol)
+    db.session.commit()
+    return redirect("/settings/protocols")
+
+@app.route("/settings/protocols/<escaped_protocol>/add_protocol", methods=["POST"]) 
+@login_required 
+def add_subprotocal(escaped_protocol):
+    protocol = Protocol.query.get(escaped_protocol)
+    subprotocol = request.form["name"]
+    if not protocol:
+        return render_template(
+            "protocols.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocols=Protocol.query.all(),
+            msg="Matching protocol does not exist!"
+        )
+    if subprotocol in protocol.get_subprotocols(): 
+        return render_template(
+            "protocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            msg="Subprotocol already exists!"
+        )
+
+    protocol.add_subprotocol(subprotocol)
+    db.session.commit()
+    return redirect("/settings/protocols/" + escaped_protocol)
+
+@app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
+@login_required 
+def remove_subprotocal(escaped_protocol, subprotocol):
+    protocol = Protocol.query.get(escaped_protocol)
+    if not protocol:
+        return render_template(
+            "protocols.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocols=Protocol.query.all(),
+            msg="Matching protocol does not exist!"
+        )
+    if subprotocol not in protocol.get_subprotocols(): 
+        return render_template(
+            "protocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            msg="Subprotocol does not exists!"
+        )
+
+    protocol.remove_subprotocol(subprotocol)
+    db.session.commit()
+    return redirect("/settings/protocols/" + escaped_protocol)
 
 
 if __name__=="__main__":

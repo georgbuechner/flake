@@ -69,24 +69,38 @@ class DCreator:
             tbl, p = table._tbl, paragraph._p
             new_tbl = copy.deepcopy(tbl)
             p.addnext(new_tbl)
+            self.doc.add_page_break()
         tbl = self.doc.tables[0]
         for x in range(len(monthly_weights)-1): 
             paragraph = self.doc.add_paragraph()
             copy_table_after(tbl, paragraph)
+            
+        def do_update(cell, data, cat): 
+            print("Updating paragraph...")
+            update_paragraph(cell.paragraphs[0], f"{{{x}}}", "")  # remove tag
+            for i, val in data:
+                print(f"  - {i}")
+                if cat == "sig":
+                    add_signiture(cell.paragraphs[0], user, 0.29)
+                else:
+                    update_paragraph(cell.paragraphs[0], "", val)
+
+        remember_i = {}
         for i, month in enumerate(monthly_weights):
             table = self.doc.tables[i]
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
-            for row in table.rows:
-                for x, data in month["data"].items():
-                    for cell_i in range(2):
-                        if f"{{{x}}}" in row.cells[cell_i].paragraphs[0].text:
-                            update_paragraph(row.cells[cell_i].paragraphs[0], f"{{{x}}}", "")  # remove tag
-                            for i, val in data:
-                                if x == "sig":
-                                    add_signiture(row.cells[i].paragraphs[0], user, 0.29)
-                                else:
-                                    update_paragraph(row.cells[i].paragraphs[0], "", val)
-                            break
+            for x, data in month["data"].items():
+                print(f"Month {i}, data: {x}")
+                if x not in remember_i:
+                    for r, row in enumerate(table.rows):
+                        for c in range(2):
+                            if f"{{{x}}}" in row.cells[c].paragraphs[0].text:
+                                remember_i[x] = (r, c)
+                                break
+                if x in remember_i:
+                    r, c = remember_i[x]
+                    do_update(table.rows[r].cells[c], data, x)
+
         # Save document:
         self.doc.save("src/output/score_sheet.docx")
 

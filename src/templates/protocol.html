@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{protocol.name}}</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="/static/js/protocols.js"></script>
+</head>
+
+<body>
+  <div class="topnav">
+    <a href="/">Home</a>
+    <a href="/settings">Settings</a>
+    <a href="/settings/protocols">Protocols</a>
+    <a class="active" href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
+  </div>
+  {% include "userinfos_header.html" %}
+
+  <div class="center_in_box">
+    <h1>LARKUM DATABASE</h1>
+
+    <h2>{{protocol.name}}</h2>
+    <p class="err">{{msg}}</p>
+    <table class="center"> 
+      <tr>
+        <th>Name</th> 
+      </tr>
+      {% for subprotocol in subprotocols %}
+        <tr> 
+          <td>
+            <a
+              href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}">
+                {{protocol.name}} {{subprotocol}}
+            </a>
+          </td>
+           <td onclick="Add(this.parentNode);">
+             <a class="mod" title="Add new entry below.">edit</a>
+           </td>
+           <td onclick="Del('{{protocol.escaped}}', '{{subprotocol}}');">
+             <a class="mod" title="Remove entry.">-</a>
+           </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <br>
+    <br>
+    <a class="mod" title="Add new protocol." onclick="AddProtocol();">+</a>
+
+  <dialog id="add_protocol_modal" style="height: 100px; width: 60%;" category="">
+    <button onclick="Close('add_protocol_modal')" style="float: right;">Close</button>
+    <h2>Add Protocol</h2>
+    <form action="{{protocol.escaped}}/add_protocol" method="POST">
+      <input type="text" name="name" id="name" placeholder="f.e. 'A', 'B', ...">
+      <br><br>
+      <input type='submit' name='submit'/>
+    </form>
+    <br>
+  </dialog>
+
+</body>
+
+</html>

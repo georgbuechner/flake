@@ -9,6 +9,9 @@ body {
 input {
   font-size: 8px;
 }
+button {
+  font-size: 8px;
+}
 select{
   font-size: 8px;
 }
@@ -72,6 +75,10 @@ li {
 }
 
 /* animal-data table */
+.err {
+  color: #992e32;
+}
+
 .not_stored {
   background-color: #992e32;
 }

@@ -63,7 +63,7 @@
           <td> <input id="start_weight" value="{{general.start_weight}}"></input> </td>
           <td>
             <input 
-              type="submit" id="submit_weightlist" value="generate weight-list" 
+              type="submit" id="submit_weightlist" value="generate weight placeholders" 
               onclick="GenerateWeightList('{{animal_id}}')"
             >
             <input 
@@ -320,7 +320,7 @@
     <h2>Notes</h4>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
     <br>
-    <label id="save_notes_error" style="color: red;"></label><br>
+    <label id="save_notes_error" class="err"></label><br>
     <button onclick="CloseModalNotes('{{animal_id}}', true)" class="right">Close and Save</button>
     <button onclick="CloseModalNotes('{{animal_id}}', false)" class="right">Close</button>
   </dialog>
@@ -336,7 +336,7 @@
         </tr>
       </tbody>
     </table>
-    <label id="save_notes_error" style="color: red;"></label><br>
+    <label id="save_notes_error" class="err"></label><br>
     <button onclick="CloseModalWeights('{{animal_id}}', true)" class="right">Close and Save</button>
     <button onclick="CloseModalWeights('{{animal_id}}', false)" class="right">Close</button>
   </dialog>

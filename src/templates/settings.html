@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Settings</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+</head>
+
+<body>
+  <div class="topnav">
+    <a href="/">Home</a>
+    <a class="active" href="/settings">Settings</a>
+  </div>
+  {% include "userinfos_header.html" %}
+
+  <div class="center_in_box">
+    <h1>LARKUM DATABASE</h1>
+
+    <table class="center"> 
+      <tr>
+        <th><a href="/settings/protocols">Protocols</a></td> 
+        <th><a href="/settings/definitions">Definitions</a></td> 
+      </tr>
+    </table>
+
+    <br>
+    <br>
+
+    <p>
+      Select one of the categories above, to either view or edit protocols or
+      availible medication, procedures, viruses, ... for protocols.
+    </P>
+
+
+  </div>
+</body>
+
+</html>

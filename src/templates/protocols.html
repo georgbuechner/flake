@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Protocols</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+  <script src="/static/js/protocols.js"></script>
+</head>
+
+<body>
+  <div class="topnav">
+    <a href="/">Home</a>
+    <a href="/settings">Settings</a>
+    <a class="active" href="/settings/protocols">Protocols</a>
+  </div>
+  {% include "userinfos_header.html" %}
+
+  <div class="center_in_box">
+    <h1>LARKUM DATABASE</h1>
+
+    <h2>Protocols</h2>
+    <p class="err">{{msg}}</p>
+    <table class="center"> 
+      <tr>
+        <th>Name</th> 
+      </tr>
+      {% for protocol in protocols %}
+        <tr> 
+          <td>
+            <a href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <br>
+    <br>
+    <a class="mod" title="Add new protocol." onclick="AddProtocol();">+</a>
+
+  <dialog id="add_protocol_modal" style="height: 100px; width: 60%;" category="">
+    <button onclick="Close('add_protocol_modal')" style="float: right;">Close</button>
+    <h2>Add Protocol</h2>
+    <form action="add_protocol" method="POST">
+      <input type="text" name="name" id="name" placeholder="f.e. 'G 0241/19'">
+      <br><br>
+      <input type='submit' name='submit'/>
+    </form>
+    <br>
+  </dialog>
+
+</body>
+
+</html>

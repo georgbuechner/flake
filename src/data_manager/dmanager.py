@@ -245,6 +245,8 @@ class DManager:
 
     def generate_weight_list(self, animal_id) -> Tuple[str, int]:
         animal_data = self.__get_animal_entry(animal_id)
+        if not date_filled(animal_data["death_date"]): 
+            return "Animal is not yet sacrificed", 401
         # Get start-date from general data
         general = self.sql.get("general", animal_id)
         if len(general) == 0:
@@ -262,7 +264,7 @@ class DManager:
         # Get some values 
         start_weight = float(general["start_weight"]) if general["start_weight"] != "" else -1
         sacrifice_date = strtodate(animal_data["death_date"])
-        is_sacrificed = date_filled(animal_data["death_date"])
+
         # Get start date, date of bearth and calculate age at start
         start_date = strtodate(start_date) 
         dob = strtodate(animal_data["dob"])
@@ -278,7 +280,7 @@ class DManager:
             duration_water = len(daterange(water_restriction_start, sacrifice_date))
             # Calculate water-control-mask and estimated weights
             water_control_mask = get_water_control_mask(
-                water_restriction_start, duration_water, surgery_dates, sacrificed=is_sacrificed
+                water_restriction_start, duration_water, surgery_dates, sacrificed=True
             )
             # Add `False`-values for days_after_start  
             water_control_mask = [False for _ in range(days_after_start)] + water_control_mask
@@ -440,7 +442,7 @@ class DManager:
                 self.sql.insert(T_ANIMAL_DATA, [data])
             # Otherwise, update data.
             else: 
-                self.sql.update_animal_data(T_ANIMAL_DATA, {"id":data["id"]}, data)
+                self.sql.update(T_ANIMAL_DATA, {"id":data["id"]}, data)
                 updated.append(data["id"])
         return updated, len(df)
 

@@ -108,8 +108,10 @@ async function GenerateWeightList(animal_id) {
     let r = await fetch('/generate/weights/'+animal_id, {method: "POST", body: new FormData()}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200)
+    if (r.status === 200) {
+      alert("Generated weight placeholders, fill in the proper weights as soon as they are messuered!")
       window.location=window.location;
+    }
     else if (r.status > 400 && r.status < 500) {
       let response_text = await r.text()
       alert("Error code: " + r.status + ": " + response_text);
@@ -127,8 +129,8 @@ async function GenerateMainSheet(animal_id, type) {
   req.open("POST", "/generate/"+type+"/"+animal_id, true);
   req.responseType = "blob";
   req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  req.onreadystatechange = function(){
-  if (this.readyState == 4 && this.status == 200) {
+  req.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
       var blob = new Blob([this.response], {type: "application/docx"});
       var url = window.URL.createObjectURL(blob);
       var link = document.createElement('a');
@@ -142,8 +144,15 @@ async function GenerateMainSheet(animal_id, type) {
       window.URL.revokeObjectURL(url);
       link.remove(); } , 100);
     }
-    else if (this.readyState ===4) {
-      alert("Something went wrong. Status: " + this.status);
+    else if (this.readyState === 4 && this.status >= 400 ) {
+      var blob = new Blob([this.response], {type: "text"});
+      var reader = new FileReader();
+      reader.onload = function() {
+        alert(reader.result);
+      }
+      reader.readAsText(blob);
+      // var text = reader.readAsText(blob);
+      // alert(blob.stream() + ": " + this.status);
     }
   };
   req.send();
