@@ -75,15 +75,13 @@ class DCreator:
             paragraph = self.doc.add_paragraph()
             copy_table_after(tbl, paragraph)
             
-        def do_update(cell, data, cat): 
-            print("Updating paragraph...")
-            update_paragraph(cell.paragraphs[0], f"{{{x}}}", "")  # remove tag
+        def do_update(cells, cell, data, cat): 
+            update_paragraph(cells[cell].paragraphs[0], f"{{{x}}}", "")  # remove tag
             for i, val in data:
-                print(f"  - {i}")
                 if cat == "sig":
-                    add_signiture(cell.paragraphs[0], user, 0.29)
+                    add_signiture(cells[i].paragraphs[0], user, 0.29)
                 else:
-                    update_paragraph(cell.paragraphs[0], "", val)
+                    update_paragraph_fast(cells[i].paragraphs[0], "", val)
 
         remember_i = {}
         for i, month in enumerate(monthly_weights):
@@ -99,7 +97,7 @@ class DCreator:
                                 break
                 if x in remember_i:
                     r, c = remember_i[x]
-                    do_update(table.rows[r].cells[c], data, x)
+                    do_update(table.rows[r].cells, c, data, x)
 
         # Save document:
         self.doc.save("src/output/score_sheet.docx")
@@ -229,13 +227,16 @@ class DCreator:
 
 def update_paragraph(par, old, new): 
     inline = par.runs 
-    max_part = [0, 0]
     for i in range(len(inline)): 
         if old in inline[i].text: 
-            text = inline[i].text.replace(old, new)
+            text = inline[i].text
+            text = text.replace(old, new)
             inline[i].text = text
             return
     # If not found (since runs split old-text):
+    update_paragraph_fast(par, old, new)
+
+def update_paragraph_fast(par, old, new):
     par.text = par.text.replace(old, new)
 
 def add_signiture(par, user: str, height: float):
