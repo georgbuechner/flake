@@ -1,5 +1,11 @@
 <form action="procedure" method="POST">
-  <input type="text" name="name" id="name" placeholder="name">
+  <select 
+    type="text" name="name" id="name" placeholder="name" onchange="Set(this)"
+  >
+    {% for definition in definitions %}
+      <option value="{{definition.name}}">{{definition.name}}</option>
+    {% endfor %}
+  </select>
   <br><br>
   <input type="text" name="days_after_start" id="days_after_start" placeholder="days after start">
   <br><br>
@@ -12,4 +18,3 @@
   <br><br>
   <input type='submit' name='submit'/>
 </form>
-

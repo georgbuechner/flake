@@ -8,7 +8,7 @@ function Close(modal_name) {
   dialog.close();
 }
 
-async function Del(protocol, subprotocol) {
+async function DelSub(protocol, subprotocol) {
   try {
     // Send request:
     let r = await fetch("/settings/protocols/remove/"+protocol+"/"+subprotocol, {

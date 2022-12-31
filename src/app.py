@@ -5,7 +5,14 @@ from flask_login import LoginManager, login_required, login_user, logout_user, c
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, escape_protocol, date_filled
 from data_manager.sql_connector import SqlConnector
-from data_manager.tables import User, AMedication, AProcedure, AVirus, Protocol, db
+from data_manager.tables import (
+    User, 
+    AMedication, AProcedure, AVirus,
+    PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
+    Protocol, 
+    db,
+    table_to_json,
+)
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
 from utils.utils import hash_pw
@@ -21,7 +28,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
-    # Protocol.__table__.drop(db.engine)
+    # AVirus.__table__.drop(db.engine)
+    # PVirus.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -231,9 +239,7 @@ def protocols():
 @login_required
 def protocol(escaped_protocol: str):
     protocol = Protocol.query.get(escaped_protocol)
-    print("GOT protocol: ", protocol)
     if protocol:
-        print("GOT subprotocols: ", protocol.get_subprotocols())
         return render_template(
             "protocol.html", 
             user_email=current_user.email, 
@@ -242,7 +248,6 @@ def protocol(escaped_protocol: str):
             subprotocols=protocol.get_subprotocols(),
             msg=""
         )
-
     return render_template(
         "protocols.html", 
         user_email=current_user.email, 
@@ -251,6 +256,43 @@ def protocol(escaped_protocol: str):
         msg="Protocol not found"
     )
 
+@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>", defaults={"category": "general"})
+@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
+@login_required
+def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
+    protocol = Protocol.query.get(escaped_protocol)
+    full_protocol = f"{escaped_protocol}/{subprotocol}"
+    data = {}
+    definitions = []
+    if category == "anesthesia":
+        data = PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol)
+        definitions = AMedication.query.all()    
+    elif category == "analgesia":
+        data = PAnalgesia.query.filter(PAnalgesia.protocol == full_protocol)
+        definitions = AMedication.query.all()
+    elif category == "procedures":
+        data = PProcedure.query.filter(PProcedure.protocol == full_protocol)
+        definitions = AProcedure.query.all()
+    elif category == "viruses":
+        data = PVirus.query.filter(PVirus.protocol == full_protocol)
+        definitions = AVirus.query.all()
+    elif category == "watercontrol":
+        watercontrol = PWatercontrol.query.get(full_protocol)
+        data = table_to_json(watercontrol) if watercontrol else {}
+
+    if protocol:
+        return render_template(
+            "subprotocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            subprotocol=subprotocol,
+            category=category,
+            data=data,
+            definitions=definitions,
+            json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
+            msg=""
+        )
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
@@ -438,11 +480,15 @@ def update_virus_definitions():
 @login_required 
 def delete_definition(category, name): 
     name = html.unescape(name).replace("_", "/")
+    elem_to_delete = None
     if category == "medication":
-        medication = AMedication.query.get(name)
-        print(name, medication)
-        if medication:
-            db.session.delete(medication)
+        elem_to_delete = AMedication.query.get(name)
+    elif category == "procedures":
+        elem_to_delete = AProcedure.query.get(name)
+    elif category == "viruses":
+        elem_to_delete = AVirus.query.get(name)
+    if elem_to_delete is not None:
+        db.session.delete(elem_to_delete)
     db.session.commit()
     return redirect("/settings/definitions/"+category)
 
@@ -519,6 +565,133 @@ def remove_subprotocal(escaped_protocol, subprotocol):
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/anesthesia", methods=["POST"])
+@login_required 
+def update_protocol_anesthesia(protocol, subprotocol):
+    full_protocol = f"{protocol}/{subprotocol}"
+    anesthesia = PAnesthesia.query.get((full_protocol, request.form["name"]))
+    if anesthesia:
+        anesthesia.amount = request.form["amount"]
+        anesthesia.concentration = request.form["concentration"]
+        anesthesia.days_after_surgery = request.form["days_after_surgery"]
+    else: 
+        anesthesia = PAnesthesia(
+            protocol=full_protocol,
+            name=request.form["name"],
+            amount=request.form["amount"],
+            concentration=request.form["concentration"],
+            days_after_surgery=request.form["days_after_surgery"]
+        )
+        db.session.add(anesthesia)
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/anesthesia")
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/analgesia", methods=["POST"])
+@login_required 
+def update_protocol_analgesia(protocol, subprotocol):
+    full_protocol = f"{protocol}/{subprotocol}"
+    analgesia = PAnalgesia.query.get((full_protocol, request.form["name"]))
+    if analgesia:
+        analgesia.amount = request.form["amount"]
+        analgesia.concentration = request.form["concentration"]
+        analgesia.days_after_surgery = request.form["days_after_surgery"]
+    else: 
+        analgesia = PAnalgesia(
+            protocol=full_protocol,
+            name=request.form["name"],
+            amount=request.form["amount"],
+            concentration=request.form["concentration"],
+            days_after_surgery=request.form["days_after_surgery"]
+        )
+        db.session.add(analgesia)
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/analgesia")
+
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/procedure", methods=["POST"])
+@login_required 
+def update_protocol_procedure(protocol, subprotocol):
+    full_protocol = f"{protocol}/{subprotocol}"
+    procedure = PProcedure.query.get((full_protocol, request.form["name"]))
+    is_surgery = "surgery" in request.form
+    if procedure:
+        procedure.days_after_start = request.form["days_after_start"]
+        procedure.duration = request.form["duration"]
+        procedure.surgery = is_surgery
+    else: 
+        procedure = PProcedure(
+            protocol=full_protocol,
+            name=request.form["name"],
+            days_after_start=request.form["days_after_start"],
+            duration=request.form["duration"],
+            surgery=is_surgery
+        )
+        db.session.add(procedure)
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/procedures")
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/virus", methods=["POST"])
+@login_required 
+def update_protocol_virus(protocol, subprotocol):
+    full_protocol = f"{protocol}/{subprotocol}"
+    virus = PVirus.query.get((full_protocol, request.form["name"]))
+    is_surgery = "surgery" in request.form
+    if virus:
+        virus.days_after_start = request.form["days_after_start"]
+        virus.amount = request.form["amount"]
+    else: 
+        virus = PVirus(
+            protocol=full_protocol,
+            name=request.form["name"],
+            days_after_start=request.form["days_after_start"],
+            amount=request.form["amount"],
+        )
+        db.session.add(virus)
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/viruses")
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/watercontrol", methods=["POST"])
+@login_required 
+def update_protocol_watercontrol(protocol, subprotocol):
+    full_protocol = f"{protocol}/{subprotocol}"
+    watercontrol = PWatercontrol.query.get(full_protocol)
+    is_allowed = "allowed" in request.form
+    if watercontrol:
+        watercontrol.allowed = is_allowed
+        watercontrol.days_after_start = request.form["days_after_start"]
+        watercontrol.duration = request.form["duration"]
+    else: 
+        watercontrol = PWatercontrol(
+            protocol=full_protocol,
+            allowed=is_allowed,
+            days_after_start=request.form["days_after_start"],
+            duration=request.form["duration"],
+        )
+        db.session.add(watercontrol)
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/watercontrol")
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/delete/<category>/<name>", methods=["POST"])
+@login_required 
+def delete_protocol_entry(protocol, subprotocol, category, name): 
+    print("Got category: ", category)
+    full_protocol = f"{protocol}/{subprotocol}"
+    name = html.unescape(name).replace("_", "/")
+    elem_to_delete = None
+    if category == "anesthesia":
+        elem_to_delete = PAnesthesia.query.get((full_protocol, name))
+    elif category == "analgesia":
+        elem_to_delete = PAnalgesia.query.get((full_protocol, name))
+    elif category == "procedures":
+        elem_to_delete = PProcedure.query.get((full_protocol, name))
+    elif category == "viruses":
+        elem_to_delete = PVirus.query.get((full_protocol, name))
+    if elem_to_delete is not None:
+        db.session.delete(elem_to_delete)
+
+    db.session.commit()
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/category")
 
 
 if __name__=="__main__":

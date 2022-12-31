@@ -55,19 +55,28 @@ class AProcedure(db.Model):
 class AVirus(db.Model): 
     __tablename__ = "availible_viruses"
 
-    protocol = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
     days_after_start = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
-class PMedication(db.Model): 
-    __tablename__ = "protocol_medication"
+class PAnesthesia(db.Model): 
+    __tablename__ = "protocol_anesthesia"
 
     protocol = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
+
+class PAnalgesia(db.Model): 
+    __tablename__ = "protocol_analgesia"
+
+    protocol = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    amount = db.Column(db.String, primary_key=False)
+    concentration = db.Column(db.String, primary_key=False)
+    days_after_surgery = db.Column(db.String, primary_key=False)
+
 
 class PProcedure(db.Model): 
     __tablename__ = "protocol_procedures"
@@ -85,6 +94,14 @@ class PVirus(db.Model):
     name = db.Column(db.String, primary_key=True) 
     days_after_start = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
+
+class PWatercontrol(db.Model): 
+    __tablename__ = "protocol_watercontrol"
+
+    protocol = db.Column(db.String, primary_key=True) 
+    allowed = db.Column(db.Boolean, primary_key=False) 
+    days_after_start = db.Column(db.String, primary_key=False)
+    duration = db.Column(db.String, primary_key=False)
 
 class Protocol(db.Model): 
     __tablename__ = "protocols"
@@ -109,3 +126,7 @@ class Protocol(db.Model):
         subprotocols = self.get_subprotocols() 
         subprotocols.remove(subprotocol)
         self.subprotocols = ";".join(subprotocols)
+
+def table_to_json(table): 
+    """! Removes fields added by sql-alchamy. """
+    return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}

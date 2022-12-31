@@ -35,10 +35,7 @@
                 {{protocol.name}} {{subprotocol}}
             </a>
           </td>
-           <td onclick="Add(this.parentNode);">
-             <a class="mod" title="Add new entry below.">edit</a>
-           </td>
-           <td onclick="Del('{{protocol.escaped}}', '{{subprotocol}}');">
+           <td onclick="DelSub('{{protocol.escaped}}', '{{subprotocol}}');">
              <a class="mod" title="Remove entry.">-</a>
            </td>
         </tr>
