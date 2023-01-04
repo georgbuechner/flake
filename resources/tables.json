@@ -1,66 +1,4 @@
 { 
-    "general": {
-        "primary_keys": "ANIMAL_ID",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"start", "type":"TEXT"},
-            {"name":"end", "type":"TEXT"},
-            {"name":"experiment", "type":"TEXT"},
-            {"name":"start_weight", "type":"TEXT"},
-            {"name":"watercontrol", "type":"TEXT"},
-            {"name":"weights", "type":"TEXT"}
-        ]
-    },
-    "procedures": {
-        "primary_keys": "ANIMAL_ID, NAME",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"name", "type":"TEXT"},
-            {"name":"start_date", "type":"TEXT"},
-            {"name":"end_date", "type":"TEXT"},
-            {"name":"experimenter", "type":"TEXT"}
-        ]
-    },
-    "post_procedures": {
-        "primary_keys": "ANIMAL_ID, NAME",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"name", "type":"TEXT"},
-            {"name":"start_date", "type":"TEXT"},
-            {"name":"end_date", "type":"TEXT"},
-            {"name":"experimenter", "type":"TEXT"}
-        ]
-    },
-    "viruses": {
-        "primary_keys": "ANIMAL_ID, NAME",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"name", "type":"TEXT"},
-            {"name":"date", "type":"TEXT"},
-            {"name":"amount", "type":"TEXT"}
-        ]
-    },
-    "anesthetic": {
-        "primary_keys": "ANIMAL_ID, NAME, DATE",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"name", "type":"TEXT"},
-            {"name":"date", "type":"TEXT"},
-            {"name":"amount", "type":"TEXT"},
-            {"name":"concentration", "type":"TEXT"},
-            {"name":"toe_pinch", "type":"BOOL"}
-        ]
-    },
-    "analgesic": {
-        "primary_keys": "ANIMAL_ID, NAME, DATE",
-        "rows": [
-            {"name":"animal_id", "type":"TEXT"}, 
-            {"name":"name", "type":"TEXT"},
-            {"name":"date", "type":"TEXT"},
-            {"name":"amount", "type":"TEXT"},
-            {"name":"concentration", "type":"TEXT"}
-        ]
-    },
     "animal_data": {
         "primary_keys": "ID",
         "rows": [
@@ -85,4 +23,3 @@
       ]
     }
 }
- 

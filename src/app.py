@@ -9,9 +9,10 @@ from data_manager.tables import (
     User, 
     AMedication, AProcedure, AVirus,
     PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
+    General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
     Protocol, 
     db,
-    table_to_json,
+    table_to_json
 )
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
@@ -28,8 +29,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
-    # AVirus.__table__.drop(db.engine)
-    # PVirus.__table__.drop(db.engine)
+    # Anesthesia.__table__.drop(db.engine)
+    # Analgesia.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -53,9 +54,10 @@ def main():
 
     @return Rendered html main-page from jinja2-template.
     """
+    print("PROTOCOLS: ", dmanager.protocols())
     return render_template(
         "index.html", users=dmanager.users(), 
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -116,11 +118,10 @@ def overview():
 
     @return Rendered html overview-page from jinja2-template.
     """
-    protocols = dmanager.protocols
     return render_template(
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -138,7 +139,7 @@ def user_overview(user: str):
         "user_overview.html", 
         user=user, 
         animal_data=dmanager.get_animal_data("user", user),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -156,7 +157,7 @@ def protocol_overview(protocol: str):
         "protocol_overview.html", 
         protocol=protocol,
         animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -174,25 +175,23 @@ def input(animal_id: str):
     # Redirect 
     if animal_data[0]["user"] != current_user.name:
         return redirect("/")
-
-    experiment_data = dmanager.load_protocal_data(animal_id)
     notes = dmanager.get_notes(animal_id)
+    general = General.query.get(animal_id)
     return render_template(
         "input.html", 
-        stored=experiment_data.stored,
-        general=experiment_data.general,
-        viruses=experiment_data.viruses,
-        anesthesia=experiment_data.anesthetic, 
-        availible_anesthetic=experiment_data.availible_anesthetic,
-        availible_analgesic=experiment_data.availible_analgesic,
-        availible_viruses=experiment_data.availible_viruses,
-        analgesic=experiment_data.analgesic,
-        procedures=experiment_data.procedures,
-        post_procedures=experiment_data.post_procedures,
-        surgery_start=experiment_data.surgery_start,
+        stored=True,
+        general=general,
+        viruses=Virus.query.filter(Virus.animal_id == animal_id),
+        anesthesia=Anesthesia.query.filter(Anesthesia.animal_id == animal_id),
+        analgesic=Analgesia.query.filter(Analgesia.animal_id == animal_id),
+        procedures=Procedure.query.filter(Procedure.animal_id == animal_id),
+        post_procedures=PostProcedure.query.filter(PostProcedure.animal_id == animal_id),
+        availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment),
+        availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment),
+        availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
         animal_id=animal_id,
         animal_data=animal_data,
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         notes=notes,
         user_email=current_user.email,
         user_name=current_user.name
@@ -297,7 +296,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 def update_animal_subprotocol(): 
-    """! Updates the subprotocol of an animal 
+    """! Updates the subprotocol of an animal and initializes experiment-data.
 
     @param subprotocol  the new subprotocol
 
@@ -305,8 +304,20 @@ def update_animal_subprotocol():
     """
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
-    txt, status = dmanager.update_animal_field(animal_id, "subprotocol", subprotocol) 
+    txt, status = dmanager.set_subprotocol(animal_id, subprotocol) 
     return txt, status
+
+@app.route("/update/animal_data/dates/<animal_id>", methods=["POST"])
+@login_required
+def update_dates(animal_id: str): 
+    """! Updates the dates an animal 
+
+    @param animal_id  ID of animal for which to add data.
+
+    @return error-/ success-message and status code.
+    """
+    print(f"Updateing dates: {animal_id}, {request.form['date']}")
+    return dmanager.update_dates(animal_id, request.form["date"])
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required
@@ -380,8 +391,10 @@ def clear_experiment_data(animal_id: str):
 
     @return error-/ success-message and status code.
     """
-    dmanager.clear_experiment_data(animal_id)
+    animal_data = dmanager.get_animal_data(animal_id)[0]
+    dmanager.set_subprotocol(animal_id, animal_data["subprotocol"])
     return "Success", 200
+
 
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
 @login_required
@@ -689,7 +702,6 @@ def delete_protocol_entry(protocol, subprotocol, category, name):
         elem_to_delete = PVirus.query.get((full_protocol, name))
     if elem_to_delete is not None:
         db.session.delete(elem_to_delete)
-
     db.session.commit()
     return redirect(f"/settings/protocols/{protocol}/{subprotocol}/category")
 

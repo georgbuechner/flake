@@ -8,8 +8,8 @@ OUTPUT_DATE_FORMAT_2  = "%b %Y"
 def strtodate(date_str: str) -> datetime: 
     return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
 
-def datetostr(date: datetime) -> str: 
-    return datetime.strftime(date, OUTPUT_DATE_FORMAT)
+def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
+    return datetime.strftime(date, date_format)
 
 def datetostr_month(date: datetime) -> str: 
     return datetime.strftime(date, OUTPUT_DATE_FORMAT_2)

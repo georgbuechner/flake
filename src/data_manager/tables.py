@@ -1,4 +1,6 @@
+import json
 from flask_sqlalchemy import SQLAlchemy
+from typing import Dict, List
 
 db = SQLAlchemy()
 
@@ -110,7 +112,7 @@ class Protocol(db.Model):
     escaped = db.Column(db.String, primary_key=True)
     subprotocols = db.Column(db.String, primary_key=False)
 
-    def get_subprotocols(self):
+    def get_subprotocols(self) -> List[str]:
         subprotocols = self.subprotocols.split(";")
         if len(subprotocols) > 0 and subprotocols[0] == "":
             return []
@@ -126,6 +128,131 @@ class Protocol(db.Model):
         subprotocols = self.get_subprotocols() 
         subprotocols.remove(subprotocol)
         self.subprotocols = ";".join(subprotocols)
+
+class General(db.Model):
+    __tablename__ = "general"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    start = db.Column(db.String, primary_key=False) 
+    end = db.Column(db.String, primary_key=False)
+    experiment = db.Column(db.String, primary_key=False)
+    start_weight = db.Column(db.Integer, primary_key=False) 
+    watercontrol = db.Column(db.Boolean, primary_key=False) 
+    weights = db.Column(db.String, primary_key=False)
+
+    def __init__(self, animal_id: str, experiment: str, watercontrol: bool): 
+        self.animal_id = animal_id 
+        self.start = ""
+        self.end = ""
+        self.experiment = experiment
+        self.start_weight = 0 
+        self.watercontrol = watercontrol
+        self.weights = json.dumps([])
+
+class Anesthesia(db.Model): 
+    __tablename__ = "anesthesia"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    date = db.Column(db.String, primary_key=True) 
+    amount = db.Column(db.String, primary_key=False)
+    concentration = db.Column(db.String, primary_key=False)
+    toe_pinch = db.Column(db.Boolean, primary_key=False)
+    days_after_surgery = db.Column(db.Boolean, primary_key=False)
+
+    def __init__(self, animal_id: str, anesthesia: PAnesthesia, days_after_surgery: int): 
+        """! Initializes Anesthesia. 
+
+        Uses days_after_surgery as a placeholder for date, to ensure uniqueness (since
+        anesthetic might be added at multiple days. Later the dates will be
+        succesive dates.
+
+        @param animal_id  ID of animal.
+        @param anesthesia  The default entry from PAnesthesia.
+        @param num  Placeholder for date, to ensure uniqueness (=days-after-surgery)
+        """
+        self.animal_id = animal_id 
+        self.name = anesthesia.name 
+        self.date = str(days_after_surgery) 
+        self.amount = anesthesia.amount 
+        self.concentration = anesthesia.concentration 
+        self.toe_pinch = True
+        self.days_after_surgery = days_after_surgery
+
+class Analgesia(db.Model): 
+    __tablename__ = "analgesia"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    date = db.Column(db.String, primary_key=True) 
+    amount = db.Column(db.String, primary_key=False)
+    concentration = db.Column(db.String, primary_key=False)
+    days_after_surgery = db.Column(db.Integer, primary_key=False)
+
+
+    def __init__(self, animal_id: str, analgesia: PAnesthesia, days_after_surgery: int):
+        """! Initializes Analgesia. 
+
+        Uses num as a placeholder for date, to ensure uniqueness (since
+        analgesia might be added multiple days. Later the dates will be
+        succesive dates. 
+
+        @param animal_id  ID of animal.
+        @param analgesia  The default entry from PAnesthesia.
+        @param num  Placeholder for date, to ensure uniqueness.
+        """
+        self.animal_id = animal_id 
+        self.name = analgesia.name 
+        self.date = str(days_after_surgery) 
+        self.amount = analgesia.amount 
+        self.concentration = analgesia.concentration 
+        self.days_after_surgery = days_after_surgery
+
+class Procedure(db.Model): 
+    __tablename__ = "procedures"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    start_date = db.Column(db.String, primary_key=False) 
+    end_date = db.Column(db.String, primary_key=False) 
+    experimenter = db.Column(db.String, primary_key=False) 
+
+    def __init__(self, animal_id: str, experimenter: str, procedure: PProcedure): 
+        self.animal_id = animal_id 
+        self.name = procedure.name 
+        self.start_date = ""
+        self.end_date = ""
+        self.experimenter = experimenter
+
+class PostProcedure(db.Model): 
+    __tablename__ = "post_procedures"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    start_date = db.Column(db.String, primary_key=False) 
+    end_date = db.Column(db.String, primary_key=False) 
+    experimenter = db.Column(db.String, primary_key=False) 
+
+    def __init__(self, animal_id: str, experimenter: str, procedure: PProcedure): 
+        self.animal_id = animal_id 
+        self.name = procedure.name 
+        self.start_date = ""
+        self.end_date = ""
+        self.experimenter = experimenter
+
+class Virus(db.Model): 
+    __tablename__ = "virus"
+
+    animal_id = db.Column(db.String, primary_key=True) 
+    name = db.Column(db.String, primary_key=True) 
+    date = db.Column(db.String, primary_key=False)
+    amount = db.Column(db.String, primary_key=False)
+
+    def __init__(self, animal_id, virus: PVirus): 
+        self.animal_id = animal_id 
+        self.name = virus.name 
+        self.date = ""
+        self.amount = virus.amount
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """

@@ -73,32 +73,28 @@ function ToggleGraph() {
     chart.setAttribute("hidden", "hidden");
 }
 
-function UpdateDates(date_string, surgery_start) {
-  console.log("UpdateDates: surgery_start:", surgery_start);
-  // Get all elements with `start_plus` (days to add/ days after surgery) attribute:
-  var arr = document.querySelectorAll("[start_plus]");
-  // Get current day and add surgery-start
-  const day = new Date(date_string).getDate() + parseInt(surgery_start);
-  // Iterate over all elements with `start_plus` attribute and modify date
-  // accordings to start_plus 
-  max_date = 0;
-  for (var i = 0; i < arr.length; i++) {
-    // Create copy and increment days by `start_plus` value of elemenyt
-    const copiedDate = new Date(date_string);
-    const start_plus = parseInt(arr[i].getAttribute("start_plus"));
-    copiedDate.setDate(start_plus+parseInt(day));
-    // Set date-value
-    arr[i].setAttribute("value", copiedDate.toISOString().substring(0, 10));
-    // Check if new date might by new max-date
-    if (copiedDate.getTime() > max_date)
-      max_date = copiedDate.getTime()
+async function UpdateDates(animal_id, date_str) {
+  // Send request to server:
+  try {
+    let formData = new FormData();
+    formData.append("date", date_str);
+    // Send request:
+    let r = await fetch('/update/animal_data/dates/'+animal_id, {method: "POST", body: formData}); 
+    // Handle response:
+    console.log('HTTP response code: ' + r.status); 
+    if (r.status === 200) {
+      alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
+      window.location=window.location;
+    }
+    else if (r.status > 400 && r.status < 500) {
+      let response_text = await r.text()
+      alert("Error code: " + r.status + ": " + response_text);
+    }
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
   }
-  // Set end-date
-  const endDate = new Date(max_date);
-  let end_date_elem = document.getElementById("end");
-  end_date_elem.setAttribute("value", endDate.toISOString().substring(0, 10));
-  // Send message to user to double check all entries.
-  alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
 }
 
 async function GenerateWeightList(animal_id) {

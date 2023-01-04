@@ -28,26 +28,44 @@
     <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
     <h1><i>FLAKE</i> DATABASE</h1>
 
-    <h2>Definitions: {{category}}</h2>
+    <h2>{{protocol.name}} {{subprotocol}}</i></h2>
     <table class="center"> 
       <tr>
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/general">General</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/general"
+            {%- if category=="general" %} class="active" {%- endif -%} 
+          >General</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/anesthesia">Anesthesia</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/anesthesia"
+            {%- if category=="anesthesia" %} class="active" {%- endif -%} 
+          >Anesthesia</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/analgesia">Analgesia</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/analgesia"
+            {%- if category=="analgesia" %} class="active" {%- endif -%} 
+          >Analgesia</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/procedures">Procedures</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/procedures"
+            {%- if category=="procedures" %} class="active" {%- endif -%} 
+          >Procedures</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/viruses">Viruses</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/viruses"
+            {%- if category=="viruses" %} class="active" {%- endif -%} 
+          >Viruses</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/watercontrol">Watercontrol</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/watercontrol"
+            {%- if category=="watercontrol" %} class="active" {%- endif -%} 
+          >Watercontrol</a>
         </th> 
       </tr>
     </table>

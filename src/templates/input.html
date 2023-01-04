@@ -50,9 +50,8 @@
           <td>
             <input 
               id="start" type="date" value="{{general.start}}"
-              {%- if stored==false -%} onchange="UpdateDates(this.value, {{surgery_start}}) {%- endif -%}"
-            >
-            </input>
+              onchange="UpdateDates('{{animal_id}}', this.value)" 
+            />
           </td>
         </tr>
         <tr>
@@ -100,17 +99,13 @@
         <tr>
             <td><input id="name" value="{{entry.name}}"></input></td>
             <td>
-              <input id="start_date" type="date" value="{{entry.start_date}}"
-                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
-              </input>
+              <input id="start_date" type="date" value="{{entry.start_date}}" />
             </td>
             <td>
-              <input id="end_date" type="date" value="{{entry.end_date}}"
-                {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
-              </input>
+              <input id="end_date" type="date" value="{{entry.end_date}}"/>
             </td>
             <td>
-              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+              <input id="experimenter" value="{{entry.experimenter}}"></input>
             </td>
             <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
               <a class="mod" title="Remove entry.">-</a>
@@ -134,17 +129,13 @@
         <tr>
             <td><input id="name" value="{{entry.name}}"></input></td>
             <td>
-              <input id="start_date" type="date" value="{{entry.start_date}}"
-                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
-              </input>
+              <input id="start_date" type="date" value="{{entry.start_date}}"/>
             </td>
             <td>
-              <input id="end_date" type="date" value="{{entry.end_date}}"
-                {%- if stored==false -%}start_plus={{entry.days_after_start+entry.duration_in_days}}{%- endif -%}>
-              </input>
+              <input id="end_date" type="date" value="{{entry.end_date}}"/>
             </td>
             <td>
-              <input id="experimenter" value="{{entry.experimenter|default(animal_data[0].user)}}"></input>
+              <input id="experimenter" value="{{entry.experimenter}}"></input>
             </td>
             <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
               <a class="mod" title="Remove entry.">-</a>
@@ -172,15 +163,16 @@
             <td>
               <select id="name" autocomplete="off">
                 {% for e in availible_viruses %}
-                  <option value="{{e}}" {%- if e == entry.name -%} selected{%- endif -%}>{{e}}</option>
+                  <option 
+                    value="{{e.name}}" {%- if e.name == entry.name -%} selected{%- endif -%}
+                  >
+                    {{e.name}}
+                  </option>
                 {% endfor %}
               </select>
             </td>
             <td>
-              <input 
-                id="date" type="date" value="{{entry.date}}"
-                {%- if stored==false -%}start_plus={{entry.days_after_start}}{%- endif -%}>
-              </input>
+              <input id="date" type="date" value="{{entry.date}}" />
             </td>
             <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
             <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
@@ -211,18 +203,22 @@
             <td>
               <select id="name" autocomplete="off">
                 {% for e in availible_anesthetic %}
-                  <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
+                  <option 
+                    value="{{e.name}}" {%- if e.name == entry.name -%} selected {%- endif -%}
+                  >
+                    {{e.name}}
+                  </option>
                 {% endfor %}
               </select>
             </td>
-            <td><input id="date" type="date" start_plus={{surgery_start}} value="{{entry.date}}"></input></td>
+            <td><input id="date" type="date" value="{{entry.date}}"></input></td>
             <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
             <td><input id="concentration" value="{{entry.concentration}}"></input></td>
             <td>
               <input 
                 id="toe_pinch" class="short" convert="bool" 
-                value={%- if entry.toe_pinch or stored==false -%}"yes"{%- else -%}"no"{%- endif -%}>
-              </input>
+                value={%- if entry.toe_pinch -%} "yes" {%- else -%} "no" {%- endif -%}
+              />
             </td>
             <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
               <a class="mod" title="Remove entry.">-</a>
@@ -250,47 +246,28 @@
           <th>Concentration</th>
         </tr>
         {% for entry in analgesic %}
-          {% if stored==false %} 
-            {% for i in range(entry.days_after_surgery+1) %}
-              <tr>
-                <td>
-                  <select id="name">
-                    {% for e in availible_analgesic %}
-                      <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
-                    {% endfor %}
-                  </select>
-                </td>
-                <td><input id="date" type="date" start_plus={{surgery_start+i}}></input></td>
-                <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
-                <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-                <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
-                  <a class="mod" title="Remove entry.">-</a>
-                </td>
-                <td onclick="Add(this.parentNode);">
-                  <a class="mod" title="Add new entry below.">+</a>
-                </td>
-              </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td>
-                <select id="name" type="list" autocomplete="off">
-                  {% for e in availible_analgesic %}
-                    <option value="{{e}}" {%- if e == entry.name -%}selected{%- endif -%}>{{e}}</option>
-                  {% endfor %}
-                </select>
-              </td>
-              <td><input id="date" type="date" value={{entry.date}}></input></td>
-              <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
-              <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-              <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
-                <a class="mod" title="Remove entry.">-</a>
-              </td>
-              <td onclick="Add(this.parentNode);">
-                <a class="mod" title="Add new entry below.">+</a>
-              </td>
-            </tr>
-          {% endif %}
+          <tr>
+            <td>
+              <select id="name" type="list" autocomplete="off">
+                {% for e in availible_analgesic %}
+                  <option 
+                    value="{{e.name}}" {%- if e.name == entry.name -%} selected {%- endif -%}
+                  >
+                    {{e.name}}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input id="date" type="date" value={{entry.date}}></input></td>
+            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
+            <td><input id="concentration" value="{{entry.concentration}}"></input></td>
+            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+              <a class="mod" title="Remove entry.">-</a>
+            </td>
+            <td onclick="Add(this.parentNode);">
+              <a class="mod" title="Add new entry below.">+</a>
+            </td>
+          </tr>
         {% endfor %}
       </table>
 

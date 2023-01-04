@@ -14,8 +14,16 @@ from utils.parser_weights_and_water import (
     get_estimated_weight_list,
     apply_noise
 )
+from data_manager.tables import (
+    AMedication, AProcedure, AVirus,
+    PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
+    General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
+    Protocol, 
+    db,
+    table_to_json
+)
 from utils.utils import sort
-from utils.dt_utils import strtodate, datetostr, incdate, daterange
+from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
 
 ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
 # Some important keys
@@ -79,7 +87,6 @@ class DManager:
         """
         print(f"Initializing DManager...")
         self.sql = sql_connector
-        self.protocols = {}
         self.mapping = {}
         self.keys_per_language = {}
         with open("resources/mapping.json") as f:
@@ -87,8 +94,6 @@ class DManager:
             for language, fields in mapping.items():
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
-        # Update protocol information:
-        self.__update_availible_protocols()
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
@@ -97,6 +102,22 @@ class DManager:
         @return List of users.
         """
         return self.sql.get_all(T_ANIMAL_DATA, "user")
+
+    def protocols(self) -> List[str]:
+        """! Gets list of all protocols which are currently
+        applied for all animals (refers to pyrat data).
+
+        @return List of protocols.
+        """
+        protocols = self.sql.get_all(T_ANIMAL_DATA, "protocol")
+        return { p:escape_protocol(p) for p in protocols }
+
+    def protocols_and_subprotocols(self) -> Dict[str, List[str]]: 
+        """! Gets all protocols with list of their subprotocols. """
+        protocols = {}
+        for protocol in Protocol.query.all():
+            protocols[protocol.name] = protocol.get_subprotocols()
+        return protocols
 
     def extract_animal_data(self, file) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
@@ -118,21 +139,92 @@ class DManager:
                 + f"{' '.join(x for x in self.keys['en'])}"
                 + f"or {' '.join(x for x in self.keys['en'])}")
         # If success, update protocols (since new protocols might have been added)
-        self.__update_availible_protocols()
         inserted_msg =f"{total-len(updated)} inserted."
         if len(updated) == 0:
             return inserted_msg, 200
         updated_msg = f"{len(updated)} updated ({' '.join(x for x in updated)})"
         return inserted_msg + " " + updated_msg, 206 
 
-    def update_animal_field(
-        self, animal_id: str, field: str, subprotocol: str
-    ) -> Tuple[str, int]:
-        """! Updates a field of in an animal entry. """
-        res = self.sql.update(T_ANIMAL_DATA, {"id":animal_id}, {field:subprotocol})
-        if res:
-            return "", 200
-        return "An error occured, we're sorry", 500
+    def set_subprotocol(self, animal_id: str, subprotocol: str) -> Tuple[str, int]:
+        """! Updates subprotocol entry and initializes experiment-data.
+
+        Uses the matching protocol and subprotocol to initialize the
+        experiment-data with default values.
+
+        @param animal_id  ID of animal.
+        @param subprotocol  Subprotocol which to use for this animal.
+
+        @return Tuple of error-message and http-return-code.
+        """
+        res = self.sql.update(T_ANIMAL_DATA, {"id":animal_id}, {"subprotocol":subprotocol})
+        if res is None:
+            return "An error occured, when setting subprotocol", 500
+        animal_data = self.__get_animal_entry(animal_id)
+        full_protocol = f"{animal_data['protocol_escaped']}/{subprotocol}"
+        # Clear all existing data
+        self.__clear_experiment_data(animal_id)
+        # Initialize general 
+        general = General(animal_id, full_protocol, True)  # TODO Get corret watercontrol
+        db.session.add(general)
+        # Initialize procedures
+        surgery_start = get_surgery_start(full_protocol)
+        for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
+            if int(protocol_procedure.days_after_start) > surgery_start: 
+                procedure = PostProcedure(animal_id, animal_data["user"], protocol_procedure)
+            else: 
+                procedure = Procedure(animal_id, animal_data["user"], protocol_procedure)
+            db.session.add(procedure)
+        # Initialize medication TODO create medication days_after_surgery-times!
+        for protocol_anesthesia in PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol):
+            for x in range(int(protocol_anesthesia.days_after_surgery)+1):
+                anesthetic = Anesthesia(animal_id, protocol_anesthesia, x)
+                db.session.add(anesthetic)
+        for protocol_analgesia in PAnalgesia.query.filter(PAnalgesia.protocol == full_protocol):
+            for x in range(int(protocol_analgesia.days_after_surgery)+1):
+                analgesia = Analgesia(animal_id, protocol_analgesia, x)
+                db.session.add(analgesia)
+        # Initialize viruses
+        for protocol_virus in PVirus.query.filter(PVirus.protocol == full_protocol):
+            virus = Virus(animal_id, protocol_virus)
+            db.session.add(virus)
+        db.session.commit()
+        return "", 200
+
+    def update_dates(self, animal_id: str, start_date: str) -> Tuple[str, int]:
+        """! Updates dates of experiment-data according to protocol-data. 
+
+        @param animal_id  ID of animal 
+        @param start_date  Start date based on which dates are filled. 
+
+        @return Tuple of error-message and http-return-code.
+        """
+        start_date = strtodate(start_date)
+        # Update start-date in General
+        general = General.query.get(animal_id)
+        general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
+        surgery_start = get_surgery_start(general.experiment)
+        def get_date(inc):
+            return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
+        # Update medication:
+        def update_medication(table): 
+            for x in table.query.filter(table.animal_id == animal_id): 
+                x.date = get_date(x.days_after_surgery+surgery_start)
+        update_medication(Anesthesia)
+        update_medication(Analgesia)  
+        # Update procedures: 
+        def update_procedure(table): 
+            for x in table.query.filter(table.animal_id == animal_id): 
+                default = PProcedure.query.get((general.experiment, x.name))
+                x.start_date = get_date(int(default.days_after_start))
+                x.end_date = get_date(int(default.days_after_start)+int(default.duration))
+        update_procedure(Procedure) 
+        update_procedure(PostProcedure) 
+        # Update viruses:
+        for x in Virus.query.filter(Virus.animal_id == animal_id): 
+            default_entry = PVirus.query.get((general.experiment, x.name))
+            x.date = get_date(int(default_entry.days_after_start))
+        db.session.commit()
+        return "", 200
 
     def update_weights_and_watercontrol(
         self, animal_id: str, weights: str, water_control_mask: str
@@ -172,16 +264,6 @@ class DManager:
             # Insert data
             self.sql.insert(table_name, table_data)
 
-    def clear_experiment_data( self, animal_id: str) -> int:
-        """! Clears experiment-data for animal
-
-        @param animal_id  ID of animal
-
-        @return status code: 200 on success.
-        """
-        self.sql.delete(animal_id, self.sql.experiment_data_tables)
-        return 200
-
     def store_note(self, animal_id: str, category: str, note: str) -> bool: 
         """! Stores a given note under animal_id and category in database. 
 
@@ -216,32 +298,6 @@ class DManager:
         for data in animal_data:
             data["stored"] = self.__is_stored(data["id"])
         return animal_data
-
-    def load_protocal_data(self, animal_id: str) -> ExperimentData: 
-        """! Loads protocol-data for given animal-id.
-
-        Either sends default-data matching protocol for given animal, or loads
-        data already stored for this animal.
-
-        @param animal_id  ID of animal to store experiment-data for.
-
-        @return experiment-data (default or stored).
-        """
-        # Load animal-data and default-data for given animal-id:
-        animal_data = self.__get_animal_entry(animal_id)
-        experiment_data = self.__load_default_values(animal_id)
-        # If data exists in database, overwrite default values.
-        if self.__has_stored_data(animal_id):
-            experiment_data.stored = True
-            experiment_data.set_general(self.sql.get("general", animal_id)[0])
-            experiment_data.procedures = sort(self.sql.get("procedures", animal_id), "start_date")
-            experiment_data.post_procedures = sort(
-                self.sql.get("post_procedures", animal_id), "start_date"
-            )
-            experiment_data.anesthetic = self.sql.get("anesthetic", animal_id)
-            experiment_data.analgesic = sort(self.sql.get("analgesic", animal_id), "date")
-            experiment_data.viruses = sort(self.sql.get("viruses", animal_id), "date")
-        return experiment_data
 
     def generate_weight_list(self, animal_id) -> Tuple[str, int]:
         animal_data = self.__get_animal_entry(animal_id)
@@ -300,114 +356,20 @@ class DManager:
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200
 
-    def get_protocol(self, animal_id: str) -> str: 
-        animal_data = self.__get_animal_entry(animal_id)
-        protocol = animal_data["protocol"]
-        subprotocol = animal_data["subprotocol"]
-        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
-            return self.protocols[protocol]["escaped"] + "_" + subprotocol
-        return "";
+    def __clear_experiment_data(self, animal_id: str) -> int:
+        """! Clears experiment-data for animal
 
-    def __load_default_values(self, animal_id: str) -> ExperimentData:
-        """! Loads default experiment-data for given protocol.
+        @param animal_id  ID of animal
 
-        @param protocol  Protocol for which to load data.
-        
-        @return Experiment-data
+        @return status code: 200 on success.
         """
-        # Check if protocol-data exists and get path to protocol-data: 
-        path = self.__get_protocol_path(animal_id)
-        if path is None: 
-            return None
-        # medication
-        medication = self.__parse_protocal_data(path, "medication")
-        anesthetic, analgesic = self.__medication(medication)
-        # procedures
-        procedures = self.__parse_protocal_data(path, "procedure")
-        procedures, post_procedures, surgery_start = self.__procedure(procedures)
-        # viruses 
-        viruses = self.__parse_protocal_data(path, "Virus")
-        # General 
-        general = {} 
-        animal_data = self.__get_animal_entry(animal_id)
-        general["experiment"] = animal_data["protocol"] + " " + animal_data["subprotocol"]
-        # Create experiment-data from parsed values
-        return ExperimentData(
-            stored=False, 
-            general=general, 
-            viruses=viruses, 
-            anesthetic=anesthetic, 
-            analgesic=analgesic, 
-            procedures=procedures, 
-            post_procedures=post_procedures, 
-            surgery_start=surgery_start
-        )
-
-    def __medication(
-        self, medication: List[Dict[str, any]]
-    ) -> Tuple[List[Dict[str, any]], List[Dict[str, any]]]:
-        """! Handles extra parsing for medication infos. 
-
-        Anesthetic and analgesic drugs are seperated according to pre-defined
-        durgs in ANESTHETIC field.
-
-        @param medication Unprocessed default-medication-data.
-
-        @return Seperated anesthetic and analgesic data
-        """
-        # Seperate anesthetic and analgesic
-        anesthetic = [entry for entry in medication if entry["name"] in ANESTHETIC]
-        analgesic = [entry for entry in medication if entry["name"] not in ANESTHETIC]
-        sort(analgesic, DAYS_AFTER_SURGERY)
-        return anesthetic, analgesic
-
-    def __procedure(
-        self, procedures: List[Dict[str, any]]
-    ) -> Tuple[List[Dict[str, any]], List[Dict[str, any]], int]:
-        """! Handles extra parsing for procedure infos. 
-
-        Finds surgery-start (days after begin), sorts by days-after-start
-        and makes sure all values are intergers.
-        Splits procedures into procedures and post-procedures.
-
-        @param procedures  Unprocessed default-procedure-data.
-
-        @return Procedures, post-procedures and surgery-start (as days after start).
-        """
-        # Find surgery_start and do some parsing.
-        surgery_start = 0
-        for value in procedures: 
-            # Find surgery-start (days_after_start from any element with surgery?=yes):
-            if value["surgery?"] == "yes":
-                surgery_start = value[DAYS_AFTER_START]
-            # Make sure days_after_start is interger:
-            value[DAYS_AFTER_START] = int(value[DAYS_AFTER_START])
-            # Make sure duration_in_days is interger:
-            if isinstance(value[DURATION_IN_DAYS], str) and "-" in value[DURATION_IN_DAYS]:
-                value[DURATION_IN_DAYS] = random.randint(
-                    int(value[DURATION_IN_DAYS].split("-")[0]), 
-                    int(value[DURATION_IN_DAYS].split("-")[1])
-                )
-            else:
-                value[DURATION_IN_DAYS] = int(value[DURATION_IN_DAYS])
-        # Sort:
-        sort(procedures, DAYS_AFTER_START)
-        # Split in pre_procedures and post_procedures
-        post_procedures = [p for p in procedures if p[DAYS_AFTER_START] > surgery_start]
-        procedures = [p for p in procedures if p[DAYS_AFTER_START] <= surgery_start]
-        return procedures, post_procedures, surgery_start
-
-    def __parse_protocal_data(self, path: str, sheet_name: str) -> List[Dict[str, any]]:
-        """! Parses default-protocol data.
-
-        @param path  Path to protocol-data.
-        @param sheet_name  Sheet which to get data from.
-        @return All default-data with attribute where `allowed` is `yes`.
-        """
-        df = pd.read_excel(path, sheet_name=sheet_name) 
-        data = df.to_dict("records")
-        # Remove all not allowed
-        return [entry for entry in data if "allowed" not in entry or entry["allowed"] == "yes"]
+        def delete(table):
+            for x in table.query.filter(table.animal_id == animal_id):
+                db.session.delete(x)
+        for x in [General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus]:
+            delete(x)
+        db.session.commit()
+        return 200
 
     def __load_animal_data_from_csv(self, path: str):
         """! Loads animal-data from CSV file.
@@ -458,25 +420,6 @@ class DManager:
             return animal_data[0]
         return None
 
-    def __update_availible_protocols(self):
-        protocol_path = os.path.join("resources", "protocols")
-        protocols = self.sql.get_all(T_ANIMAL_DATA, "protocol")
-        protocols_data = {}
-        for protocol in protocols:
-            espaped = escape_protocol(protocol)  # generate escaped name for url-display
-            data = {"escaped": espaped, "subs": {}}
-            for filename in os.listdir(protocol_path):
-                if espaped in filename and "~lock" not in filename:
-                    # Get path and subprotocol-letter
-                    path = os.path.join(protocol_path, filename)
-                    subprotocol_letter = filename[-6]
-                    # Get allowed users
-                    users = self.__parse_protocal_data(path, "users")
-                    # Generate subprotocol-data with path and empty users-list
-                    sub_data = {"path": path, "users": [x["name"] for x in users]}
-                    data["subs"][subprotocol_letter] = sub_data
-            self.protocols[protocol] = data
-
     def __is_stored(self, animal_id: str) -> bool:
         """! Checks if experiment-data is stored. 
 
@@ -488,15 +431,14 @@ class DManager:
         @param check_all  If False returns True if ANY data is stored
         @return Boolean indicating whether data is stored or not.
         """
-        experiment_data = self.sql.get("general", animal_id, "animal_id")
-        # Take first element, since 'general' has only one entry for each animal
-        experiment_data = experiment_data[0] if len(experiment_data) > 0 else None
+        general = General.query.filter(General.animal_id == animal_id)
+        general = general[0] if general.first() else None
         animal_data = self.__get_animal_entry(animal_id)
         return (
-            animal_data is not None and experiment_data is not None
+            animal_data is not None and general is not None
             and date_filled(animal_data["death_date"])
-            and date_filled(experiment_data["start"])
-            and date_filled(experiment_data["end"])
+            and date_filled(general.start)
+            and date_filled(general.end)
         )
 
     def __has_stored_data(self, animal_id: str) -> bool: 
@@ -509,21 +451,6 @@ class DManager:
             if table_name != T_NOTES and len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
                 return True
         return False
-
-    def __get_protocol_path(self, animal_id: str) -> str: 
-        """! Gets path to protocol-infos from animal id. 
-
-        @param animal_id  ID of animal
-        @return Path to protocol-spreadsheet if exists, None otherwise.
-        """
-        animal_data = self.__get_animal_entry(animal_id)
-        protocol = animal_data["protocol"]
-        subprotocol = animal_data["subprotocol"]
-        if protocol in self.protocols and subprotocol in self.protocols[protocol]["subs"]:
-            return self.protocols[protocol]["subs"][subprotocol]["path"]
-        else:
-            print(f"{protocol} or {subprotocol} not in {self.protocols}")
-            return None 
 
 def date_filled(date_str: str) -> bool: 
     return len(date_str) == 10
@@ -538,3 +465,11 @@ def escape_protocol(protocol: str) -> str:
     @return Escaped protocol-name.
     """
     return protocol.replace(" ", "").replace("/", "_")
+
+def get_surgery_start(protocol: str):
+    procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
+    surgery_start = 900
+    for procedure in procedures: 
+        if procedure.surgery and int(procedure.days_after_start) < surgery_start:
+            surgery_start = int(procedure.days_after_start)
+    return surgery_start

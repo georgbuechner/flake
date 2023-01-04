@@ -24,7 +24,7 @@
             onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[0].innerHTML)"
           >
             <option value="---" selected>---</option>
-            {% for sub in protocols[entry.protocol].subs %}
+            {% for sub in protocols[entry.protocol] %}
               <option 
                 value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}>{{sub}}
               </option>
