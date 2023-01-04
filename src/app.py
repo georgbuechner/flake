@@ -16,7 +16,7 @@ from data_manager.tables import (
 )
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import hash_pw
+from utils.utils import hash_pw, sort_query
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
@@ -181,11 +181,13 @@ def input(animal_id: str):
         "input.html", 
         stored=True,
         general=general,
-        viruses=Virus.query.filter(Virus.animal_id == animal_id),
-        anesthesia=Anesthesia.query.filter(Anesthesia.animal_id == animal_id),
-        analgesic=Analgesia.query.filter(Analgesia.animal_id == animal_id),
-        procedures=Procedure.query.filter(Procedure.animal_id == animal_id),
-        post_procedures=PostProcedure.query.filter(PostProcedure.animal_id == animal_id),
+        viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "date"),
+        anesthesia=sort_query(Anesthesia.query.filter(Anesthesia.animal_id == animal_id), "date"),
+        analgesic=sort_query(Analgesia.query.filter(Analgesia.animal_id == animal_id), "date"),
+        procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
+        post_procedures=sort_query(
+            PostProcedure.query.filter(PostProcedure.animal_id == animal_id), "start_date"
+        ),
         availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment),
         availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment),
         availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
