@@ -154,6 +154,21 @@ async function GenerateMainSheet(animal_id, type) {
   req.send();
 }
 
+function AddOrEdit(elem) {
+  if (entry !== undefined) {
+    for (var i=0; i<entry.children.length; i++) {
+      if (entry.children[i].hasAttribute("name")) {
+        var elem = document.getElementById(entry.children[i].getAttribute("name"));
+        if (elem.type == "checkbox")
+          elem.checked = entry.children[i].innerHTML === "True";
+        else 
+          elem.value=entry.children[i].innerHTML;
+      }
+    }
+  }
+
+  var dialog = document.getElementById("edit_modal"); 
+}
 async function Store(animal_id) {
   // Create new form:
   let formData = new FormData();
@@ -240,39 +255,6 @@ async function Clear(animal_id) {
   }
 }
 
-function Del(row, table) {
-  console.log(row);
-  console.log(table.children.length);
-  // last element (apart from th), simply clear element:
-  if (table.children.length < 3) {
-    reset_row(row)
-  }
-  // Otherwise: remove element:
-  else {
-    row.parentNode.removeChild(row);
-  }
-}
-
-function Add(row) {
-  let new_row = row.cloneNode(true);
-  reset_row(new_row);
-  row.after(new_row);
-}
-
-function reset_row(row) {
-  for (var i=0; i<row.children.length; i++) {
-    reset_input(row.children[i].children[0]);
-  }
-}
-
-function reset_input(elem) {
-  if (elem.nodeName === "SELECT") {
-    elem.options[0].selected = true;
-  }
-  else if (elem.nodeName === "INPUT") {
-    elem.value = "";
-  }
-}
 
 // Modal //
 

@@ -158,26 +158,56 @@ class Anesthesia(db.Model):
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     toe_pinch = db.Column(db.Boolean, primary_key=False)
-    days_after_surgery = db.Column(db.Boolean, primary_key=False)
+    days_after_surgery = db.Column(db.Integer, primary_key=False)
 
-    def __init__(self, animal_id: str, anesthesia: PAnesthesia, days_after_surgery: int): 
+    def __init__(
+        self, 
+        animal_id: str, 
+        name: str, 
+        date: str, 
+        amount: str, 
+        concentration: str, 
+        toe_pinch: bool = True,
+        days_after_surgery: int = -1
+    ):
         """! Initializes Anesthesia. 
 
-        Uses days_after_surgery as a placeholder for date, to ensure uniqueness (since
-        anesthetic might be added at multiple days. Later the dates will be
-        succesive dates.
-
-        @param animal_id  ID of animal.
-        @param anesthesia  The default entry from PAnesthesia.
-        @param num  Placeholder for date, to ensure uniqueness (=days-after-surgery)
+        Uses `days_after_surgery` as a placeholder for date, to ensure uniqueness (since
+        anesthesia might be added multiple days. Later the dates will be
+        succesive dates. 
         """
         self.animal_id = animal_id 
-        self.name = anesthesia.name 
-        self.date = str(days_after_surgery) 
-        self.amount = anesthesia.amount 
-        self.concentration = anesthesia.concentration 
-        self.toe_pinch = True
+        self.name = name 
+        self.date = date
+        self.amount = amount 
+        self.concentration = concentration 
+        self.toe_pinch = toe_pinch
         self.days_after_surgery = days_after_surgery
+
+    @classmethod
+    def from_default(cls, animal_id: str, a: PAnesthesia, days_after_surgery: int):
+        return cls(
+            animal_id, 
+            a.name, 
+            str(days_after_surgery), 
+            a.amount,
+            a.concentration, 
+            days_after_surgery=days_after_surgery
+        )
+
+    @classmethod
+    def from_json(cls, animal_id: str, a: Dict[str, any]):
+        toe_pinch = "toe_pinch" in a
+        return cls(
+            animal_id, a["name"], a["date"], a["amount"], a["concentration"], toe_pinch
+        )
+
+    def update(self, a: Dict[str, any]):
+        self.date = a["date"] 
+        self.amount = a["amount"]
+        self.concentration = a["concentration"] 
+        self.toe_pinch = "toe_pinch" in a 
+        print("Changed concentration to: ", self.concentration)
 
 class Analgesia(db.Model): 
     __tablename__ = "analgesia"
@@ -189,24 +219,42 @@ class Analgesia(db.Model):
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.Integer, primary_key=False)
 
-
-    def __init__(self, animal_id: str, analgesia: PAnesthesia, days_after_surgery: int):
+    def __init__(
+        self, 
+        animal_id: str, 
+        name: str, 
+        date: str, 
+        amount: str, 
+        concentration: str, 
+        days_after_surgery: int = -1
+    ):
         """! Initializes Analgesia. 
 
-        Uses num as a placeholder for date, to ensure uniqueness (since
+        Uses `days_after_surgery` as a placeholder for date, to ensure uniqueness (since
         analgesia might be added multiple days. Later the dates will be
         succesive dates. 
-
-        @param animal_id  ID of animal.
-        @param analgesia  The default entry from PAnesthesia.
-        @param num  Placeholder for date, to ensure uniqueness.
         """
         self.animal_id = animal_id 
-        self.name = analgesia.name 
-        self.date = str(days_after_surgery) 
-        self.amount = analgesia.amount 
-        self.concentration = analgesia.concentration 
+        self.name = name 
+        self.date = date
+        self.amount = amount 
+        self.concentration = concentration 
         self.days_after_surgery = days_after_surgery
+
+    @classmethod
+    def from_default(cls, animal_id: str, a: PAnalgesia, days_after_surgery: int):
+        return cls(
+            animal_id, a.name, str(days_after_surgery), a.amount, a.concentration, days_after_surgery
+        )
+
+    @classmethod
+    def from_json(cls, animal_id: str, a: Dict[str, any]):
+        return cls(animal_id, a["name"], a["date"], a["amount"], a["concentration"])
+
+    def update(self, a: Dict[str, any]):
+        self.date = a["date"] 
+        self.amount = a["amount"]
+        self.concentration = a["concentration"] 
 
 class Procedure(db.Model): 
     __tablename__ = "procedures"
@@ -217,12 +265,25 @@ class Procedure(db.Model):
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
 
-    def __init__(self, animal_id: str, experimenter: str, procedure: PProcedure): 
+    def __init__(self, animal_id: str, name: str, start: str, end: str, experimenter: str): 
         self.animal_id = animal_id 
-        self.name = procedure.name 
-        self.start_date = ""
-        self.end_date = ""
+        self.name = name 
+        self.start_date = start
+        self.end_date = end
         self.experimenter = experimenter
+
+    @classmethod 
+    def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
+        return cls(animal_id, procedure.name, "", "", experimenter)
+
+    @classmethod 
+    def from_json(cls, animal_id: str, p: Dict[str, any]): 
+        return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
+
+    def update(self, p: Dict[str, any]):
+        self.start_date = p["start_date"]
+        self.end_date = p["end_date"]
+        self.experimenter = p["experimenter"]
 
 class PostProcedure(db.Model): 
     __tablename__ = "post_procedures"
@@ -233,13 +294,27 @@ class PostProcedure(db.Model):
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
 
-    def __init__(self, animal_id: str, experimenter: str, procedure: PProcedure): 
+    def __init__(self, animal_id: str, name: str, start: str, end: str, experimenter: str): 
         self.animal_id = animal_id 
-        self.name = procedure.name 
-        self.start_date = ""
-        self.end_date = ""
+        self.name = name 
+        self.start_date = start
+        self.end_date = end
         self.experimenter = experimenter
 
+    @classmethod 
+    def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
+        return cls(animal_id, procedure.name, "", "", experimenter)
+
+    @classmethod 
+    def from_json(cls, animal_id: str, p: Dict[str, any]): 
+        return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
+
+    def update(self, p: Dict[str, any]):
+        self.start_date = p["start_date"]
+        self.end_date = p["end_date"]
+        self.experimenter = p["experimenter"]
+
+    
 class Virus(db.Model): 
     __tablename__ = "virus"
 
@@ -248,12 +323,32 @@ class Virus(db.Model):
     date = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id, virus: PVirus): 
+    def __init__(self, animal_id, name: str, date: str, amount: str): 
         self.animal_id = animal_id 
-        self.name = virus.name 
-        self.date = ""
-        self.amount = virus.amount
+        self.name = name
+        self.date = date 
+        self.amount = amount
+
+    @classmethod 
+    def from_default(cls, animal_id: str, virus: PVirus): 
+        return cls(animal_id, virus.name, "", virus.amount)
+
+    @classmethod 
+    def from_json(cls, animal_id: str, virus: Dict[str, any]): 
+        return cls(animal_id, virus["name"], virus["date"], virus["amount"])
+
+    def update(self, virus: Dict[str, any]):
+        self.date = virus["date"]
+        self.amount = virus["amount"]
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
     return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}
+
+EXPERIMENT_TABLES = {
+    "anesthesia": Anesthesia, 
+    "analgesia": Analgesia, 
+    "procedures": Procedure,
+    "post_procedures": PostProcedure,
+    "viruses": Virus 
+}

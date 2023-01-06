@@ -96,7 +96,7 @@
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
              <td 
-               onclick="Del('{{category}}', '{{medication.name}}', '{{protocol.escaped}}/{{subprotocol}}');"
+               onclick="Del('{{category}}', '{{medication.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');"
              >
                <a class="mod" title="Remove entry.">-</a>
              </td>
@@ -125,7 +125,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('procedures', '{{procedure.name}}', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="Del('procedures', '{{procedure.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -151,7 +151,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('viruses', '{{virus.name}}', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="Del('viruses', '{{virus.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -188,7 +188,6 @@
   <dialog id="edit_modal" style="height: 200px; width: 80%;" category="">
     <button onclick="CloseModal()" style="float: right;">Close</button>
     <h2>Entry</h2>
-
     {% if category=="anesthesia" or category=="analgesia" %}
       {% include "protocol_medication_edit.html" %}
     {% elif category=="procedures" %}

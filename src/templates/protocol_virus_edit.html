@@ -1,7 +1,5 @@
 <form action="virus" method="POST">
-  <select 
-    type="text" name="name" id="name" placeholder="name" onchange="Set(this)"
-  >
+  <select name="name" id="name" onchange="Set(this)" >
     {% for definition in definitions %}
       <option value="{{definition.name}}">{{definition.name}}</option>
     {% endfor %}

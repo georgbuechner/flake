@@ -1,0 +1,15 @@
+<form action="{{category}}" method="POST">
+  <select id="name" name="name" autocomplete="off">
+    {% for e in availible_procedures %} 
+      <option value="{{e.name}}">{{e.name}}</option> 
+    {% endfor %}
+  </select>
+  <br><br>
+  <input type="date" name="start_date" id="start_date" placeholder="start date">
+  <br><br>
+  <input type="date" name="end_date" id="end_date" placeholder="end date">
+  <br><br>
+  <input type="text" name="experimenter" id="experimenter" placeholder="experimenter">
+  <br><br>
+  <input type='submit' name='submit'/>
+</form>

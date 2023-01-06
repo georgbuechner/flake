@@ -9,6 +9,7 @@
   <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
   <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
   <script src="/static/js/input.js"></script>
+  <script src="/static/js/definitions.js"></script>
 </head>
 
 <body>
@@ -22,31 +23,71 @@
   <div class="center_in_box">
     <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
 
-    <h1><i>FLAKE</i> DATABASE: INPUT</h1>
+    <h1><i>FLAKE</i> DATABASE: <i>{{animal_id}}</i></h1>
 
     {% include "overview_table.html" %}
 
     <br>
     <br>
+
+    <table class="center"> 
+      <tr>
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}"
+            {%- if category=="" %} class="active" {%- endif -%} 
+          >General</a>
+        </th> 
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}/procedures"
+            {%- if category=="procedures" %} class="active" {%- endif -%} 
+          >Procedures</a>
+        </th> 
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}/post_procedures"
+            {%- if category=="post_procedures" %} class="active" {%- endif -%} 
+          >Post Procedures</a>
+        </th> 
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}/viruses"
+            {%- if category=="viruses" %} class="active" {%- endif -%} 
+          >Viruses</a>
+        </th> 
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}/anesthesia"
+            {%- if category=="anesthesia" %} class="active" {%- endif -%} 
+          >Anesthesia</a>
+        </th> 
+        <th>
+          <a 
+            href="/animal_data/{{animal_id}}/analgesia"
+            {%- if category=="analgesia" %} class="active" {%- endif -%} 
+          >Analgesia</a>
+        </th> 
+      </tr>
+    </table>
+
     <br>
     <br>
 
-
-    <div style="text-align: left">
-
+    {% if category=="" %}
       <h3>General 
         <button class="pure_btn" onclick="OpenModalNotes('general', '{{notes.general}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
 
-      <table>
+      <table class="center">
         <tr>
-          <td> <label>Sub Experiment: </label> </td>
-          <td> <input id="experiment" value="{{general.experiment}}" readonly></input> </td>
+          <td>Sub Experiment:</td>
+          <td>{{general.experiment}}</td>
         </tr>
         <tr>
-          <td> <label>Start date: </label> </td>
+          <td>Start date:</td>
           <td>
             <input 
               id="start" type="date" value="{{general.start}}"
@@ -55,40 +96,32 @@
           </td>
         </tr>
         <tr>
-          <td> <label>End date: </label> </td>
-          <td> <input id="end" type="date" value="{{general.end}}"></input> </td>
-        </tr>
-        <tr>
           <td> <label>Start weight: </label>
           <td> <input id="start_weight" value="{{general.start_weight}}"></input> </td>
-          <td>
-            <input 
-              type="submit" id="submit_weightlist" value="generate weight placeholders" 
-              onclick="GenerateWeightList('{{animal_id}}')"
-            >
-            <input 
-              type="submit" id="edit_weightlist" value="edit weight-list" 
-              onclick="EditWeightList()"
-            >
-            <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()">
-          </td>
         </tr>
       </table>
+      <br>
+      <input 
+        type="submit" id="submit_weightlist" value="generate weight placeholders" 
+        onclick="GenerateWeightList('{{animal_id}}')"
+      >
+      <input type="submit" id="edit_weightlist" value="edit weight-list" onclick="EditWeightList()" />
+      <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()" />
+
       <input id="weights" value="{{general.weights}}" hidden>
       <input id="watercontrol" value="{{general.watercontrol}}" hidden>
 
       <div id="weight_graph" class="graph" style="height: 250px; width: 100%;"></div>
 
-      <br>
-      <br>
-
+    
+    {% elif category=="procedures" %}
       <h3>Procedures
         <button class="pure_btn" onclick="OpenModalNotes('procedures', '{{notes.procedures}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
       <h4>Conducted Procedures</h4>
-      <table id="procedures">
+      <table class="center" id="procedures">
         <tr>
           <th>Procedure name</th>
           <th>Start date</th>
@@ -97,28 +130,25 @@
         </tr>
         {% for entry in procedures %}
         <tr>
-            <td><input id="name" value="{{entry.name}}"></input></td>
-            <td>
-              <input id="start_date" type="date" value="{{entry.start_date}}" />
-            </td>
-            <td>
-              <input id="end_date" type="date" value="{{entry.end_date}}"/>
-            </td>
-            <td>
-              <input id="experimenter" value="{{entry.experimenter}}"></input>
-            </td>
-            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
-              <a class="mod" title="Remove entry.">-</a>
-            </td>
-            <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Add new entry below.">+</a>
-            </td>
+          <td name="name">{{entry.name}}</td>
+          <td name="start_date">{{entry.start_date}}</td>
+          <td name="end_date">{{entry.end_date}}</td>
+          <td name="experimenter">{{entry.experimenter}}</td>
+          <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
+            <a class="mod" title="Remove entry.">-</a>
+          </td>
+          <td onclick="Add(this.parentNode);">
+            <a class="mod" title="Edit this entry.">edit</a>
+          </td>
         <tr>
         {% endfor %}
       </table>
+      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+
+    {% elif category=="post_procedures" %}
 
       <h4>Post-operative Procedures</h4>
-      <table id="post_procedures">
+      <table class="center" id="post_procedures">
         <tr>
           <th>Procedure name</th>
           <th>Start date</th>
@@ -127,32 +157,28 @@
         </tr>
         {% for entry in post_procedures %}
         <tr>
-            <td><input id="name" value="{{entry.name}}"></input></td>
-            <td>
-              <input id="start_date" type="date" value="{{entry.start_date}}"/>
-            </td>
-            <td>
-              <input id="end_date" type="date" value="{{entry.end_date}}"/>
-            </td>
-            <td>
-              <input id="experimenter" value="{{entry.experimenter}}"></input>
-            </td>
-            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
-              <a class="mod" title="Remove entry.">-</a>
-            </td>
-            <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Add new entry below.">+</a>
-            </td>
+          <td name="name">{{entry.name}}</td>
+          <td name="start_date">{{entry.start_date}}</td>
+          <td name="end_date">{{entry.end_date}}</td>
+          <td name="experimenter">{{entry.experimenter}} </td>
+          <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
+            <a class="mod" title="Remove entry.">-</a>
+          </td>
+          <td onclick="Add(this.parentNode);">
+            <a class="mod" title="Edit this entry.">edit</a>
+          </td>
         <tr>
         {% endfor %}
       </table>
+      <a class="mod" title="Add new entry." onclick="Add();">+</a>
 
+    {% elif category=="viruses" %}
       <h3>Viruses
         <button class="pure_btn" onclick="OpenModalNotes('viruses', '{{notes.viruses}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
-      <table id="viruses">
+      <table class="center" id="viruses">
         <tr>
           <th>Virus</th>
           <th>Date</th>
@@ -160,37 +186,27 @@
         </tr>
         {% for entry in viruses %}
           <tr>
-            <td>
-              <select id="name" autocomplete="off">
-                {% for e in availible_viruses %}
-                  <option 
-                    value="{{e.name}}" {%- if e.name == entry.name -%} selected{%- endif -%}
-                  >
-                    {{e.name}}
-                  </option>
-                {% endfor %}
-              </select>
-            </td>
-            <td>
-              <input id="date" type="date" value="{{entry.date}}" />
-            </td>
-            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
-            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+            <td name="name">{{entry.name}}</td>
+            <td name="date">{{entry.date}}</td>
+            <td name="amount">{{entry.amount}}</td>
+            <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Add new entry below.">+</a>
+              <a class="mod" title="Edit this entry.">edit</a>
             </td>
           </tr>
         {% endfor %}
       </table>
+      <a class="mod" title="Add new entry." onclick="Add();">+</a>
 
+    {% elif category=="anesthesia" %}
       <h3>Anesthesia
         <button class="pure_btn" onclick="OpenModalNotes('anesthesia', '{{notes.anesthesia}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
-      <table id="anesthetic">
+      <table class="center" id="anesthetic">
         <tr>
           <th>Anesthesia</th>
           <th>Date</th>
@@ -200,45 +216,33 @@
         </tr>
         {% for entry in anesthesia %}
           <tr>
-            <td>
-              <select id="name" autocomplete="off">
-                {% for e in availible_anesthetic %}
-                  <option 
-                    value="{{e.name}}" {%- if e.name == entry.name -%} selected {%- endif -%}
-                  >
-                    {{e.name}}
-                  </option>
-                {% endfor %}
-              </select>
+            <td name="name">{{entry.name}}</td>
+            <td name="date">{{entry.date}}</td>
+            <td name="amount">{{entry.amount}}</td>
+            <td name="concentration">{{entry.concentration}}</td>
+            <td name="toe_pinch">
+                {%- if entry.toe_pinch -%} yes {%- else -%} no {%- endif -%}
             </td>
-            <td><input id="date" type="date" value="{{entry.date}}"></input></td>
-            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
-            <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-            <td>
-              <input 
-                id="toe_pinch" class="short" convert="bool" 
-                value={%- if entry.toe_pinch -%} "yes" {%- else -%} "no" {%- endif -%}
-              />
-            </td>
-            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+            <td 
+              onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}', '{{entry.date}}');"
+            >
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Add new entry below.">+</a>
+              <a class="mod" title="Edit this entry.">edit</a>
             </td>
           </tr>
         {% endfor %}
       </table>
+      <a class="mod" title="Add new entry." onclick="Add();">+</a>
 
-      <br>
-      <br>
-  
+    {% elif category=="analgesia" %}
       <h3>Analgesia
         <button class="pure_btn" onclick="OpenModalNotes('analgesia', '{{notes.analgesia}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
-      <table id="analgesic">
+      <table class="center" id="analgesic">
         <tr>
           <th>Analgesia</th>
           <th>Date</th>
@@ -247,31 +251,25 @@
         </tr>
         {% for entry in analgesic %}
           <tr>
-            <td>
-              <select id="name" type="list" autocomplete="off">
-                {% for e in availible_analgesic %}
-                  <option 
-                    value="{{e.name}}" {%- if e.name == entry.name -%} selected {%- endif -%}
-                  >
-                    {{e.name}}
-                  </option>
-                {% endfor %}
-              </select>
-            </td>
-            <td><input id="date" type="date" value={{entry.date}}></input></td>
-            <td><input id="amount" class="short" value="{{entry.amount}}"></input></td>
-            <td><input id="concentration" value="{{entry.concentration}}"></input></td>
-            <td onclick="Del(this.parentNode, this.parentNode.parentNode);">
+            <td name="name">{{entry.name}}</td>
+            <td name="date">{{entry.date}}</td>
+            <td name="amount">{{entry.amount}}</td>
+            <td name="concentration">{{entry.concentration}}</td>
+            <td 
+              onclick="Del('{{category}}', '{{entry.name}}', 'experiment',
+              '{{animal_id}}', '{{entry.date}}');"
+            >
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Add new entry below.">+</a>
+              <a class="mod" title="Edit this entry.">edit</a>
             </td>
           </tr>
         {% endfor %}
       </table>
+      <a class="mod" title="Add new entry." onclick="Add();">+</a>
 
-    </div>
+    {% endif %}
     
   <br>
   <br>
@@ -282,9 +280,11 @@
     type="submit" id="submit" value="Surgery Sheet" 
     onclick="GenerateMainSheet('{{animal_id}}', 'surgery_sheet')"
   >
-  <input 
-    type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
-  >
+  {% if category != "" %}
+    <input 
+      type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
+    >
+  {% endif %}
   <input 
     type="submit" id="submit" value="Clear data" onclick="Clear('{{animal_id}}')"
   >
@@ -292,8 +292,8 @@
     type="submit" id="submit" value="Score Sheet" 
     onclick="GenerateMainSheet('{{animal_id}}', 'score_sheet')"
   >
-
   </div>
+
   <dialog id="notes_modal" style="height: 250px; width: 80%;" category="">
     <h2>Notes</h4>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
@@ -317,6 +317,22 @@
     <label id="save_notes_error" class="err"></label><br>
     <button onclick="CloseModalWeights('{{animal_id}}', true)" class="right">Close and Save</button>
     <button onclick="CloseModalWeights('{{animal_id}}', false)" class="right">Close</button>
+  </dialog>
+
+  <dialog id="edit_modal" style="height: 200px; width: 80%;" category="">
+    <button onclick="CloseModal()" style="float: right;">Close</button>
+    <h2>{{category}}</h2>
+    {% if category == "anesthesia" or category == "analgesia" %}
+      {% include "medication_edit.html" %}
+
+    {% elif category == "procedures" or category == "post_procedures" %}
+      {% include "procedures_edit.html" %}
+
+    {% elif category == "viruses" %}
+      {% include "virus_edit.html" %}
+
+    {% endif %}
+    <br>
   </dialog>
 
 </body>

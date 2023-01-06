@@ -19,8 +19,7 @@ from data_manager.tables import (
     PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
     General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
     Protocol, 
-    db,
-    table_to_json
+    db, table_to_json, EXPERIMENT_TABLES
 )
 from utils.utils import sort
 from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
@@ -190,6 +189,32 @@ class DManager:
         db.session.commit()
         return "", 200
 
+    def update_experiment_data_entry(
+        self, animal_id: str, category: str, data: Dict[str, any]
+    ):
+        print("GOT DATA: ", data)
+        Table = EXPERIMENT_TABLES[category] 
+        element = Table.query.get(get_primary_key(category, animal_id, data))
+        if element:
+            print("Updating...")
+            element.update(data)
+        else: 
+            print("Adding...")
+            element = Table.from_json(animal_id, data)
+            db.session.add(element)
+        db.session.commit()
+
+    def delete_experiment_data_entry(
+        self, animal_id: str, category: str, name: str, date: str = ""
+    ):
+        Table = EXPERIMENT_TABLES[category] 
+        element = Table.query.get(
+            get_primary_key(category, animal_id, {"name": name, "date": date})
+        )
+        if element:
+            db.session.delete(element)
+        db.session.commit()
+
     def update_dates(self, animal_id: str, start_date: str) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
 
@@ -208,7 +233,8 @@ class DManager:
         # Update medication:
         def update_medication(table): 
             for x in table.query.filter(table.animal_id == animal_id): 
-                x.date = get_date(x.days_after_surgery+surgery_start)
+                if not x.days_after_surgery == -1:
+                    x.date = get_date(x.days_after_surgery+surgery_start)
         update_medication(Anesthesia)
         update_medication(Analgesia)  
         # Update procedures: 
@@ -473,3 +499,8 @@ def get_surgery_start(protocol: str):
         if procedure.surgery and int(procedure.days_after_start) < surgery_start:
             surgery_start = int(procedure.days_after_start)
     return surgery_start
+
+def get_primary_key(category: str, animal_id: str, data: Dict[str, any]): 
+    if category == "analgesia" or category == "anesthesia":
+        return (animal_id, data["name"], data["date"]) 
+    return (animal_id, data["name"]) 

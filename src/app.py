@@ -162,9 +162,10 @@ def protocol_overview(protocol: str):
         user_name=current_user.name
     )
 
-@app.route("/animal_data/<animal_id>")
+@app.route("/animal_data/<animal_id>", defaults={"category": ""})
+@app.route("/animal_data/<animal_id>/<category>")
 @login_required
-def input(animal_id: str):
+def input(animal_id: str, category: str):
     """! Serves page to input experiment-data.
 
     @param animal_id  id of animal for which to add experiment-data.
@@ -190,11 +191,13 @@ def input(animal_id: str):
         ),
         availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment),
         availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment),
+        availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment),
         availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
         animal_id=animal_id,
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
         notes=notes,
+        category=category,
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -383,6 +386,23 @@ def store_notes(animal_id: str, category: str):
     if dmanager.store_note(animal_id, category, note_txt):
         return "Success", 200
     return "Something went wrong", 500
+
+@app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
+@login_required
+def update_experiment_data(animal_id: str, category: str): 
+    """! Updates an entry in an animals experiment data. """
+    dmanager.update_experiment_data_entry(animal_id, category, request.form)
+    return redirect(request.referrer)
+
+@app.route("/animal_data/<animal_id>/delete/<category>/<name>", defaults={"date": ""}, methods=["POST"])
+@app.route("/animal_data/<animal_id>/delete/<category>/<name>/<date>", methods=["POST"])
+@login_required
+def delete_experiment_data(animal_id: str, category: str, name: str, date: str): 
+    """! Updates an entry in an animals experiment data. """
+    name = html.unescape(name).replace("_", "/")
+    dmanager.delete_experiment_data_entry(animal_id, category, name, date)
+    return redirect(f"/animal_data/{animal_id}/{category}")
+
 
 @app.route("/clear/<animal_id>", methods=["POST"])
 @login_required
@@ -685,6 +705,7 @@ def update_protocol_watercontrol(protocol, subprotocol):
         )
         db.session.add(watercontrol)
     db.session.commit()
+    # TODO redirect to incoming url
     return redirect(f"/settings/protocols/{protocol}/{subprotocol}/watercontrol")
 
 @app.route("/settings/protocols/<protocol>/<subprotocol>/delete/<category>/<name>", methods=["POST"])
