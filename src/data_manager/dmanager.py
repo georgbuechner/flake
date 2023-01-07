@@ -333,7 +333,8 @@ class DManager:
         animal_data = self.sql.get(T_ANIMAL_DATA, key, filter_tag)
         # Add stored? information
         for data in animal_data:
-            data["stored"] = self.__is_stored(data["id"])
+            x, of = self.__is_stored(data["id"])
+            data["stored"] = x == of
         return animal_data
 
     def generate_weight_list(self, animal_id: str, start_weight: int) -> Tuple[str, int]:
@@ -469,27 +470,24 @@ class DManager:
         @param check_all  If False returns True if ANY data is stored
         @return Boolean indicating whether data is stored or not.
         """
-        general = General.query.filter(General.animal_id == animal_id)
-        general = general[0] if general.first() else None
+        dates_counter = [0, 2] # start, death_date
+        general = General.query.get(animal_id)
+        if general is None: 
+            return 0, 100
+        print("Checking 'is_stored?' for: ", animal_id)
+        dates_counter[0] += 1 if date_filled(general.start) else 0
         animal_data = self.__get_animal_entry(animal_id)
-        return (
-            animal_data is not None and general is not None
-            and date_filled(animal_data["death_date"])
-            and date_filled(general.start)
-            and date_filled(general.end)
-        )
-
-    def __has_stored_data(self, animal_id: str) -> bool: 
-        """! Checks if there is any data stored for a animal sofar.
-
-        @param animal_id  ID of animal 
-        @return Boolean indicating whether ANY experiment-data exists for given animal.
-        """
-        for table_name in self.sql.tables.keys():
-            if table_name != T_NOTES and len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
-                return True
-        return False
-
+        dates_counter[0] += 1 if date_filled(animal_data["death_date"]) else 0
+        for Table in [Anesthesia, Analgesia, Virus]: 
+            for entry in Table.query.filter(Table.animal_id == animal_id):
+                dates_counter[0] += 1 if date_filled(entry.date) else 0
+                dates_counter[1] += 1
+        for Table in [Procedure, PostProcedure]: 
+            for entry in Table.query.filter(Table.animal_id == animal_id):
+                dates_counter[0] += 1 if date_filled(entry.start_date) else 0
+                dates_counter[0] += 1 if date_filled(entry.end_date) else 0
+                dates_counter[1] += 2 
+        return dates_counter[0], dates_counter[1]
 
 def date_filled(date_str: str) -> bool: 
     return len(date_str) == 10
