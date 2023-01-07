@@ -102,7 +102,9 @@ class DManager:
         updated_msg = f"{len(updated)} updated ({' '.join(x for x in updated)})"
         return inserted_msg + " " + updated_msg, 206 
 
-    def set_subprotocol(self, animal_id: str, subprotocol: str) -> Tuple[str, int]:
+    def set_subprotocol(
+        self, animal_id: str, subprotocol: str, force: bool
+    ) -> Tuple[str, int]:
         """! Updates subprotocol entry and initializes experiment-data.
 
         Uses the matching protocol and subprotocol to initialize the
@@ -113,6 +115,9 @@ class DManager:
 
         @return Tuple of error-message and http-return-code.
         """
+        x, of = self.__is_stored(animal_id)
+        if x > 0 and force is False: 
+            return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
         res = self.sql.update(T_ANIMAL_DATA, {"id":animal_id}, {"subprotocol":subprotocol})
         if res is None:
             return "An error occured, when setting subprotocol", 500

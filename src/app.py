@@ -272,7 +272,9 @@ def update_animal_subprotocol():
     """
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
-    txt, status = dmanager.set_subprotocol(animal_id, subprotocol) 
+    force = request.form.get("force") == "true"
+    print("From form: ", subprotocol, animal_id, force)
+    txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
     return txt, status
 
 @app.route("/update/animal_data/dates/<animal_id>", methods=["POST"])
@@ -377,7 +379,7 @@ def clear_experiment_data(animal_id: str):
     @return error-/ success-message and status code.
     """
     animal_data = dmanager.get_animal_data(animal_id)[0]
-    dmanager.set_subprotocol(animal_id, animal_data["subprotocol"])
+    dmanager.set_subprotocol(animal_id, animal_data["subprotocol"], True)
     return "Success", 200
 
 
