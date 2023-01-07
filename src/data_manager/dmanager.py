@@ -219,14 +219,12 @@ class DManager:
         self, animal_id: str, weights: str, water_control_mask: str
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
-        general = self.sql.get("general", animal_id)
-        if len(general) == 0:
-            return "general data entry (start, end, ...) missing", 401
-        general = general[0] 
-        general["watercontrol"] = water_control_mask
-        general["weights"] = weights
-        general["start_weight"] = json.loads(weights)[0]
-        self.store_experiment_data(animal_id, {"general": [general]})
+        general = General.query.get(animal_id)
+        print("all generals: ", General.query.all())
+        general.watercontrol_mask = water_control_mask
+        general.weights = weights
+        general.start_weight = json.loads(weights)[0]
+        db.session.commit()
         return "success", 200
 
     def update_definitions_entry(self, category: str, data: Dict[str, any]):
@@ -307,47 +305,49 @@ class DManager:
             data["stored"] = self.__is_stored(data["id"])
         return animal_data
 
-    def generate_weight_list(self, animal_id) -> Tuple[str, int]:
+    def generate_weight_list(self, animal_id: str, start_weight: int) -> Tuple[str, int]:
+        # Update start weight:
+        general = General.query.get(animal_id)
+        general.start_weight = start_weight
+        db.session.commit()
+        general = General.query.get(animal_id)
+
+        # Get animal data and watercontrol infos:
         animal_data = self.__get_animal_entry(animal_id)
         if not date_filled(animal_data["death_date"]): 
-            return "Animal is not yet sacrificed", 401
-        # Get start-date from general data
-        general = self.sql.get("general", animal_id)
-        if len(general) == 0:
-            return "general data entry (start, end, ...) missing", 401
-        general = general[0]  # Only one element. Use this.
-        start_date = general["start"]
+            return "Animal is not yet sacrificed", 200
+        start_date = general.start
         if not date_filled(start_date): 
             return "Missing start-date", 401
-        # Get protocol-information (watercontrol)
-        path = self.__get_protocol_path(animal_id)
-        if path is None: 
-            return "Protocol or subprotocol not found", 401
-        infos = self.__parse_protocal_data(path, "watercontrol")
+        watercontrol_infos = PWatercontrol.query.get(general.experiment)
 
         # Get some values 
-        start_weight = float(general["start_weight"]) if general["start_weight"] != "" else -1
+        start_weight = float(start_weight) if start_weight != "" else -1
         sacrifice_date = strtodate(animal_data["death_date"])
-
-        # Get start date, date of bearth and calculate age at start
         start_date = strtodate(start_date) 
         dob = strtodate(animal_data["dob"])
         age_at_start = (start_date - dob).days
         duration = len(daterange(start_date, sacrifice_date))
 
-        # Generate water-control-mask
-        if len(infos) > 0:
-            infos = infos[0] # Only one element. Use this.
-            days_after_start = infos["days_after_start"]
+        # Generate water-control-mask, if watercontrol is allowed:
+        if watercontrol_infos.allowed:
+            days_after_start = int(watercontrol_infos.days_after_start)
             water_restriction_start = incdate(start_date, days_after_start)
-            surgery_dates = [incdate(start_date, 2)]  # TODO: find surgery_dates
-            duration_water = len(daterange(water_restriction_start, sacrifice_date))
+            surgery_dates = get_surgery_dates(animal_id, general.experiment)
+            duration_water = len(daterange(water_restriction_start, sacrifice_date)) # TODO concider duration
+            if duration_water > int(watercontrol_infos.duration):
+                duration_water = int(watercontrol_infos.duration)
+            if duration_water > duration:
+                duration_water = duration
             # Calculate water-control-mask and estimated weights
             water_control_mask = get_water_control_mask(
                 water_restriction_start, duration_water, surgery_dates, sacrificed=True
             )
             # Add `False`-values for days_after_start  
             water_control_mask = [False for _ in range(days_after_start)] + water_control_mask
+            water_control_mask = water_control_mask + [
+                False for _ in range(duration-(len(water_control_mask)-1))
+            ]
         else:
             water_control_mask = [False for _ in range(duration+1)]
         # Generate estimated weights 
@@ -356,12 +356,11 @@ class DManager:
         )
         weights = apply_noise(estimated_weights, 0.070, start_weight==-1);
 
-        # Update general data
-        general["watercontrol"] = json.dumps(water_control_mask)
-        general["weights"] = json.dumps(weights)
-        # Update start-weight as it might have changed
-        general["start_weight"] = round(estimated_weights[0], 2)
-        self.store_experiment_data(animal_id, {"general": [general]})
+        # Update general data:
+        general.watercontrol_mask = json.dumps(water_control_mask)
+        general.weights = json.dumps(weights)
+        general.start_weight = round(estimated_weights[0], 2)
+        db.session.commit()
         return "success", 200
 
     def __clear_experiment_data(self, animal_id: str) -> int:
@@ -487,3 +486,14 @@ def get_primary_key(category: str, animal_id: str, data: Dict[str, any]):
     if category == "analgesia" or category == "anesthesia":
         return (animal_id, data["name"], data["date"]) 
     return (animal_id, data["name"]) 
+
+def get_surgery_dates(animal_id: str, protocol: str): 
+    procedures = Procedure.query.filter(Procedure.animal_id == animal_id)
+    surgery_dates = []
+    for procedure in procedures:
+        # Get matching protocol-entry to check if procedure is a surgery
+        protocol_procedure = PProcedure.query.get((protocol, procedure.name))
+        if protocol_procedure.surgery:
+            for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
+                surgery_dates.append(date)
+    return surgery_dates

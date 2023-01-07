@@ -29,8 +29,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
-    # Anesthesia.__table__.drop(db.engine)
-    # Analgesia.__table__.drop(db.engine)
+    # General.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -176,6 +175,7 @@ def input(animal_id: str, category: str):
     # Redirect 
     if animal_data[0]["user"] != current_user.name:
         return redirect("/")
+    death_date = animal_data[0]["death_date"] if date_filled(animal_data[0]["death_date"]) else None
     notes = dmanager.get_notes(animal_id)
     general = General.query.get(animal_id)
     return render_template(
@@ -195,6 +195,7 @@ def input(animal_id: str, category: str):
         availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
         animal_id=animal_id,
         animal_data=animal_data,
+        death_date=death_date,
         protocols=dmanager.protocols_and_subprotocols(),
         notes=notes,
         category=category,
@@ -353,10 +354,10 @@ def store_animal_data():
     txt, status = dmanager.extract_animal_data(content.get("csv"))
     return txt, status
 
-@app.route("/generate/weights/<animal_id>", methods=["POST"])
+@app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
-def generate_weight_list(animal_id: str): 
-    txt, status = dmanager.generate_weight_list(animal_id)
+def generate_weight_list(animal_id: str, weight: int): 
+    txt, status = dmanager.generate_weight_list(animal_id, weight)
     return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])

@@ -91,25 +91,29 @@
           <td>
             <input 
               id="start" type="date" value="{{general.start}}"
+              {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
               onchange="UpdateDates('{{animal_id}}', this.value)" 
             />
           </td>
         </tr>
         <tr>
           <td> <label>Start weight: </label>
-          <td> <input id="start_weight" value="{{general.start_weight}}"></input> </td>
+          <td> 
+            <input 
+              id="start_weight" 
+              type="number"
+              value={{general.start_weight}} 
+              onchange="GenerateWeightList('{{animal_id}}', this.value)">
+            </input> 
+          </td>
         </tr>
       </table>
       <br>
-      <input 
-        type="submit" id="submit_weightlist" value="generate weight placeholders" 
-        onclick="GenerateWeightList('{{animal_id}}')"
-      >
       <input type="submit" id="edit_weightlist" value="edit weight-list" onclick="EditWeightList()" />
       <input type="submit" id="toggle_graph" value="toggle graph" onclick="ToggleGraph()" />
 
       <input id="weights" value="{{general.weights}}" hidden>
-      <input id="watercontrol" value="{{general.watercontrol}}" hidden>
+      <input id="watercontrol" value="{{general.watercontrol_mask}}" hidden>
 
       <div id="weight_graph" class="graph" style="height: 250px; width: 100%;"></div>
 

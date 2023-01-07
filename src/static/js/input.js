@@ -97,11 +97,12 @@ async function UpdateDates(animal_id, date_str) {
   }
 }
 
-async function GenerateWeightList(animal_id) {
+async function GenerateWeightList(animal_id, weight) {
   // Send request to server:
   try {
     // Send request:
-    let r = await fetch('/generate/weights/'+animal_id, {method: "POST", body: new FormData()}); 
+    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, 
+      {method: "POST", body: new FormData()}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (r.status === 200) {

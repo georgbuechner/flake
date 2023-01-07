@@ -282,6 +282,7 @@ class General(db.Model):
     start_weight = db.Column(db.Integer, primary_key=False) 
     watercontrol = db.Column(db.Boolean, primary_key=False) 
     weights = db.Column(db.String, primary_key=False)
+    watercontrol_mask = db.Column(db.String, primary_key=False)
 
     def __init__(self, animal_id: str, experiment: str, watercontrol: bool): 
         self.animal_id = animal_id 
@@ -291,6 +292,7 @@ class General(db.Model):
         self.start_weight = 0 
         self.watercontrol = watercontrol
         self.weights = json.dumps([])
+        self.watercontrol_mask = json.dumps([])
 
 class Anesthesia(db.Model): 
     __tablename__ = "anesthesia"
