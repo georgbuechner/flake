@@ -21,10 +21,10 @@
         <td>
           <select 
             id="subprotocol" autocomplete="off" 
-            onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[0].innerHTML)"
+            onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[0].innerHTML, false)"
           >
             <option value="---" selected>---</option>
-            {% for sub in protocols[entry.protocol].subs %}
+            {% for sub in protocols[entry.protocol] %}
               <option 
                 value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}>{{sub}}
               </option>

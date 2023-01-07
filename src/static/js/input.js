@@ -73,39 +73,37 @@ function ToggleGraph() {
     chart.setAttribute("hidden", "hidden");
 }
 
-function UpdateDates(date_string, surgery_start) {
-  console.log("UpdateDates: surgery_start:", surgery_start);
-  // Get all elements with `start_plus` (days to add/ days after surgery) attribute:
-  var arr = document.querySelectorAll("[start_plus]");
-  // Get current day and add surgery-start
-  const day = new Date(date_string).getDate() + parseInt(surgery_start);
-  // Iterate over all elements with `start_plus` attribute and modify date
-  // accordings to start_plus 
-  max_date = 0;
-  for (var i = 0; i < arr.length; i++) {
-    // Create copy and increment days by `start_plus` value of elemenyt
-    const copiedDate = new Date(date_string);
-    const start_plus = parseInt(arr[i].getAttribute("start_plus"));
-    copiedDate.setDate(start_plus+parseInt(day));
-    // Set date-value
-    arr[i].setAttribute("value", copiedDate.toISOString().substring(0, 10));
-    // Check if new date might by new max-date
-    if (copiedDate.getTime() > max_date)
-      max_date = copiedDate.getTime()
+async function UpdateDates(animal_id, autofill) {
+  // Send request to server:
+  try {
+    let formData = new FormData();
+    formData.append("date", document.getElementById("start").value);
+    // Send request:
+    let r = await fetch('/update/animal_data/dates/'+animal_id+"/"+autofill, 
+      {method: "POST", body: formData}); 
+    // Handle response:
+    console.log('HTTP response code: ' + r.status); 
+    let response_text = await r.text()
+    if (r.status === 200) {
+      alert(response_text);
+      window.location=window.location;
+    }
+    else if (r.status > 400 && r.status < 500) {
+      alert("Error code: " + r.status + ": " + response_text);
+    }
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
   }
-  // Set end-date
-  const endDate = new Date(max_date);
-  let end_date_elem = document.getElementById("end");
-  end_date_elem.setAttribute("value", endDate.toISOString().substring(0, 10));
-  // Send message to user to double check all entries.
-  alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
 }
 
-async function GenerateWeightList(animal_id) {
+async function GenerateWeightList(animal_id, weight) {
   // Send request to server:
   try {
     // Send request:
-    let r = await fetch('/generate/weights/'+animal_id, {method: "POST", body: new FormData()}); 
+    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, 
+      {method: "POST", body: new FormData()}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (r.status === 200) {
@@ -158,6 +156,21 @@ async function GenerateMainSheet(animal_id, type) {
   req.send();
 }
 
+function AddOrEdit(elem) {
+  if (entry !== undefined) {
+    for (var i=0; i<entry.children.length; i++) {
+      if (entry.children[i].hasAttribute("name")) {
+        var elem = document.getElementById(entry.children[i].getAttribute("name"));
+        if (elem.type == "checkbox")
+          elem.checked = entry.children[i].innerHTML === "True";
+        else 
+          elem.value=entry.children[i].innerHTML;
+      }
+    }
+  }
+
+  var dialog = document.getElementById("edit_modal"); 
+}
 async function Store(animal_id) {
   // Create new form:
   let formData = new FormData();
@@ -244,39 +257,6 @@ async function Clear(animal_id) {
   }
 }
 
-function Del(row, table) {
-  console.log(row);
-  console.log(table.children.length);
-  // last element (apart from th), simply clear element:
-  if (table.children.length < 3) {
-    reset_row(row)
-  }
-  // Otherwise: remove element:
-  else {
-    row.parentNode.removeChild(row);
-  }
-}
-
-function Add(row) {
-  let new_row = row.cloneNode(true);
-  reset_row(new_row);
-  row.after(new_row);
-}
-
-function reset_row(row) {
-  for (var i=0; i<row.children.length; i++) {
-    reset_input(row.children[i].children[0]);
-  }
-}
-
-function reset_input(elem) {
-  if (elem.nodeName === "SELECT") {
-    elem.options[0].selected = true;
-  }
-  else if (elem.nodeName === "INPUT") {
-    elem.value = "";
-  }
-}
 
 // Modal //
 
@@ -412,4 +392,15 @@ async function CloseModalWeights(animal_id, save) {
       save_notes_error.innerHTML = "Unkown error. Sorry";
     }
   }
+}
+
+function OpenUpdateDatesConfirmation(start_date) { 
+  var dialog = document.getElementById("confirm_modal"); 
+  document.getElementById("start").value = start_date;
+  dialog.showModal();
+} 
+
+function CloseConfirmationModal(animal_id) { 
+  var dialog = document.getElementById("confirm_modal"); 
+  dialog.close();
 }

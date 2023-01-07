@@ -6,7 +6,11 @@ function Add(entry) {
       if (entry.children[i].hasAttribute("name")) {
         var elem = document.getElementById(entry.children[i].getAttribute("name"));
         if (elem.type == "checkbox")
-          elem.checked = entry.children[i].innerHTML === "True";
+          elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
+        else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
+          && entry.children[i].innerHTML == "" 
+          && document.getElementById("start") !== undefined) 
+          elem.value=document.getElementById("start").value;
         else 
           elem.value=entry.children[i].innerHTML;
       }
@@ -14,21 +18,24 @@ function Add(entry) {
   }
   // open add-/edit-modal
   var dialog = document.getElementById("edit_modal"); 
-  console.log("SHOW!!");
   dialog.showModal();
 } 
 
-async function Del(category, name, full_protocol) {
+async function Del(category, name, type, identifier, date) {
   const escaped_name = escape(name).replace("/", "_");
-  let base_url = ""
-  if (full_protocol !== undefined) 
-    base_url = "/settings/protocols/" + full_protocol
+  let base_url = "";
+  if (type === "protocol") 
+    base_url = "/settings/protocols/" + identifier;
+  else if (type === "experiment")
+    base_url = "/animal_data/" + identifier;
   else 
-    base_url = "/definitions"
+    base_url = "/definitions";
+  // Add date if set.
+  date = (date !== undefined) ? "/"+date : "";
   console.log(category, escaped_name);
   try {
     // Send request:
-    let r = await fetch(base_url+"/delete/"+category+"/"+escaped_name, {
+    let r = await fetch(base_url+"/delete/"+category+"/"+escaped_name+date, {
       method: "POST", body: new FormData}); 
     // Handle response:
     if (r.status === 200)

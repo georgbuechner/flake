@@ -1,7 +1,5 @@
-<form action="virus" method="POST">
-  <select 
-    type="text" name="name" id="name" placeholder="name" onchange="Set(this)"
-  >
+<form action="viruses" method="POST">
+  <select name="name" id="name" onchange="Set(this)" >
     {% for definition in definitions %}
       <option value="{{definition.name}}">{{definition.name}}</option>
     {% endfor %}
@@ -13,4 +11,3 @@
   <br><br>
   <input type='submit' name='submit'/>
 </form>
-

@@ -28,26 +28,44 @@
     <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
     <h1><i>FLAKE</i> DATABASE</h1>
 
-    <h2>Definitions: {{category}}</h2>
+    <h2>{{protocol.name}} {{subprotocol}}</i></h2>
     <table class="center"> 
       <tr>
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/general">General</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/general"
+            {%- if category=="general" %} class="active" {%- endif -%} 
+          >General</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/anesthesia">Anesthesia</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/anesthesia"
+            {%- if category=="anesthesia" %} class="active" {%- endif -%} 
+          >Anesthesia</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/analgesia">Analgesia</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/analgesia"
+            {%- if category=="analgesia" %} class="active" {%- endif -%} 
+          >Analgesia</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/procedures">Procedures</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/procedures"
+            {%- if category=="procedures" %} class="active" {%- endif -%} 
+          >Procedures</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/viruses">Viruses</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/viruses"
+            {%- if category=="viruses" %} class="active" {%- endif -%} 
+          >Viruses</a>
         </th> 
         <th>
-          <a href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/watercontrol">Watercontrol</a>
+          <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/watercontrol"
+            {%- if category=="watercontrol" %} class="active" {%- endif -%} 
+          >Watercontrol</a>
         </th> 
       </tr>
     </table>
@@ -56,9 +74,31 @@
     <br>
 
     {% if category=="general" %}
-    <p>
-      Adding general data will be availible soon...
-    </P>
+      <form action="general" method="POST">
+        <input 
+          type="number" 
+          name="num_availible_animals" 
+          id="num_availible_animals" 
+          placeholder="number of availible animals"
+          value="{{data['num_availible_animals'] if 'num_availible_animals' in data}}"
+        >
+        <br><br>
+        <select name="death_drug" id="death_drug">
+          {% for definition in definitions %}
+            <option value="{{definition.name}}">{{definition.name}}</option>
+          {% endfor %}
+        </select>
+        <br><br>
+        <input 
+          type="text" 
+          name="allowed_users" 
+          id="allowed_users" 
+          placeholder="allowed users"
+          value="{{data['allowed_users'] if 'allowed_users' in data}}"
+        >
+        <br><br>
+        <input type='submit' name='submit'/>
+      </form>
 
     {% elif category=="anesthesia" or category=="analgesia" %}
       <table class="center">
@@ -78,7 +118,7 @@
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
              <td 
-               onclick="Del('{{category}}', '{{medication.name}}', '{{protocol.escaped}}/{{subprotocol}}');"
+               onclick="Del('{{category}}', '{{medication.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');"
              >
                <a class="mod" title="Remove entry.">-</a>
              </td>
@@ -107,7 +147,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('procedures', '{{procedure.name}}', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="Del('procedures', '{{procedure.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -133,7 +173,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('viruses', '{{virus.name}}', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="Del('viruses', '{{virus.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -170,7 +210,6 @@
   <dialog id="edit_modal" style="height: 200px; width: 80%;" category="">
     <button onclick="CloseModal()" style="float: right;">Close</button>
     <h2>Entry</h2>
-
     {% if category=="anesthesia" or category=="analgesia" %}
       {% include "protocol_medication_edit.html" %}
     {% elif category=="procedures" %}

@@ -1,0 +1,29 @@
+<form action="{{category}}" method="POST">
+  <select name="name" id="name">
+    {% if category == "anesthesia" %}
+      {% for medication in availible_anesthetic %}
+        <option value="{{medication.name}}">{{medication.name}}</option>
+      {% endfor %}
+    {% else %} 
+      {% for medication in availible_analgesic %}
+        <option value="{{medication.name}}">{{medication.name}}</option>
+      {% endfor %}
+    {% endif %}
+  </select>
+  <br><br>
+  <input 
+    type="date" name="date" id="date" placeholder="date"
+    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+  />
+  <br><br>
+  <input type="text" name="amount" id="amount" placeholder="amount">
+  <br><br>
+  <input type="text" name="concentration" id="concentration" placeholder="concentration">
+  <br><br>
+  {% if category == "anesthesia" %}
+    <input type="checkbox" name="toe_pinch" id="toe_pinch">
+    <br><br>
+  {% endif %}
+
+  <input type='submit' name='submit'/>
+</form>

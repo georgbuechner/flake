@@ -9,13 +9,14 @@ from data_manager.tables import (
     User, 
     AMedication, AProcedure, AVirus,
     PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
+    General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
     Protocol, 
     db,
-    table_to_json,
+    table_to_json
 )
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import hash_pw
+from utils.utils import hash_pw, sort_query
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
@@ -28,8 +29,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
-    # AVirus.__table__.drop(db.engine)
-    # PVirus.__table__.drop(db.engine)
+    # General.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -53,9 +53,11 @@ def main():
 
     @return Rendered html main-page from jinja2-template.
     """
+    print("PROTOCOLS: ", dmanager.protocols())
     return render_template(
-        "index.html", users=dmanager.users(), 
-        protocols=dmanager.protocols,
+        "index.html", 
+        users=dmanager.users(), 
+        protocols=dmanager.protocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -116,11 +118,10 @@ def overview():
 
     @return Rendered html overview-page from jinja2-template.
     """
-    protocols = dmanager.protocols
     return render_template(
         "overview.html", 
         animal_data=dmanager.get_animal_data(),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -138,7 +139,7 @@ def user_overview(user: str):
         "user_overview.html", 
         user=user, 
         animal_data=dmanager.get_animal_data("user", user),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -156,14 +157,15 @@ def protocol_overview(protocol: str):
         "protocol_overview.html", 
         protocol=protocol,
         animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
-        protocols=dmanager.protocols,
+        protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
     )
 
-@app.route("/animal_data/<animal_id>")
+@app.route("/animal_data/<animal_id>", defaults={"category": ""})
+@app.route("/animal_data/<animal_id>/<category>")
 @login_required
-def input(animal_id: str):
+def input(animal_id: str, category: str):
     """! Serves page to input experiment-data.
 
     @param animal_id  id of animal for which to add experiment-data.
@@ -174,26 +176,31 @@ def input(animal_id: str):
     # Redirect 
     if animal_data[0]["user"] != current_user.name:
         return redirect("/")
-
-    experiment_data = dmanager.load_protocal_data(animal_id)
+    death_date = animal_data[0]["death_date"] if date_filled(animal_data[0]["death_date"]) else None
     notes = dmanager.get_notes(animal_id)
+    general = General.query.get(animal_id)
     return render_template(
         "input.html", 
-        stored=experiment_data.stored,
-        general=experiment_data.general,
-        viruses=experiment_data.viruses,
-        anesthesia=experiment_data.anesthetic, 
-        availible_anesthetic=experiment_data.availible_anesthetic,
-        availible_analgesic=experiment_data.availible_analgesic,
-        availible_viruses=experiment_data.availible_viruses,
-        analgesic=experiment_data.analgesic,
-        procedures=experiment_data.procedures,
-        post_procedures=experiment_data.post_procedures,
-        surgery_start=experiment_data.surgery_start,
+        stored=True,
+        general=general,
+        viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "date"),
+        anesthesia=sort_query(Anesthesia.query.filter(Anesthesia.animal_id == animal_id), "date"),
+        analgesic=sort_query(Analgesia.query.filter(Analgesia.animal_id == animal_id), "date"),
+        procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
+        post_procedures=sort_query(
+            PostProcedure.query.filter(PostProcedure.animal_id == animal_id), "start_date"
+        ),
+        availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment),
+        availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment),
+        availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment),
+        availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
         animal_id=animal_id,
         animal_data=animal_data,
-        protocols=dmanager.protocols,
+        death_date=death_date,
+        dob=animal_data[0]["dob"],
+        protocols=dmanager.protocols_and_subprotocols(),
         notes=notes,
+        category=category,
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -256,48 +263,10 @@ def protocol(escaped_protocol: str):
         msg="Protocol not found"
     )
 
-@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>", defaults={"category": "general"})
-@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
-@login_required
-def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
-    protocol = Protocol.query.get(escaped_protocol)
-    full_protocol = f"{escaped_protocol}/{subprotocol}"
-    data = {}
-    definitions = []
-    if category == "anesthesia":
-        data = PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol)
-        definitions = AMedication.query.all()    
-    elif category == "analgesia":
-        data = PAnalgesia.query.filter(PAnalgesia.protocol == full_protocol)
-        definitions = AMedication.query.all()
-    elif category == "procedures":
-        data = PProcedure.query.filter(PProcedure.protocol == full_protocol)
-        definitions = AProcedure.query.all()
-    elif category == "viruses":
-        data = PVirus.query.filter(PVirus.protocol == full_protocol)
-        definitions = AVirus.query.all()
-    elif category == "watercontrol":
-        watercontrol = PWatercontrol.query.get(full_protocol)
-        data = table_to_json(watercontrol) if watercontrol else {}
-
-    if protocol:
-        return render_template(
-            "subprotocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
-            protocol=protocol,
-            subprotocol=subprotocol,
-            category=category,
-            data=data,
-            definitions=definitions,
-            json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
-            msg=""
-        )
-
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 def update_animal_subprotocol(): 
-    """! Updates the subprotocol of an animal 
+    """! Updates the subprotocol of an animal and initializes experiment-data.
 
     @param subprotocol  the new subprotocol
 
@@ -305,8 +274,22 @@ def update_animal_subprotocol():
     """
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
-    txt, status = dmanager.update_animal_field(animal_id, "subprotocol", subprotocol) 
+    force = request.form.get("force") == "true"
+    print("From form: ", subprotocol, animal_id, force)
+    txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
     return txt, status
+
+@app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
+@login_required
+def update_dates(animal_id: str, autofill: bool): 
+    """! Updates the dates an animal 
+
+    @param animal_id  ID of animal for which to add data.
+
+    @return error-/ success-message and status code.
+    """
+    print(f"Updateing dates: {animal_id}, {request.form['date']}")
+    return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required
@@ -337,10 +320,10 @@ def store_animal_data():
     txt, status = dmanager.extract_animal_data(content.get("csv"))
     return txt, status
 
-@app.route("/generate/weights/<animal_id>", methods=["POST"])
+@app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
-def generate_weight_list(animal_id: str): 
-    txt, status = dmanager.generate_weight_list(animal_id)
+def generate_weight_list(animal_id: str, weight: int): 
+    txt, status = dmanager.generate_weight_list(animal_id, weight)
     return txt, status
 
 @app.route("/store/<animal_id>", methods=["POST"])
@@ -371,6 +354,23 @@ def store_notes(animal_id: str, category: str):
         return "Success", 200
     return "Something went wrong", 500
 
+@app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
+@login_required
+def update_experiment_data(animal_id: str, category: str): 
+    """! Updates an entry in an animals experiment data. """
+    dmanager.update_experiment_data_entry(animal_id, category, request.form)
+    return redirect(request.referrer)
+
+@app.route("/animal_data/<animal_id>/delete/<category>/<name>", defaults={"date": ""}, methods=["POST"])
+@app.route("/animal_data/<animal_id>/delete/<category>/<name>/<date>", methods=["POST"])
+@login_required
+def delete_experiment_data(animal_id: str, category: str, name: str, date: str): 
+    """! Updates an entry in an animals experiment data. """
+    name = html.unescape(name).replace("_", "/")
+    dmanager.delete_experiment_data_entry(animal_id, category, name, date)
+    return redirect(f"/animal_data/{animal_id}/{category}")
+
+
 @app.route("/clear/<animal_id>", methods=["POST"])
 @login_required
 def clear_experiment_data(animal_id: str):
@@ -380,8 +380,10 @@ def clear_experiment_data(animal_id: str):
 
     @return error-/ success-message and status code.
     """
-    dmanager.clear_experiment_data(animal_id)
+    animal_data = dmanager.get_animal_data(animal_id)[0]
+    dmanager.set_subprotocol(animal_id, animal_data["subprotocol"], True)
     return "Success", 200
+
 
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
 @login_required
@@ -391,8 +393,7 @@ def generate_surgery_sheet(animal_id: str):
         return "Animal is not yet sacrificed", 401
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
-        protocol=dmanager.get_protocol(animal_id), 
-        experiment_data=dmanager.load_protocal_data(animal_id),
+        experiment_data=dmanager.get_experiment_data(animal_id),
         animal_data=animal_data,
         user_email=current_user.email
     )
@@ -416,81 +417,53 @@ def generate_score_sheet(animal_id: str):
     dcreator.create_score_sheet()
     return send_file("output/score_sheet.docx", as_attachment=True)
 
-@app.route("/settings/definitions/medication", methods=["POST"])
+@app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
-def update_medication_definitions():
-    medication = AMedication.query.get(request.form["name"])
-    if medication:
-        medication.amount = request.form["amount"]
-        medication.concentration = request.form["concentration"]
-        medication.days_after_surgery = request.form["days_after_surgery"]
-    else: 
-        medication = AMedication(
-            name=request.form["name"],
-            amount=request.form["amount"],
-            concentration=request.form["concentration"],
-            days_after_surgery=request.form["days_after_surgery"]
-        )
-        db.session.add(medication)
-    db.session.commit()
-    return redirect("/settings/definitions/medication")
-
-@app.route("/settings/definitions/procedure", methods=["POST"])
-@login_required 
-def update_procedure_definitions():
-    procedure = AProcedure.query.get(request.form["name"])
-    is_surgery = "surgery" in request.form
-    if procedure:
-        procedure.days_after_start = request.form["days_after_start"]
-        procedure.duration = request.form["duration"]
-        procedure.surgery = is_surgery
-    else: 
-        procedure = AProcedure(
-            name=request.form["name"],
-            days_after_start=request.form["days_after_start"],
-            duration=request.form["duration"],
-            surgery=is_surgery
-        )
-        db.session.add(procedure)
-    db.session.commit()
-    return redirect("/settings/definitions/procedures")
-
-@app.route("/settings/definitions/virus", methods=["POST"])
-@login_required 
-def update_virus_definitions():
-    virus = AVirus.query.get(request.form["name"])
-    is_surgery = "surgery" in request.form
-    if virus:
-        print("updating existing virus enty: ", request.form)
-        virus.days_after_start = request.form["days_after_start"]
-        virus.amount = request.form["amount"]
-    else: 
-        print("adding new virus enty: ", request.form)
-        virus = AVirus(
-            name=request.form["name"],
-            days_after_start=request.form["days_after_start"],
-            amount=request.form["amount"],
-        )
-        db.session.add(virus)
-    db.session.commit()
-    return redirect("/settings/definitions/viruses")
-
+def update_definitions_entry(category: str):
+    dmanager.update_definitions_entry(category, request.form)
+    return redirect(request.referrer)
 
 @app.route("/definitions/delete/<category>/<name>", methods=["POST"])
 @login_required 
-def delete_definition(category, name): 
+def delete_definition(category: str, name: str): 
     name = html.unescape(name).replace("_", "/")
-    elem_to_delete = None
-    if category == "medication":
-        elem_to_delete = AMedication.query.get(name)
-    elif category == "procedures":
-        elem_to_delete = AProcedure.query.get(name)
-    elif category == "viruses":
-        elem_to_delete = AVirus.query.get(name)
-    if elem_to_delete is not None:
-        db.session.delete(elem_to_delete)
-    db.session.commit()
-    return redirect("/settings/definitions/"+category)
+    dmanager.delete_definitions_entry(category, name)
+    return redirect(f"/settings/definitions/{category}")
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/<category>", methods=["POST"])
+@login_required 
+def update_protocol_entry(protocol: str, subprotocol: str, category: str):
+    dmanager.update_protocol_entry(
+        category, f"{protocol}/{subprotocol}", request.form
+    )
+    return redirect(request.referrer)
+
+@app.route("/settings/protocols/<protocol>/<subprotocol>/delete/<category>/<name>", methods=["POST"])
+@login_required 
+def delete_protocol_entry(protocol: str, subprotocol: str, category: str, name: str): 
+    name = html.unescape(name).replace("_", "/")
+    dmanager.delete_protocol_entry(category, f"{protocol}/{subprotocol}", name)
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/{category}")
+
+@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
+@login_required
+def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
+    protocol = Protocol.query.get(escaped_protocol)
+    full_protocol = f"{escaped_protocol}/{subprotocol}"
+    data, definitions = dmanager.get_protocol_data(category, full_protocol)
+    if protocol:
+        return render_template(
+            "subprotocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            subprotocol=subprotocol,
+            category=category,
+            data=data,
+            definitions=definitions,
+            json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
+            msg=""
+        )
 
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
@@ -543,7 +516,7 @@ def add_subprotocal(escaped_protocol):
 
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
-def remove_subprotocal(escaped_protocol, subprotocol):
+def remove_subprotocol(escaped_protocol, subprotocol):
     protocol = Protocol.query.get(escaped_protocol)
     if not protocol:
         return render_template(
@@ -565,134 +538,6 @@ def remove_subprotocal(escaped_protocol, subprotocol):
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/anesthesia", methods=["POST"])
-@login_required 
-def update_protocol_anesthesia(protocol, subprotocol):
-    full_protocol = f"{protocol}/{subprotocol}"
-    anesthesia = PAnesthesia.query.get((full_protocol, request.form["name"]))
-    if anesthesia:
-        anesthesia.amount = request.form["amount"]
-        anesthesia.concentration = request.form["concentration"]
-        anesthesia.days_after_surgery = request.form["days_after_surgery"]
-    else: 
-        anesthesia = PAnesthesia(
-            protocol=full_protocol,
-            name=request.form["name"],
-            amount=request.form["amount"],
-            concentration=request.form["concentration"],
-            days_after_surgery=request.form["days_after_surgery"]
-        )
-        db.session.add(anesthesia)
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/anesthesia")
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/analgesia", methods=["POST"])
-@login_required 
-def update_protocol_analgesia(protocol, subprotocol):
-    full_protocol = f"{protocol}/{subprotocol}"
-    analgesia = PAnalgesia.query.get((full_protocol, request.form["name"]))
-    if analgesia:
-        analgesia.amount = request.form["amount"]
-        analgesia.concentration = request.form["concentration"]
-        analgesia.days_after_surgery = request.form["days_after_surgery"]
-    else: 
-        analgesia = PAnalgesia(
-            protocol=full_protocol,
-            name=request.form["name"],
-            amount=request.form["amount"],
-            concentration=request.form["concentration"],
-            days_after_surgery=request.form["days_after_surgery"]
-        )
-        db.session.add(analgesia)
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/analgesia")
-
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/procedure", methods=["POST"])
-@login_required 
-def update_protocol_procedure(protocol, subprotocol):
-    full_protocol = f"{protocol}/{subprotocol}"
-    procedure = PProcedure.query.get((full_protocol, request.form["name"]))
-    is_surgery = "surgery" in request.form
-    if procedure:
-        procedure.days_after_start = request.form["days_after_start"]
-        procedure.duration = request.form["duration"]
-        procedure.surgery = is_surgery
-    else: 
-        procedure = PProcedure(
-            protocol=full_protocol,
-            name=request.form["name"],
-            days_after_start=request.form["days_after_start"],
-            duration=request.form["duration"],
-            surgery=is_surgery
-        )
-        db.session.add(procedure)
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/procedures")
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/virus", methods=["POST"])
-@login_required 
-def update_protocol_virus(protocol, subprotocol):
-    full_protocol = f"{protocol}/{subprotocol}"
-    virus = PVirus.query.get((full_protocol, request.form["name"]))
-    is_surgery = "surgery" in request.form
-    if virus:
-        virus.days_after_start = request.form["days_after_start"]
-        virus.amount = request.form["amount"]
-    else: 
-        virus = PVirus(
-            protocol=full_protocol,
-            name=request.form["name"],
-            days_after_start=request.form["days_after_start"],
-            amount=request.form["amount"],
-        )
-        db.session.add(virus)
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/viruses")
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/watercontrol", methods=["POST"])
-@login_required 
-def update_protocol_watercontrol(protocol, subprotocol):
-    full_protocol = f"{protocol}/{subprotocol}"
-    watercontrol = PWatercontrol.query.get(full_protocol)
-    is_allowed = "allowed" in request.form
-    if watercontrol:
-        watercontrol.allowed = is_allowed
-        watercontrol.days_after_start = request.form["days_after_start"]
-        watercontrol.duration = request.form["duration"]
-    else: 
-        watercontrol = PWatercontrol(
-            protocol=full_protocol,
-            allowed=is_allowed,
-            days_after_start=request.form["days_after_start"],
-            duration=request.form["duration"],
-        )
-        db.session.add(watercontrol)
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/watercontrol")
-
-@app.route("/settings/protocols/<protocol>/<subprotocol>/delete/<category>/<name>", methods=["POST"])
-@login_required 
-def delete_protocol_entry(protocol, subprotocol, category, name): 
-    print("Got category: ", category)
-    full_protocol = f"{protocol}/{subprotocol}"
-    name = html.unescape(name).replace("_", "/")
-    elem_to_delete = None
-    if category == "anesthesia":
-        elem_to_delete = PAnesthesia.query.get((full_protocol, name))
-    elif category == "analgesia":
-        elem_to_delete = PAnalgesia.query.get((full_protocol, name))
-    elif category == "procedures":
-        elem_to_delete = PProcedure.query.get((full_protocol, name))
-    elif category == "viruses":
-        elem_to_delete = PVirus.query.get((full_protocol, name))
-    if elem_to_delete is not None:
-        db.session.delete(elem_to_delete)
-
-    db.session.commit()
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/category")
-
 
 if __name__=="__main__":
     app.run(debug=True)
