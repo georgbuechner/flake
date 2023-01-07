@@ -74,6 +74,10 @@
     <br>
     <br>
 
+    <input 
+     id="start" type="hidden" value="{{ general.start if general.start != '' else dob}}" min="{{dob}}" 
+    />
+
     {% if category=="" %}
       <h3>General 
         <button class="pure_btn" onclick="OpenModalNotes('general', '{{notes.general}}')">
@@ -90,9 +94,9 @@
           <td>Start date:</td>
           <td>
             <input 
-              id="start" type="date" value="{{general.start}}"
+             id="start" type="date" value="{{ general.start if general.start != '' else dob}}" min="{{dob}}" 
               {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-              onchange="OpenUpdateDatesConfirmation();" 
+              onchange="OpenUpdateDatesConfirmation(this.value);" 
             />
           </td>
         </tr>
@@ -284,11 +288,6 @@
     type="submit" id="submit" value="Surgery Sheet" 
     onclick="GenerateMainSheet('{{animal_id}}', 'surgery_sheet')"
   >
-  {% if category != "" %}
-    <input 
-      type="submit" id="submit" value="Store data" onclick="Store('{{animal_id}}')"
-    >
-  {% endif %}
   <input 
     type="submit" id="submit" value="Clear data" onclick="Clear('{{animal_id}}')"
   >
@@ -344,7 +343,8 @@
     <br><br>
     <p>Do you want all dates to be updated accoring to the start date and protocol definitions.</p>
     <br>
-    <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}')"></input>
+    <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}', true)"></input>
+    <input type="submit" value="No" onclick="UpdateDates('{{animal_id}}', false)"></input>
   </dialog>
 
 

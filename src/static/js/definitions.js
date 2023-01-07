@@ -7,6 +7,10 @@ function Add(entry) {
         var elem = document.getElementById(entry.children[i].getAttribute("name"));
         if (elem.type == "checkbox")
           elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
+        else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
+          && entry.children[i].innerHTML == "" 
+          && document.getElementById("start") !== undefined) 
+          elem.value=document.getElementById("start").value;
         else 
           elem.value=entry.children[i].innerHTML;
       }

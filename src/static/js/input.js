@@ -73,19 +73,19 @@ function ToggleGraph() {
     chart.setAttribute("hidden", "hidden");
 }
 
-async function UpdateDates(animal_id, date_str) {
+async function UpdateDates(animal_id, autofill) {
   // Send request to server:
   try {
     let formData = new FormData();
     formData.append("date", document.getElementById("start").value);
     // Send request:
-    let r = await fetch('/update/animal_data/dates/'+animal_id, {method: "POST", body: formData}); 
+    let r = await fetch('/update/animal_data/dates/'+animal_id+"/"+autofill, 
+      {method: "POST", body: formData}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     let response_text = await r.text()
     if (r.status === 200) {
-      alert("Dates have been auto filled based on protocol-specific information. You should double-check! "
-        + response_text);
+      alert(response_text);
       window.location=window.location;
     }
     else if (r.status > 400 && r.status < 500) {
@@ -394,8 +394,9 @@ async function CloseModalWeights(animal_id, save) {
   }
 }
 
-function OpenUpdateDatesConfirmation(animal_id) { 
+function OpenUpdateDatesConfirmation(start_date) { 
   var dialog = document.getElementById("confirm_modal"); 
+  document.getElementById("start").value = start_date;
   dialog.showModal();
 } 
 

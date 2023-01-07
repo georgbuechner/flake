@@ -197,6 +197,7 @@ def input(animal_id: str, category: str):
         animal_id=animal_id,
         animal_data=animal_data,
         death_date=death_date,
+        dob=animal_data[0]["dob"],
         protocols=dmanager.protocols_and_subprotocols(),
         notes=notes,
         category=category,
@@ -278,9 +279,9 @@ def update_animal_subprotocol():
     txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
     return txt, status
 
-@app.route("/update/animal_data/dates/<animal_id>", methods=["POST"])
+@app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required
-def update_dates(animal_id: str): 
+def update_dates(animal_id: str, autofill: bool): 
     """! Updates the dates an animal 
 
     @param animal_id  ID of animal for which to add data.
@@ -288,7 +289,7 @@ def update_dates(animal_id: str):
     @return error-/ success-message and status code.
     """
     print(f"Updateing dates: {animal_id}, {request.form['date']}")
-    return dmanager.update_dates(animal_id, request.form["date"])
+    return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required

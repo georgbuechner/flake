@@ -11,7 +11,10 @@
     {% endif %}
   </select>
   <br><br>
-  <input type="date" name="date" id="date" placeholder="date">
+  <input 
+    type="date" name="date" id="date" placeholder="date"
+    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+  />
   <br><br>
   <input type="text" name="amount" id="amount" placeholder="amount">
   <br><br>

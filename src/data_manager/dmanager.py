@@ -210,7 +210,7 @@ class DManager:
         definitions = DefinitionsTable.query.all()
         return protocol_data, definitions
 
-    def update_dates(self, animal_id: str, start_date: str) -> Tuple[str, int]:
+    def update_dates(self, animal_id: str, start_date: str, autofill: bool) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
 
         @param animal_id  ID of animal 
@@ -222,6 +222,10 @@ class DManager:
         # Update start-date in General
         general = General.query.get(animal_id)
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
+        db.session.commit()
+        if autofill is False: 
+            return "Start date updated without updating other dates.", 200
+        general = General.query.get(animal_id)
         surgery_start = get_surgery_start(general.experiment)
         not_updated = []
         def get_date(inc):
@@ -248,7 +252,7 @@ class DManager:
             default_entry = PVirus.query.get((general.experiment, x.name))
             x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
-        return f"{len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
+        return f"Dates where updated. Make sure to doublecheck! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
     def update_weights_and_watercontrol(
         self, animal_id: str, weights: str, water_control_mask: str
