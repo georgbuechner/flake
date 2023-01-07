@@ -19,56 +19,14 @@ from data_manager.tables import (
     PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
     General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
     Protocol, 
-    db, table_to_json, EXPERIMENT_TABLES
+    db, table_to_json, EXPERIMENT_TABLES, PROTOCOL_TABLES, DEFINITION_TABLES
 )
 from utils.utils import sort
 from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
 
-ANESTHETIC = ["Ketamine / Xylazine", "Isoflurane"]
-# Some important keys
-DAYS_AFTER_START = "days_after_start"
-DAYS_AFTER_SURGERY = "days_after_surgery"
-DURATION_IN_DAYS = "duration_in_days"
 # Main tables
 T_ANIMAL_DATA = "animal_data"
 T_NOTES = "notes"
-
-SOURCE_DATE_FORMAT = "%Y-%m-%d"
-OUTPUT_DATE_FORMAT = "%d.%m.%y"
-
-@dataclass
-class ExperimentData: 
-    """! The experiment-data DTO class."""
-    stored: bool
-    general: Dict[str, any]
-    viruses: Dict[str, any]
-    anesthetic: List[Dict[str, any]]
-    analgesic: List[Dict[str, any]]
-    procedures: List[Dict[str, any]]
-    post_procedures: List[Dict[str, any]]
-    surgery_start: int 
-    availible_anesthetic: List[str] = field(default_factory=list)
-    availible_analgesic: List[str] = field(default_factory=list)
-    availible_viruses: List[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        """! Generates availible anesthetic/ anesthetic from given data. """
-        self.availible_anesthetic = [x["name"] for x in self.anesthetic]
-        self.availible_analgesic = [x["name"] for x in self.analgesic]
-        self.availible_viruses = [x["name"] for x in self.viruses]
-
-    def set_general(self, general: List[Dict[str, any]]):
-        self.general = general
-
-    def dict(self):
-        return {
-            "general": self.general, 
-            "anesthetic":self.anesthetic,
-            "analgesic":self.analgesic,
-            "procedures":self.procedures,
-            "post_procedures":self.post_procedures
-        }
-
 
 class DManager:
     """! The data-manager class.
@@ -163,28 +121,29 @@ class DManager:
         # Clear all existing data
         self.__clear_experiment_data(animal_id)
         # Initialize general 
-        general = General(animal_id, full_protocol, True)  # TODO Get corret watercontrol
+        watercontrol = PWatercontrol.query.get(full_protocol)
+        general = General(animal_id, full_protocol, watercontrol.allowed)
         db.session.add(general)
-        # Initialize procedures
+        # Initialize procedures:
         surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
             if int(protocol_procedure.days_after_start) > surgery_start: 
-                procedure = PostProcedure(animal_id, animal_data["user"], protocol_procedure)
+                procedure = PostProcedure.from_default(animal_id, animal_data["user"], protocol_procedure)
             else: 
-                procedure = Procedure(animal_id, animal_data["user"], protocol_procedure)
+                procedure = Procedure.from_default(animal_id, animal_data["user"], protocol_procedure)
             db.session.add(procedure)
-        # Initialize medication TODO create medication days_after_surgery-times!
+        # Initialize medication:
         for protocol_anesthesia in PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol):
             for x in range(int(protocol_anesthesia.days_after_surgery)+1):
-                anesthetic = Anesthesia(animal_id, protocol_anesthesia, x)
+                anesthetic = Anesthesia.from_default(animal_id, protocol_anesthesia, x)
                 db.session.add(anesthetic)
         for protocol_analgesia in PAnalgesia.query.filter(PAnalgesia.protocol == full_protocol):
             for x in range(int(protocol_analgesia.days_after_surgery)+1):
-                analgesia = Analgesia(animal_id, protocol_analgesia, x)
+                analgesia = Analgesia.from_default(animal_id, protocol_analgesia, x)
                 db.session.add(analgesia)
-        # Initialize viruses
+        # Initialize viruses:
         for protocol_virus in PVirus.query.filter(PVirus.protocol == full_protocol):
-            virus = Virus(animal_id, protocol_virus)
+            virus = Virus.from_default(animal_id, protocol_virus)
             db.session.add(virus)
         db.session.commit()
         return "", 200
@@ -192,14 +151,11 @@ class DManager:
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, any]
     ):
-        print("GOT DATA: ", data)
         Table = EXPERIMENT_TABLES[category] 
         element = Table.query.get(get_primary_key(category, animal_id, data))
         if element:
-            print("Updating...")
             element.update(data)
         else: 
-            print("Adding...")
             element = Table.from_json(animal_id, data)
             db.session.add(element)
         db.session.commit()
@@ -214,6 +170,13 @@ class DManager:
         if element:
             db.session.delete(element)
         db.session.commit()
+    
+    def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, any]]:
+        experiment_data = {"general": table_to_json(General.query.get(animal_id))}
+        for name, Table in EXPERIMENT_TABLES.items(): 
+            data = Table.query.filter(Table.animal_id == animal_id)
+            experiment_data[name] = [table_to_json(t) for t in data]
+        return experiment_data
 
     def update_dates(self, animal_id: str, start_date: str) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
@@ -266,29 +229,48 @@ class DManager:
         self.store_experiment_data(animal_id, {"general": [general]})
         return "success", 200
 
-    def store_experiment_data(
-        self, animal_id: str, data: Dict[str, List[Dict[str, any]]]
+    def update_definitions_entry(self, category: str, data: Dict[str, any]):
+        """! Updates or creates new definition entry. """
+        Table = DEFINITION_TABLES[category] 
+        definitions_entry = Table.query.get(data["name"])
+        if definitions_entry:
+            definitions_entry.update(data)
+        else: 
+            definitions_entry = Table.from_json(data)
+            db.session.add(definitions_entry)
+        db.session.commit()
+
+    def update_protocol_entry(self, category: str, protocol: str, data: Dict[str, any]):
+        """! Updates or creates new definition entry. """
+        # Get protocol-entry from table definied by category
+        if category == "watercontrol": 
+            protocol_entry = PWatercontrol.query.get(protocol) 
+        else: 
+            Table = PROTOCOL_TABLES[category] 
+            protocol_entry = Table.query.get((protocol, data["name"])) 
+        # Update or add new protocol entry depending on wether it existed before.
+        if protocol_entry:
+            protocol_entry.update(data)
+        else: 
+            protocol_entry = Table.from_json(protocol, data)
+            db.session.add(protocol_entry)
+        db.session.commit()
+
+    def delete_protocol_entry(
+        self, category: str, protocol: str, name: str
     ):
-        """! Inserts data to sql-database tables. 
+        Table = PROTOCOL_TABLES[category] 
+        protocol_entry = Table.query.get((protocol, name))
+        if protocol_entry:
+            db.session.delete(protocol_entry)
+        db.session.commit()
 
-        @param animal_id  ID of animal
-        @param data  experiment-data.
-
-        @return status code: 200 on success.
-        """
-        start_date = data["general"][0]["start"] 
-        animal_data = self.__get_animal_entry(animal_id)
-        sacrifice_date = animal_data["death_date"]
-        if start_date > sacrifice_date:
-            raise ParserException("start_date must lie before sacrifice_date!", 400)
-        for table_name, table_data in data.items():
-            # Add animal_id to each entry
-            for x in table_data: 
-                x["animal_id"] = animal_id
-            # Remove old data (TODO check UPSERT option)
-            self.sql.delete(animal_id, [table_name])
-            # Insert data
-            self.sql.insert(table_name, table_data)
+    def delete_definitions_entry(self, category: str, name: str):
+        Table = DEFINITION_TABLES[category] 
+        definition_entry = Table.query.get(name)
+        if definition_entry:
+            db.session.delete(definition_entry)
+        db.session.commit()
 
     def store_note(self, animal_id: str, category: str, note: str) -> bool: 
         """! Stores a given note under animal_id and category in database. 
@@ -477,6 +459,7 @@ class DManager:
             if table_name != T_NOTES and len(self.sql.get(table_name, animal_id, "animal_id")) > 0: 
                 return True
         return False
+
 
 def date_filled(date_str: str) -> bool: 
     return len(date_str) == 10

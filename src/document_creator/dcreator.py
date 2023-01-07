@@ -5,16 +5,14 @@ import re
 from docx import Document
 from docx.shared import Cm
 from typing import Dict, List, Tuple
-from data_manager.dmanager import ExperimentData
-from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate
+from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
 
 class DCreator:
 
     def __init__(
         self, 
         template_path: str, 
-        protocol: str, 
-        experiment_data: ExperimentData,
+        experiment_data: Dict[str, Dict[str, any]],
         animal_data: Dict[str, any],
         user_email
     ):
@@ -22,14 +20,16 @@ class DCreator:
         with open("resources/replacements.json") as f:
             self.replacements = json.load(f)
         # Try to load protocol-specific template, otherwise use default.
+        protocol = experiment_data["general"]["experiment"]
         if os.path.exists(os.path.join(template_path, protocol)):
             self.doc = Document(os.path.join(template_path, f"{protocol}.docx"))
         else: 
             self.doc = Document(os.path.join(template_path, "default.docx"))
         # Data
-        self.fields = experiment_data.dict()
+        self.fields = experiment_data
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
+        print("GENERAL: ", self.fields["general"])
 
     def create_from_template(self):
         # Create document:
@@ -150,12 +150,12 @@ class DCreator:
                 result = re.search(r"\{(.*)\}", value)
                 if result is not None:
                     if result.group(1) in self.replacements:
-                        return self.replacements[result.group(1)]
+                        return str(self.replacements[result.group(1)])
             # Convert datetime
-            elif isinstance(value, datetime):
+            elif is_date(value):
                 return datetostr(entry)
             # Otherwise return value unchanged
-            return value
+            return str(value)
 
         def get_iterator_and_source(par) -> Tuple[str, List[any]]:
             result = re.search(r"\{{(.*) in (.*)}}", par.text)
@@ -228,13 +228,13 @@ class DCreator:
 def update_paragraph(par, old, new): 
     inline = par.runs 
     for i in range(len(inline)): 
-        if old in inline[i].text: 
+        if str(old) in inline[i].text: 
             text = inline[i].text
-            text = text.replace(old, new)
+            text = text.replace(str(old), str(new))
             inline[i].text = text
             return
     # If not found (since runs split old-text):
-    update_paragraph_fast(par, old, new)
+    update_paragraph_fast(par, str(old), str(new))
 
 def update_paragraph_fast(par, old, new):
     par.text = par.text.replace(old, new)

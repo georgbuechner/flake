@@ -19,3 +19,6 @@ def incdate(date: datetime, days: int) -> datetime:
 
 def daterange(date1: str, date2: str) -> List[datetime]:
     return [date1 + timedelta(days=x) for x in range((date2-date1).days+1)]
+
+def is_date(date_str: str) -> bool:
+    return isinstance(date_str, datetime)

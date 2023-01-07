@@ -1,4 +1,4 @@
-<form action="virus" method="POST">
+<form action="viruses" method="POST">
   <select name="name" id="name" onchange="Set(this)" >
     {% for definition in definitions %}
       <option value="{{definition.name}}">{{definition.name}}</option>

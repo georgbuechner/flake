@@ -46,6 +46,25 @@ class AMedication(db.Model):
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
 
+    def __init__(
+        self, name: str, amount: str, concentration: str, days_after_surgery: str
+    ):
+        self.name = name 
+        self.amount = amount 
+        self.concentration = concentration 
+        self.days_after_surgery = days_after_surgery
+
+    @classmethod 
+    def from_json(cls, m: Dict[str, any]): 
+        return cls(m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    def update(self, medication: Dict[str, any]): 
+        self.name = medication["name"] 
+        self.amount = medication["amount"]
+        self.concentration = medication["concentration"]
+        self.days_after_surgery = medication["days_after_surgery"]
+
+
 class AProcedure(db.Model): 
     __tablename__ = "availible_procedures"
 
@@ -54,12 +73,44 @@ class AProcedure(db.Model):
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
 
+    def __init__(
+        self, name: str, days_after_start: str, duration: str, surgery: bool
+    ):
+        self.name = name 
+        self.days_after_start = days_after_start 
+        self.duration = duration 
+        self.surgery = surgery
+
+    @classmethod
+    def from_json(cls, p: Dict[str, any]): 
+        return cls(p["name"], p["days_after_start"], p["duration"], "surgery" in p)
+
+    def update(self, procedure: Dict[str, any]): 
+        self.name = procedure["name"] 
+        self.days_after_start = procedure["days_after_start"] 
+        self.duration = procedure["duration"] 
+        self.surgery = "surgery" in procedure
+
 class AVirus(db.Model): 
     __tablename__ = "availible_viruses"
 
     name = db.Column(db.String, primary_key=True) 
     days_after_start = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
+
+    def __init__(self, name: str, days_after_start: str, amount: str):
+        self.name = name 
+        self.days_after_start = days_after_start 
+        self.amount = amount
+
+    @classmethod 
+    def from_json(cls, v: Dict[str, any]): 
+        return cls(v["name"], v["days_after_start"], v["amount"])
+    
+    def update(self, virus: Dict[str, any]): 
+        self.name = virus["name"] 
+        self.days_after_start = virus["days_after_start"]
+        self.amount = virus["amount"]
 
 class PAnesthesia(db.Model): 
     __tablename__ = "protocol_anesthesia"
@@ -70,6 +121,25 @@ class PAnesthesia(db.Model):
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
 
+    def __init__(
+        self, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
+    ):
+        self.protocol = protocol 
+        self.name = name 
+        self.amount = amount
+        self.concentration = concentration
+        self.days_after_surgery = days_after_surgery 
+
+    @classmethod
+    def from_json(cls, protocol: str, m: Dict[str, any]): 
+        return cls(protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    def update(self, medication: Dict[str, any]): 
+        self.name = medication["name"] 
+        self.amount = medication["amount"] 
+        self.concentration = medication["concentration"] 
+        self.days_after_surgery = medication["days_after_surgery"]
+ 
 class PAnalgesia(db.Model): 
     __tablename__ = "protocol_analgesia"
 
@@ -79,7 +149,25 @@ class PAnalgesia(db.Model):
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
 
+    def __init__(
+        self, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
+    ):
+        self.protocol = protocol 
+        self.name = name 
+        self.amount = amount
+        self.concentration = concentration
+        self.days_after_surgery = days_after_surgery 
 
+    @classmethod
+    def from_json(cls, protocol: str, m: Dict[str, any]): 
+        return cls(protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    def update(self, medication: Dict[str, any]): 
+        self.name = medication["name"] 
+        self.amount = medication["amount"] 
+        self.concentration = medication["concentration"] 
+        self.days_after_surgery = medication["days_after_surgery"]
+ 
 class PProcedure(db.Model): 
     __tablename__ = "protocol_procedures"
 
@@ -89,6 +177,27 @@ class PProcedure(db.Model):
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
 
+    def __init__(
+        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
+    ):
+        self.protocol = protocol
+        self.name = name 
+        self.days_after_start = days_after_start 
+        self.duration = duration
+        self.surgery = surgery
+
+    @classmethod
+    def from_json(cls, protocol: str, p: Dict[str, any]): 
+        return cls(
+            protocol, p["name"], p["days_after_start"], p["duration"], "surgery" in p
+        )
+
+    def update(self, procedure: Dict[str, any]): 
+        self.name = procedure["name"] 
+        self.days_after_start = procedure["days_after_start"] 
+        self.duration = procedure["duration"] 
+        self.surgery = "surgery" in procedure
+
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
 
@@ -97,6 +206,23 @@ class PVirus(db.Model):
     days_after_start = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
+    def __init__(
+        self, protocol: str, name: str, days_after_start: str, amount: str
+    ):
+        self.protocol = protocol
+        self.name = name 
+        self.days_after_start = days_after_start 
+        self.amount = amount
+
+    @classmethod
+    def from_json(cls, protocol: str, v: Dict[str, any]): 
+        return cls(protocol, v["name"], v["days_after_start"], v["amount"])
+
+    def update(self, p: Dict[str, any]): 
+        self.name = p["name"] 
+        self.days_after_start = p["days_after_start"] 
+        self.amount = p["amount"] 
+
 class PWatercontrol(db.Model): 
     __tablename__ = "protocol_watercontrol"
 
@@ -104,6 +230,23 @@ class PWatercontrol(db.Model):
     allowed = db.Column(db.Boolean, primary_key=False) 
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
+
+    def __init__(
+        self, protocol: str, allowed: bool, days_after_start: str, duration: str
+    ):
+        self.protocol = protocol
+        self.allowed = allowed
+        self.days_after_start = days_after_start 
+        self.duration = duration
+
+    @classmethod
+    def from_json(cls, protocol: str, w: Dict[str, any]): 
+        return cls(protocol, "allowed" in p, w["days_after_start"], w["duration"])
+
+    def update(self, watercontrol: Dict[str, any]): 
+        self.allowed = "allowed" in watercontrol
+        self.days_after_start = watercontrol["days_after_start"] 
+        self.duration = watercontrol["duration"] 
 
 class Protocol(db.Model): 
     __tablename__ = "protocols"
@@ -351,4 +494,17 @@ EXPERIMENT_TABLES = {
     "procedures": Procedure,
     "post_procedures": PostProcedure,
     "viruses": Virus 
+}
+
+PROTOCOL_TABLES = {
+    "anesthesia": PAnesthesia, 
+    "analgesia": PAnalgesia, 
+    "procedures": PProcedure, 
+    "viruses": PVirus
+}
+
+DEFINITION_TABLES = { 
+    "medication": AMedication, 
+    "procedures": AProcedure, 
+    "viruses": AVirus
 }
