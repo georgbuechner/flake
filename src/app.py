@@ -55,7 +55,8 @@ def main():
     """
     print("PROTOCOLS: ", dmanager.protocols())
     return render_template(
-        "index.html", users=dmanager.users(), 
+        "index.html", 
+        users=dmanager.users(), 
         protocols=dmanager.protocols(),
         user_email=current_user.email,
         user_name=current_user.name

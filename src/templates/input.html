@@ -92,7 +92,7 @@
             <input 
               id="start" type="date" value="{{general.start}}"
               {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-              onchange="UpdateDates('{{animal_id}}', this.value)" 
+              onchange="OpenUpdateDatesConfirmation();" 
             />
           </td>
         </tr>
@@ -338,6 +338,15 @@
     {% endif %}
     <br>
   </dialog>
+
+  <dialog id="confirm_modal" style="height: 100px; width: 50%;" category="">
+    <button onclick="CloseConfirmationModal();" style="float: right;">Close</button>
+    <br><br>
+    <p>Do you want all dates to be updated accoring to the start date and protocol definitions.</p>
+    <br>
+    <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}')"></input>
+  </dialog>
+
 
 </body>
 

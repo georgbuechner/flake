@@ -60,7 +60,7 @@ class DManager:
         """
         return self.sql.get_all(T_ANIMAL_DATA, "user")
 
-    def protocols(self) -> List[str]:
+    def protocols(self) -> Dict[str, str]:
         """! Gets list of all protocols which are currently
         applied for all animals (refers to pyrat data).
 

@@ -77,7 +77,7 @@ async function UpdateDates(animal_id, date_str) {
   // Send request to server:
   try {
     let formData = new FormData();
-    formData.append("date", date_str);
+    formData.append("date", document.getElementById("start").value);
     // Send request:
     let r = await fetch('/update/animal_data/dates/'+animal_id, {method: "POST", body: formData}); 
     // Handle response:
@@ -391,4 +391,14 @@ async function CloseModalWeights(animal_id, save) {
       save_notes_error.innerHTML = "Unkown error. Sorry";
     }
   }
+}
+
+function OpenUpdateDatesConfirmation(animal_id) { 
+  var dialog = document.getElementById("confirm_modal"); 
+  dialog.showModal();
+} 
+
+function CloseConfirmationModal(animal_id) { 
+  var dialog = document.getElementById("confirm_modal"); 
+  dialog.close();
 }
