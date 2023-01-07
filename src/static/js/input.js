@@ -82,12 +82,13 @@ async function UpdateDates(animal_id, date_str) {
     let r = await fetch('/update/animal_data/dates/'+animal_id, {method: "POST", body: formData}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
+    let response_text = await r.text()
     if (r.status === 200) {
-      alert("All dates have been auto filled based on protocol-specific information. You should double-check!");
+      alert("Dates have been auto filled based on protocol-specific information. You should double-check! "
+        + response_text);
       window.location=window.location;
     }
     else if (r.status > 400 && r.status < 500) {
-      let response_text = await r.text()
       alert("Error code: " + r.status + ": " + response_text);
     }
     else

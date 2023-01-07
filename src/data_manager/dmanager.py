@@ -223,6 +223,7 @@ class DManager:
         general = General.query.get(animal_id)
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
         surgery_start = get_surgery_start(general.experiment)
+        not_updated = []
         def get_date(inc):
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
         # Update medication:
@@ -230,6 +231,8 @@ class DManager:
             for x in table.query.filter(table.animal_id == animal_id): 
                 if not x.days_after_surgery == -1:
                     x.date = get_date(x.days_after_surgery+surgery_start)
+                else: 
+                    not_updated.append((x.name, x.date))
         update_medication(Anesthesia)
         update_medication(Analgesia)  
         # Update procedures: 
@@ -245,7 +248,7 @@ class DManager:
             default_entry = PVirus.query.get((general.experiment, x.name))
             x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
-        return "", 200
+        return f"{len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
     def update_weights_and_watercontrol(
         self, animal_id: str, weights: str, water_control_mask: str
