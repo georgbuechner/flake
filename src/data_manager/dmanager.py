@@ -16,7 +16,7 @@ from utils.parser_weights_and_water import (
 )
 from data_manager.tables import (
     AMedication, AProcedure, AVirus,
-    PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
+    PGeneral, PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
     General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
     Protocol, 
     db, table_to_json, EXPERIMENT_TABLES, PROTOCOL_TABLES, DEFINITION_TABLES
@@ -172,11 +172,38 @@ class DManager:
         db.session.commit()
     
     def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, any]]:
-        experiment_data = {"general": table_to_json(General.query.get(animal_id))}
+        general = General.query.get(animal_id)
+        protocol_general = PGeneral.query.get(general.experiment)
+        medication_infos = AMedication.query.get(protocol_general.death_drug)
+        experiment_data = {"general": table_to_json(general)}
+        experiment_data["general"]["death_drug"] = protocol_general.death_drug
+        experiment_data["general"]["death_drug_amount"] = medication_infos.amount
+        experiment_data["general"]["death_drug_concentration"] = medication_infos.concentration
+
+        print("death_drug: ", protocol_general.death_drug)
+        print("General: ", experiment_data["general"])
         for name, Table in EXPERIMENT_TABLES.items(): 
             data = Table.query.filter(Table.animal_id == animal_id)
             experiment_data[name] = [table_to_json(t) for t in data]
         return experiment_data
+
+    def get_protocol_data(self, category: str, full_protocol: str): 
+        print("Got category: ", category)
+        if category == "general":
+            general = PGeneral.query.get(full_protocol)
+            data = table_to_json(general) if general else {}
+            return data, AMedication.query.all()
+
+        if category == "watercontrol":
+            watercontrol = PWatercontrol.query.get(full_protocol)
+            data = table_to_json(watercontrol) if watercontrol else {}
+            return data, {}
+        Table = PROTOCOL_TABLES[category]
+        protocol_data = Table.query.filter(Table.protocol == full_protocol)
+        definition_category = category if category not in ["anesthesia", "analgesia"] else "medication"
+        DefinitionsTable = DEFINITION_TABLES[definition_category]
+        definitions = DefinitionsTable.query.all()
+        return protocol_data, definitions
 
     def update_dates(self, animal_id: str, start_date: str) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
@@ -220,7 +247,6 @@ class DManager:
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
         general = General.query.get(animal_id)
-        print("all generals: ", General.query.all())
         general.watercontrol_mask = water_control_mask
         general.weights = weights
         general.start_weight = json.loads(weights)[0]
@@ -241,8 +267,13 @@ class DManager:
     def update_protocol_entry(self, category: str, protocol: str, data: Dict[str, any]):
         """! Updates or creates new definition entry. """
         # Get protocol-entry from table definied by category
-        if category == "watercontrol": 
+        print("Got data: ", data)
+        if category == "general": 
+            protocol_entry = PGeneral.query.get(protocol) 
+            Table = PGeneral
+        elif category == "watercontrol": 
             protocol_entry = PWatercontrol.query.get(protocol) 
+            Table = PWatercontrol
         else: 
             Table = PROTOCOL_TABLES[category] 
             protocol_entry = Table.query.get((protocol, data["name"])) 

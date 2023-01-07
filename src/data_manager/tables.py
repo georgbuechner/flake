@@ -112,6 +112,31 @@ class AVirus(db.Model):
         self.days_after_start = virus["days_after_start"]
         self.amount = virus["amount"]
 
+class PGeneral(db.Model):
+    __tablename__ = "protocol_general"
+
+    protocol = db.Column(db.String, primary_key=True) 
+    num_availible_animals = db.Column(db.Integer, primary_key=False) 
+    death_drug = db.Column(db.String, primary_key=False)
+    allowed_users = db.Column(db.String, primary_key=False)
+
+    def __init__(
+        self, protocol: str, num_availible_animals: int, death_drug: str, allowed_users: str
+    ):
+        self.protocol = protocol 
+        self.num_availible_animals = num_availible_animals 
+        self.death_drug = death_drug 
+        self.allowed_users = allowed_users 
+
+    @classmethod 
+    def from_json(cls, protocol: str, g: Dict[str, any]): 
+        return cls(protocol, g["num_availible_animals"], g["death_drug"], g["allowed_users"])
+
+    def update(self, general: Dict[str, any]): 
+        self.num_availible_animals = general["num_availible_animals"]
+        self.death_drug = general["death_drug"]
+        self.allowed_users = general["allowed_users"]
+
 class PAnesthesia(db.Model): 
     __tablename__ = "protocol_anesthesia"
 

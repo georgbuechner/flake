@@ -261,44 +261,6 @@ def protocol(escaped_protocol: str):
         msg="Protocol not found"
     )
 
-@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>", defaults={"category": "general"})
-@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
-@login_required
-def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
-    protocol = Protocol.query.get(escaped_protocol)
-    full_protocol = f"{escaped_protocol}/{subprotocol}"
-    data = {}
-    definitions = []
-    if category == "anesthesia":
-        data = PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol)
-        definitions = AMedication.query.all()    
-    elif category == "analgesia":
-        data = PAnalgesia.query.filter(PAnalgesia.protocol == full_protocol)
-        definitions = AMedication.query.all()
-    elif category == "procedures":
-        data = PProcedure.query.filter(PProcedure.protocol == full_protocol)
-        definitions = AProcedure.query.all()
-    elif category == "viruses":
-        data = PVirus.query.filter(PVirus.protocol == full_protocol)
-        definitions = AVirus.query.all()
-    elif category == "watercontrol":
-        watercontrol = PWatercontrol.query.get(full_protocol)
-        data = table_to_json(watercontrol) if watercontrol else {}
-
-    if protocol:
-        return render_template(
-            "subprotocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
-            protocol=protocol,
-            subprotocol=subprotocol,
-            category=category,
-            data=data,
-            definitions=definitions,
-            json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
-            msg=""
-        )
-
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 def update_animal_subprotocol(): 
@@ -477,7 +439,27 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
 def delete_protocol_entry(protocol: str, subprotocol: str, category: str, name: str): 
     name = html.unescape(name).replace("_", "/")
     dmanager.delete_protocol_entry(category, f"{protocol}/{subprotocol}", name)
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/category")
+    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/{category}")
+
+@app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
+@login_required
+def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
+    protocol = Protocol.query.get(escaped_protocol)
+    full_protocol = f"{escaped_protocol}/{subprotocol}"
+    data, definitions = dmanager.get_protocol_data(category, full_protocol)
+    if protocol:
+        return render_template(
+            "subprotocol.html", 
+            user_email=current_user.email, 
+            user_name=current_user.name,
+            protocol=protocol,
+            subprotocol=subprotocol,
+            category=category,
+            data=data,
+            definitions=definitions,
+            json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
+            msg=""
+        )
 
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
