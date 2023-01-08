@@ -245,6 +245,7 @@ def protocols():
 @app.route("/settings/protocols/<escaped_protocol>", methods=["GET"])
 @login_required
 def protocol(escaped_protocol: str):
+    print("All protocls: ", Protocol.query.all())
     protocol = Protocol.query.get(escaped_protocol)
     if protocol:
         return render_template(
@@ -275,7 +276,6 @@ def update_animal_subprotocol():
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
     force = request.form.get("force") == "true"
-    print("From form: ", subprotocol, animal_id, force)
     txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
     return txt, status
 
@@ -326,21 +326,6 @@ def generate_weight_list(animal_id: str, weight: int):
     txt, status = dmanager.generate_weight_list(animal_id, weight)
     return txt, status
 
-@app.route("/store/<animal_id>", methods=["POST"])
-@login_required
-def store_experiment_data(animal_id: str):
-    """! Adds new experiment-data from for given animal-id.
-
-    @param animal_id  ID of animal for which to add data.
-    @return error-/ success-message and status code.
-    """
-    data = json.loads(request.form.get("data"))
-    try:
-        dmanager.store_experiment_data(animal_id, data)
-    except ParserException as ex:
-        return ex.msg, ex.status
-    return "Success", 200
-
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
 def store_notes(animal_id: str, category: str):
@@ -361,7 +346,9 @@ def update_experiment_data(animal_id: str, category: str):
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
     return redirect(request.referrer)
 
-@app.route("/animal_data/<animal_id>/delete/<category>/<name>", defaults={"date": ""}, methods=["POST"])
+@app.route(
+    "/animal_data/<animal_id>/delete/<category>/<name>", defaults={"date": ""}, methods=["POST"]
+)
 @app.route("/animal_data/<animal_id>/delete/<category>/<name>/<date>", methods=["POST"])
 @login_required
 def delete_experiment_data(animal_id: str, category: str, name: str, date: str): 
@@ -369,7 +356,6 @@ def delete_experiment_data(animal_id: str, category: str, name: str, date: str):
     name = html.unescape(name).replace("_", "/")
     dmanager.delete_experiment_data_entry(animal_id, category, name, date)
     return redirect(f"/animal_data/{animal_id}/{category}")
-
 
 @app.route("/clear/<animal_id>", methods=["POST"])
 @login_required
@@ -383,7 +369,6 @@ def clear_experiment_data(animal_id: str):
     animal_data = dmanager.get_animal_data(animal_id)[0]
     dmanager.set_subprotocol(animal_id, animal_data["subprotocol"], True)
     return "Success", 200
-
 
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
 @login_required
@@ -409,7 +394,6 @@ def generate_score_sheet(animal_id: str):
 
     dcreator = DCreator(
         template_path="templates/score_sheet", 
-        protocol=dmanager.get_protocol(animal_id), 
         experiment_data=dmanager.load_protocal_data(animal_id),
         animal_data=animal_data,
         user_email=current_user.email
@@ -468,7 +452,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
 def add_protocal():
-    escaped_name = escape_protocol(request.form["name"])
+    escaped_name = escape_protocol(request.form["name"]).strip()
     protocol = Protocol.query.get(escaped_name)
     if protocol:
         return render_template(

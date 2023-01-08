@@ -17,7 +17,7 @@ source .env/bin/activate
 
 Install requirements:
 ```
-pip insatll -r requirements.txt
+pip install -r requirements.txt
 ``` 
 
 Start server: 

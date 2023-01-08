@@ -266,7 +266,7 @@ class PWatercontrol(db.Model):
 
     @classmethod
     def from_json(cls, protocol: str, w: Dict[str, any]): 
-        return cls(protocol, "allowed" in p, w["days_after_start"], w["duration"])
+        return cls(protocol, "allowed" in w, w["days_after_start"], w["duration"])
 
     def update(self, watercontrol: Dict[str, any]): 
         self.allowed = "allowed" in watercontrol

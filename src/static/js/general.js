@@ -75,6 +75,7 @@ function NotResponsible() {
 }
 
 function CloseModal() { 
+  window.location=window.location;
   var dialog = document.getElementById("confirm_modal"); 
   document.getElementById("set_subprotocol_msg").innerHTML = ""; 
   dialog.close(); 

@@ -115,10 +115,12 @@ class DManager:
 
         @return Tuple of error-message and http-return-code.
         """
-        x, of = self.__is_stored(animal_id)
+        x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
         res = self.sql.update(T_ANIMAL_DATA, {"id":animal_id}, {"subprotocol":subprotocol})
+        if subprotocol == "---":
+            return "", 200
         if res is None:
             return "An error occured, when setting subprotocol", 500
         animal_data = self.__get_animal_entry(animal_id)
@@ -133,9 +135,13 @@ class DManager:
         surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
             if int(protocol_procedure.days_after_start) > surgery_start: 
-                procedure = PostProcedure.from_default(animal_id, animal_data["user"], protocol_procedure)
+                procedure = PostProcedure.from_default(
+                    animal_id, animal_data["user"], protocol_procedure
+                )
             else: 
-                procedure = Procedure.from_default(animal_id, animal_data["user"], protocol_procedure)
+                procedure = Procedure.from_default(
+                    animal_id, animal_data["user"], protocol_procedure
+                )
             db.session.add(procedure)
         # Initialize medication:
         for protocol_anesthesia in PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol):
@@ -471,7 +477,7 @@ class DManager:
             return animal_data[0]
         return None
 
-    def __is_stored(self, animal_id: str) -> bool:
+    def __is_stored(self, animal_id: str, ignore_death_date: bool = False) -> bool:
         """! Checks if experiment-data is stored. 
 
         Checks if animal is dead (`death_date` is filled) and whether
@@ -479,17 +485,17 @@ class DManager:
         `start` and `end` or filled)
 
         @param animal_id  ID of animal.
-        @param check_all  If False returns True if ANY data is stored
+        @param ignore_death_date If True does not concider death date
         @return Boolean indicating whether data is stored or not.
         """
-        dates_counter = [0, 2] # start, death_date
+        dates_counter = [0, 2 if not ignore_death_date else 1] # start (and death_date)
         general = General.query.get(animal_id)
         if general is None: 
             return 0, 100
-        print("Checking 'is_stored?' for: ", animal_id)
         dates_counter[0] += 1 if date_filled(general.start) else 0
         animal_data = self.__get_animal_entry(animal_id)
-        dates_counter[0] += 1 if date_filled(animal_data["death_date"]) else 0
+        if not ignore_death_date:
+            dates_counter[0] += 1 if date_filled(animal_data["death_date"]) else 0
         for Table in [Anesthesia, Analgesia, Virus]: 
             for entry in Table.query.filter(Table.animal_id == animal_id):
                 dates_counter[0] += 1 if date_filled(entry.date) else 0
@@ -515,6 +521,7 @@ def escape_protocol(protocol: str) -> str:
     """
     return protocol.replace(" ", "").replace("/", "_")
 
+
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
     surgery_start = 900
@@ -523,10 +530,12 @@ def get_surgery_start(protocol: str):
             surgery_start = int(procedure.days_after_start)
     return surgery_start
 
+
 def get_primary_key(category: str, animal_id: str, data: Dict[str, any]): 
     if category == "analgesia" or category == "anesthesia":
         return (animal_id, data["name"], data["date"]) 
     return (animal_id, data["name"]) 
+
 
 def get_surgery_dates(animal_id: str, protocol: str): 
     procedures = Procedure.query.filter(Procedure.animal_id == animal_id)
