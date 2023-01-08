@@ -46,7 +46,7 @@ class DCreator:
         start = strtodate(self.fields["general"]["start"]) 
         last_date = copy.deepcopy(start)
         weights = json.loads(self.fields["general"]["weights"])
-        watercontrols = json.loads(self.fields["general"]["watercontrol"])
+        watercontrols = json.loads(self.fields["general"]["watercontrol_mask"])
         monthly_weights = []
         data = {
             "data": {"weights": [], "watercontrol": [], "sig": []}, 

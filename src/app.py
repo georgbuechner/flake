@@ -394,7 +394,7 @@ def generate_score_sheet(animal_id: str):
 
     dcreator = DCreator(
         template_path="templates/score_sheet", 
-        experiment_data=dmanager.load_protocal_data(animal_id),
+        experiment_data=dmanager.get_experiment_data(animal_id),
         animal_data=animal_data,
         user_email=current_user.email
     )
