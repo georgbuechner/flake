@@ -1,5 +1,5 @@
 <form action="viruses" method="POST">
-  <select name="name" id="name" onchange="Set(this)" >
+  <select name="name" id="name" onchange='Set(this, {{json_definitions|safe}})'>
     {% for definition in definitions %}
       <option value="{{definition.name}}">{{definition.name}}</option>
     {% endfor %}

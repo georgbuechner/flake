@@ -1,5 +1,6 @@
 <form action="{{category}}" method="POST">
   <select id="name" name="name" autocomplete="off">
+    <option value="---" selected>---</option>
     {% for e in availible_procedures %} 
       <option value="{{e.name}}">{{e.name}}</option> 
     {% endfor %}

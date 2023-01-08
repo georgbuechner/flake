@@ -179,6 +179,11 @@ def input(animal_id: str, category: str):
     death_date = animal_data[0]["death_date"] if date_filled(animal_data[0]["death_date"]) else None
     notes = dmanager.get_notes(animal_id)
     general = General.query.get(animal_id)
+    availible_viruses = PVirus.query.filter(PVirus.protocol == general.experiment)
+    availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment)
+    availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment)
+    availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment)
+
     return render_template(
         "input.html", 
         stored=True,
@@ -190,10 +195,14 @@ def input(animal_id: str, category: str):
         post_procedures=sort_query(
             PostProcedure.query.filter(PostProcedure.animal_id == animal_id), "start_date"
         ),
-        availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment),
-        availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment),
-        availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment),
-        availible_viruses=PVirus.query.filter(PVirus.protocol == general.experiment),
+        availible_anesthetic=availible_anesthetic,
+        availible_analgesic=availible_analgesic,
+        availible_procedures=availible_procedures,
+        availible_viruses=availible_viruses,
+        json_anesthetic=json.dumps([table_to_json(x) for x in availible_anesthetic]),
+        json_analgestic=json.dumps([table_to_json(x) for x in availible_analgesic]),
+        json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
+        json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
         animal_id=animal_id,
         animal_data=animal_data,
         death_date=death_date,

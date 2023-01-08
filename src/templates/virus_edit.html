@@ -1,5 +1,6 @@
 <form action="viruses" method="POST">
-  <select id="name" name="name" autocomplete="off">
+   <select id="name" name="name" autocomplete="off" onchange='Set(this, {{json_viruses|safe}})'>
+    <option value="---" selected>---</option>
     {% for e in availible_viruses %}
       <option value="{{e.name}}">{{e.name}}</option>
     {% endfor %}

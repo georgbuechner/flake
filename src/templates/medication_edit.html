@@ -1,15 +1,19 @@
 <form action="{{category}}" method="POST">
-  <select name="name" id="name">
-    {% if category == "anesthesia" %}
+  {% if category == "anesthesia" %}
+    <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_anesthetic|safe}})'>
+      <option value="---" selected>---</option>
       {% for medication in availible_anesthetic %}
         <option value="{{medication.name}}">{{medication.name}}</option>
       {% endfor %}
-    {% else %} 
+    </select>
+  {% else %} 
+    <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_analgestic|safe}})'>
+      <option value="---" selected>---</option>
       {% for medication in availible_analgesic %}
         <option value="{{medication.name}}">{{medication.name}}</option>
       {% endfor %}
-    {% endif %}
-  </select>
+    </select>
+  {% endif %}
   <br><br>
   <input 
     type="date" name="date" id="date" placeholder="date"

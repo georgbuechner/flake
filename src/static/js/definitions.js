@@ -53,17 +53,19 @@ function CloseModal() {
   dialog.close(); 
 }
 
-function Set(elem) {
-  console.log("all definitions: ", definitions)
+function Set(elem, availible) {
+  console.log("all availible entries: ", availible)
   const getByKey = (arr, key) => (arr.find(x => x["name"] === key) || {});
-  const definition = getByKey(definitions, elem.value);
+  const definition = getByKey(availible, elem.value);
   for (const [key, value] of Object.entries(definition)) {
     let el = document.getElementById(key)
-    if ((el || {}).type === "checkbox" && value === true)
-      el.checked = true;
-    else if ((el || {}).type === "checkbox" && value === false)
-      el.checked = false;
-    else 
-      el.value = value; 
+    if (el !== undefined && el !== null) {
+      if ((el || {}).type === "checkbox" && value === true)
+        el.checked = true;
+      else if ((el || {}).type === "checkbox" && value === false)
+        el.checked = false;
+      else 
+        el.value = value; 
+    }
   }
 }
