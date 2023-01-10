@@ -1,0 +1,153 @@
+\documentclass[8pt, a4paper, openany, landscape]{report}
+\usepackage[left=0.5cm,top=1cm, bottom=3cm, right=1cm]{geometry}
+
+% my custom stlye and functions stuff
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{ngerman}
+\usepackage[scaled]{helvet}
+\usepackage{graphicx}
+
+% tables
+\usepackage{array}
+\usepackage{rotating}
+\usepackage{longtable}
+
+% \graphicspath{ {../images/} }
+
+\usepackage{hyperref}
+
+\usepackage[autostyle]{csquotes}
+\usepackage[
+    backend=biber,
+    style=authortitle-ibid,
+    sortlocale=de_DE,
+    natbib=true,
+    url=false,
+    doi=true,
+    eprint=false
+    ]{biblatex}
+\addbibresource{literatur.bib}
+
+\usepackage{csquotes}
+
+\usepackage{setspace}
+\usepackage{wrapfig}
+
+
+\begin{document}
+\sffamily
+
+\begin{minipage}[c]{5cm}
+  \includegraphics[scale=0.3]{logo.jpg}
+\end{minipage}
+\parbox[c]{15cm}{
+  \begin{center}
+    \large{
+      \textbf{\underline{Aufzeichnungen} über Versuchsvorhaben, in dem Wirbeltiere, Kopffüßer
+      oder Zehnfußkrebse verwendet werden.}\\
+      \textbf{(§ 9 Abs.~5 TierSchG und § 29 TierSchVersV)}\\
+    }
+    \textit{(Ordnungswidrig nach § 18 Abs. 1 Nr. 3 TierSchG handelt, wer vorsätzlich oder fahrlässig
+    entgegen § 30 Abs. 1 TierSchVersV die Einhaltung der Vorschriften des § 29 Abs. 1
+    TierSchVersV nicht sicherstellt. Diese Ordnungswidrigkeit kann nach § 18 Abs. 4 TierSchG mit
+    einer Geldbuße bis zu fünftausend Euro geahndet werden.)}
+  \end{center}
+}%
+
+
+\begin{center}
+  \textbf{itenden Aufzeichnungen“ des Landesamtes für Gesundheit und Soziales!}
+\end{center}
+
+
+\vspace{0.5 cm}
+\begin{tabular}{
+    |>{\centering\arraybackslash}m{2cm}
+    | >{\centering}m{0.5cm}| >{\centering}m{2cm}| >{\centering}m{0.5cm}| 
+    >{\centering\arraybackslash}m{1.5cm}|
+    >{\centering\arraybackslash}m{7cm}|
+    >{\centering\arraybackslash}m{2cm}|
+    >{\centering\arraybackslash}m{0.8cm}
+    | *2{>{\centering}m{1.2cm}| }
+    >{\centering\arraybackslash}m{1.9cm}|
+    >{\centering\arraybackslash}m{1.9cm}|
+}
+  \hline 
+  Beginn und Abschluss &
+  \multicolumn{3}{c|}{Verwendete Tiere} &
+  \parbox{1.5cm}{
+    \begin{center}
+    \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
+    \end{center}
+  }&
+   \parbox[c]{7cm}{
+    \begin{center}
+      Art und Auführung \textbf{\underline{jedes}} Einzelversuchs (inkl.~Betäubungsverfahren, Tötungsmethode), sowie besondere Vorkommnisse.
+    \end{center}
+  } &
+  \parbox[c]{2cm}{
+    \begin{center}
+      \textbf{\underline{tatsächlicher}} Schweregrad (Belasung) 
+      \footnotesize{nach § 35 Abs.~2 Nr.~4 TierSchVersV}
+    \end{center}
+  } &
+  \begin{turn}{-90}\small{Wider-}\end{turn} \begin{turn}{-90}\small{verwendung}\end{turn} &
+  \multicolumn{2}{c|}{
+    \parbox[c]{2.4cm}{
+      \begin{center}
+        Verfahren nach Abschluss \\ 
+        \smallskip
+        \footnotesize{(§ 28 TierSchVersV)}
+      \end{center}
+    }%
+  } &
+  \parbox[c]{2cm}{
+    Name \textbf{\underline{und}} Unterschrift \\
+
+    \small{Versuchs-durchführender}
+  } &
+  \parbox[c]{2cm}{
+    Unterschrift \\
+
+    \smallskip 
+    \small{Leiter / Stellvertreter }
+  } \\
+
+      \cline{2-4}
+      \cline{9-10}
+      & \small{An-zahl} & \small{Art / Bezeichnung (Stamm/ Linie)} & m/w & & & &
+      & Verbleib der Tiere & \tiny{Datum / Unterschrift nach tierärtztlicher Untersuchung} & & \\
+      &                 &                                          &     & & & & &  &  & & \\
+  \hline
+      {% for sub, d in subprotocols.items() %}
+        {{d.start}} - {{d.end}} &  
+        {{d.animals|length}} &  
+        {% for animal in d.animals%} 
+          \footnotesize{ {{animal.animal_data.line}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
+        {% endfor %} &     
+        {% for animal in d.animals%} 
+          \footnotesize{ {{animal.animal_data.sex}} }{%- if loop.index < d.animals|length -%},{%- endif -%}
+        {% endfor %} &     
+        {% for animal in d.animals%} 
+          \footnotesize{ {{animal.animal_data.id}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
+        {% endfor %} &
+          &  & Nein & \footnotesize{Tötung durch {{d.subprotocol.death_drug}} } & Entfällt &
+        {% for animal in d.animals%} 
+          \footnotesize{ {{animal.animal_data.user}} }{%- if loop.index < d.animals|length -%},{%- endif -%}
+        {% endfor %} &     
+          ML \\
+        \hline
+      {% endfor %}
+  \hline
+\end{tabular}
+
+\begin{center}
+  \textbf{Aufbewahrungszeitraum: 5 Jahre ab dem Zeitpunkt, an dem das gesamte Versuchsvorhaben abgeschlossen wurde (Fristablauf).}
+\end{center}
+
+Stand 10.01.23\\
+\textbf{Impressum}
+
+
+\end{document}

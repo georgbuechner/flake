@@ -36,7 +36,35 @@ async function UploadPyratData()
 }
 
 function GenerateP9(protocol) {
-  alert("Funcionality not yet implemented. Sorry :(");
+  var req = new XMLHttpRequest();
+  req.open("POST", "/generate/paragraph9/"+protocol, true);
+  req.responseType = "blob";
+  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  req.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var blob = new Blob([this.response], {"type": "application/pdf"});
+      var url = window.URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      document.body.appendChild(link);
+      link.style = "display: none";
+      link.href = url;
+      link.download = "paragraph9.pdf";
+      link.click();
+
+      setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      link.remove(); } , 100);
+    }
+    else if (this.readyState === 4 && this.status >= 400 ) {
+      var blob = new Blob([this.response], {type: "text"});
+      var reader = new FileReader();
+      reader.onload = function() {
+        alert(reader.result);
+      }
+      reader.readAsText(blob);
+    }
+  };
+  req.send();
 }
 
 async function UpdateSubprotocol(subprotocol, animal_id, force) {

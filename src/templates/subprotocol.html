@@ -82,7 +82,10 @@
         <br><br>
         <select name="death_drug" id="death_drug">
           {% for definition in definitions %}
-            <option value="{{definition.name}}">{{definition.name}}</option>
+            <option 
+              value="{{definition.name}}"
+              {%- if definition.name == data["death_drug"] %} selected {%- endif -%} 
+            >{{definition.name}}</option>
           {% endfor %}
         </select>
         <br><br>

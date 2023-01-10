@@ -17,6 +17,12 @@ from data_manager.tables import (
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
 from utils.utils import hash_pw, sort_query
+from jinja2 import Environment, PackageLoader, select_autoescape
+import os
+import subprocess
+import tempfile
+import shutil
+
 
 # Create global instance of sql-connector, data-manager and flask-app.
 sql_connector = SqlConnector("data/database.db", "resources/tables.json")
@@ -254,7 +260,6 @@ def protocols():
 @app.route("/settings/protocols/<escaped_protocol>", methods=["GET"])
 @login_required
 def protocol(escaped_protocol: str):
-    print("All protocls: ", Protocol.query.all())
     protocol = Protocol.query.get(escaped_protocol)
     if protocol:
         return render_template(
@@ -409,6 +414,36 @@ def generate_score_sheet(animal_id: str):
     )
     dcreator.create_score_sheet()
     return send_file("output/score_sheet.docx", as_attachment=True)
+
+@app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
+@login_required
+def generate_paragraph_9(escaped_protocol: str):
+
+    env = Environment(
+        loader=PackageLoader("app"),
+        autoescape=select_autoescape()
+    )
+    template = env.get_template("main.tex")
+    subprotocols = dmanager.get_p9_data(escaped_protocol)
+    txt = template.render(subprotocols=subprotocols)
+    tmp_path = tempfile.mkdtemp() 
+    full_path = f"{tmp_path}/main.tex"
+    f = open(full_path, "w") 
+    f.write(txt) 
+    f.close()
+
+    shutil.copy("logo.jpg", f"{tmp_path}")
+
+    # proc=subprocess.Popen(["pdflatex", full_path]) 
+    proc=subprocess.Popen(
+        ["pdflatex", full_path], 
+        cwd=tmp_path, 
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT
+    )
+    proc.communicate()
+    return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+
 
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 

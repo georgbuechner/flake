@@ -191,8 +191,6 @@ class DManager:
         experiment_data["general"]["death_drug_amount"] = medication_infos.amount
         experiment_data["general"]["death_drug_concentration"] = medication_infos.concentration
 
-        print("death_drug: ", protocol_general.death_drug)
-        print("General: ", experiment_data["general"])
         for name, Table in EXPERIMENT_TABLES.items(): 
             data = Table.query.filter(Table.animal_id == animal_id)
             experiment_data[name] = [table_to_json(t) for t in data]
@@ -215,6 +213,31 @@ class DManager:
         DefinitionsTable = DEFINITION_TABLES[definition_category]
         definitions = DefinitionsTable.query.all()
         return protocol_data, definitions
+
+    def get_p9_data(self, escaped_protocol: str): 
+        protocol = Protocol.query.get(escaped_protocol)
+        subprotocols = {}
+        for sub in protocol.get_subprotocols():
+            full_protocol = f"{escaped_protocol}/{sub}"
+            print("gathering: ", full_protocol)
+            generals = General.query.filter(General.experiment == full_protocol)
+            data = {"animals": []}
+            print("got: ", data)
+            if generals.first():
+                data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
+                for general in generals:
+                    print("got: ", general)
+                    animal_data = self.__get_animal_entry(general.animal_id)
+                    if date_filled(animal_data["death_date"]):
+                        data["animals"].append(
+                            {"general": general, "animal_data": animal_data}
+                        )
+                data["start"] = data["animals"][0]["general"].start
+                data["end"] = data["animals"][0]["animal_data"]["death_date"]
+                subprotocols[full_protocol] = data
+            else: 
+                print("No data for this subprotocol")
+        return subprotocols
 
     def update_dates(self, animal_id: str, start_date: str, autofill: bool) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
@@ -506,6 +529,8 @@ class DManager:
                 dates_counter[0] += 1 if date_filled(entry.end_date) else 0
                 dates_counter[1] += 2 
         return dates_counter[0], dates_counter[1]
+
+
 
 def date_filled(date_str: str) -> bool: 
     return len(date_str) == 10
