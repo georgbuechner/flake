@@ -1,4 +1,5 @@
 import json
+import math
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
 
@@ -38,6 +39,56 @@ class User(db.Model):
         """! False, as anonymous users aren't supported."""
         return False
 
+class AnimalData(db.Model): 
+    __tablename__ = "animal_data" 
+
+    mla_num = db.Column(db.String, primary_key=True)
+    sex = db.Column(db.String, primary_key=False)
+    line = db.Column(db.String, primary_key=False)
+    dob = db.Column(db.String, primary_key=False)
+    death_date = db.Column(db.String, primary_key=False)
+    user = db.Column(db.String, primary_key=False)
+    protocol = db.Column(db.String, primary_key=False)
+    protocol_escaped = db.Column(db.String, primary_key=False)
+    subprotocol = db.Column(db.String, primary_key=False)
+    stored = db.Column(db.Boolean, primary_key=False)
+
+    def __init__(self, data: Dict[str, any]):
+        self.mla_num = data["id"]
+        self.sex = data["sex"]
+        self.line = data["line"]
+        self.dob = data["dob"]
+        self.death_date = str(data["death_date"])
+        self.user = data["user"]
+        self.protocol = data["protocol"]
+        self.protocol_escaped = data["protocol_escaped"]
+        self.subprotocol = "---"
+        self.stored = False
+
+    def update(self, data: Dict[str, any]): 
+        self.sex = data["sex"]
+        self.line = data["sex"]
+        self.dob = data["dob"]
+        self.death_date = str(data["death_date"])
+        self.user = data["user"]
+        self.protocol = data["protocol"]
+        self.protocol_escaped = data["protocol_escaped"]
+
+class Note(db.Model):
+    __tablename__ = "notes" 
+
+    animal_id = db.Column(db.String, primary_key=True)
+    category = db.Column(db.String, primary_key=True)
+    note = db.Column(db.String, primary_key=False)
+
+    def __init__(self, animal_id: str, category: str, note: str):
+        self.animal_id = animal_id
+        self.category = category
+        self.note = note
+    
+    def update(self, note: str):
+        self.note = note
+ 
 class AMedication(db.Model): 
     __tablename__ = "availible_medication"
 
@@ -514,6 +565,8 @@ class Virus(db.Model):
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
     return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}
+
+   
 
 EXPERIMENT_TABLES = {
     "anesthesia": Anesthesia, 

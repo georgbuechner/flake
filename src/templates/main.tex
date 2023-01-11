@@ -130,7 +130,7 @@
           \footnotesize{ {{animal.animal_data.sex}} }{%- if loop.index < d.animals|length -%},{%- endif -%}
         {% endfor %} &     
         {% for animal in d.animals%} 
-          \footnotesize{ {{animal.animal_data.id}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
+          \footnotesize{ {{animal.animal_data.mla_num}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
         {% endfor %} &
           &  & Nein & \footnotesize{Tötung durch {{d.subprotocol.death_drug}} } & Entfällt &
         {% for animal in d.animals%} 

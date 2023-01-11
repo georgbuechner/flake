@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>FLAKE - {{animal_data[0].id}}</title>
+  <title>FLAKE - {{animal_id}}</title>
 
   <link href="/static/css/general.css" rel="stylesheet">
   <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
@@ -123,12 +123,11 @@
 
     
     {% elif category=="procedures" %}
-      <h3>Procedures
+      <h3>Conducted Procedures
         <button class="pure_btn" onclick="OpenModalNotes('procedures', '{{notes.procedures}}')">
           <i class="fas fa-file-alt"></i>
         </button>
       </h3>
-      <h4>Conducted Procedures</h4>
       <table class="center" id="procedures">
         <tr>
           <th>Procedure name</th>
@@ -155,7 +154,13 @@
 
     {% elif category=="post_procedures" %}
 
-      <h4>Post-operative Procedures</h4>
+      <h3>Post-operative Procedures
+        <button 
+          class="pure_btn" onclick="OpenModalNotes('post_procedures', '{{notes.post_procedures}}')"
+        >
+          <i class="fas fa-file-alt"></i>
+        </button>
+      </h3>
       <table class="center" id="post_procedures">
         <tr>
           <th>Procedure name</th>

@@ -4,16 +4,7 @@ from flask import Flask, render_template, request, send_file, redirect, url_for
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, escape_protocol, date_filled
-from data_manager.sql_connector import SqlConnector
-from data_manager.tables import (
-    User, 
-    AMedication, AProcedure, AVirus,
-    PAnesthesia, PAnalgesia, PProcedure, PVirus, PWatercontrol,
-    General, Anesthesia, Analgesia, Procedure, PostProcedure, Virus,
-    Protocol, 
-    db,
-    table_to_json
-)
+from data_manager.tables import *
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
 from utils.utils import hash_pw, sort_query
@@ -25,8 +16,7 @@ import shutil
 
 
 # Create global instance of sql-connector, data-manager and flask-app.
-sql_connector = SqlConnector("data/database.db", "resources/tables.json")
-dmanager = DManager(sql_connector)
+dmanager = DManager()
 app = Flask(__name__)
 app.secret_key = 'super secret string'  # Change this!
 login_manager = LoginManager()
@@ -35,7 +25,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 with app.app_context():
     # Create tables
-    # General.__table__.drop(db.engine)
+    # AnimalData.__table__.drop(db.engine)
     db.create_all()
 
 LARKUM_PASSWORD = "larkum"
@@ -126,7 +116,7 @@ def overview():
     """
     return render_template(
         "overview.html", 
-        animal_data=dmanager.get_animal_data(),
+        animal_data=AnimalData.query.all(),
         protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
@@ -144,7 +134,7 @@ def user_overview(user: str):
     return render_template(
         "user_overview.html", 
         user=user, 
-        animal_data=dmanager.get_animal_data("user", user),
+        animal_data=AnimalData.query.filter(AnimalData.user == user),
         protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
@@ -162,7 +152,7 @@ def protocol_overview(protocol: str):
     return render_template(
         "protocol_overview.html", 
         protocol=protocol,
-        animal_data=dmanager.get_animal_data("protocol_escaped", protocol),
+        animal_data=AnimalData.query.filter(AnimalData.protocol_escaped == protocol),
         protocols=dmanager.protocols_and_subprotocols(),
         user_email=current_user.email,
         user_name=current_user.name
@@ -178,12 +168,11 @@ def input(animal_id: str, category: str):
     
     @return Rendered html experiment-data input page from jinja2-template.
     """
-    animal_data = dmanager.get_animal_data("id", animal_id)
+    animal_data = AnimalData.query.get(animal_id)
     # Redirect 
-    if animal_data[0]["user"] != current_user.name:
+    if animal_data.user != current_user.name:
         return redirect("/")
-    death_date = animal_data[0]["death_date"] if date_filled(animal_data[0]["death_date"]) else None
-    notes = dmanager.get_notes(animal_id)
+    death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = General.query.get(animal_id)
     availible_viruses = PVirus.query.filter(PVirus.protocol == general.experiment)
     availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment)
@@ -210,11 +199,11 @@ def input(animal_id: str, category: str):
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
         animal_id=animal_id,
-        animal_data=animal_data,
+        animal_data=[animal_data],
         death_date=death_date,
-        dob=animal_data[0]["dob"],
+        dob=animal_data.dob,
         protocols=dmanager.protocols_and_subprotocols(),
-        notes=notes,
+        notes={note.category:note.note for note in Note.query.filter(Note.animal_id == animal_id)},
         category=category,
         user_email=current_user.email,
         user_name=current_user.name
@@ -380,20 +369,20 @@ def clear_experiment_data(animal_id: str):
 
     @return error-/ success-message and status code.
     """
-    animal_data = dmanager.get_animal_data(animal_id)[0]
-    dmanager.set_subprotocol(animal_id, animal_data["subprotocol"], True)
+    animal_data = AnimalData.query.get(animal_id)
+    dmanager.set_subprotocol(animal_id, animal_data.subprotocol, True)
     return "Success", 200
 
 @app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
 @login_required
 def generate_surgery_sheet(animal_id: str):
-    animal_data = dmanager.get_animal_data("id", animal_id)[0]
-    if not date_filled(animal_data["death_date"]): 
+    animal_data = AnimalData.query.get(animal_id)
+    if not date_filled(animal_data.death_date): 
         return "Animal is not yet sacrificed", 401
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
         experiment_data=dmanager.get_experiment_data(animal_id),
-        animal_data=animal_data,
+        animal_data=table_to_json(animal_data),
         user_email=current_user.email
     )
     dcreator.create_from_template()
@@ -402,14 +391,14 @@ def generate_surgery_sheet(animal_id: str):
 @app.route("/generate/score_sheet/<animal_id>", methods=["POST"])
 @login_required
 def generate_score_sheet(animal_id: str):
-    animal_data = dmanager.get_animal_data("id", animal_id)[0]
-    if not date_filled(animal_data["death_date"]): 
+    animal_data = AnimalData.query.get(animal_id)
+    if not date_filled(animal_data.death_date): 
         return "Animal is not yet sacrificed", 401
 
     dcreator = DCreator(
         template_path="templates/score_sheet", 
         experiment_data=dmanager.get_experiment_data(animal_id),
-        animal_data=animal_data,
+        animal_data=table_to_json(animal_data),
         user_email=current_user.email
     )
     dcreator.create_score_sheet()
