@@ -14,7 +14,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import sort
+from utils.utils import sort_query
 from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
 
 # Main tables
@@ -232,17 +232,20 @@ class DManager:
                 print("No data for this subprotocol")
         return subprotocols
 
-    def update_dates(self, animal_id: str, start_date: str, autofill: bool) -> Tuple[str, int]:
+    def update_dates(
+        self, animal_id: str, start_date_str: str, autofill: bool
+    ) -> Tuple[str, int]:
         """! Updates dates of experiment-data according to protocol-data. 
 
         @param animal_id  ID of animal 
-        @param start_date  Start date based on which dates are filled. 
+        @param start_date_str  Start date based on which dates are filled. 
 
         @return Tuple of error-message and http-return-code.
         """
-        start_date = strtodate(start_date)
+        start_date = strtodate(start_date_str)
         # Update start-date in General
         general = General.query.get(animal_id)
+        old_start_date = general.start
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
         db.session.commit()
         if autofill is False: 
@@ -253,14 +256,18 @@ class DManager:
         def get_date(inc):
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
         # Update medication:
-        def update_medication(table): 
-            for x in table.query.filter(table.animal_id == animal_id): 
+        def update_medication(table, reverse: bool): 
+            medications = sort_query(table.query.filter(table.animal_id == animal_id), "date")
+            if reverse:
+                medications.reverse()
+            for x in medications: 
                 if not x.days_after_surgery == -1:
                     x.date = get_date(x.days_after_surgery+surgery_start)
+                    db.session.commit()
                 else: 
                     not_updated.append((x.name, x.date))
-        update_medication(Anesthesia)
-        update_medication(Analgesia)  
+        update_medication(Anesthesia, start_date_str > old_start_date)
+        update_medication(Analgesia, start_date_str > old_start_date)  
         # Update procedures: 
         def update_procedure(table): 
             for x in table.query.filter(table.animal_id == animal_id): 
