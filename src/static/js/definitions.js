@@ -8,9 +8,11 @@ function Add(entry) {
         if (elem.type == "checkbox")
           elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
         else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
-          && entry.children[i].innerHTML == "" 
-          && document.getElementById("start") !== undefined) 
+          && entry.children[i].innerHTML == "---" 
+          && document.getElementById("start") !== undefined) {
           elem.value=document.getElementById("start").value;
+          elem.classList.add("date_suggest");
+        }
         else 
           elem.value=entry.children[i].innerHTML;
       }
@@ -20,6 +22,10 @@ function Add(entry) {
   var dialog = document.getElementById("edit_modal"); 
   dialog.showModal();
 } 
+
+function RemoveDateSuggest(elem) {
+    elem.classList.remove("date_suggest");
+}
 
 async function Del(category, name, type, identifier, date) {
   const escaped_name = escape(name).replace("/", "_");

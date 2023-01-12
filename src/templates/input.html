@@ -94,7 +94,11 @@
           <td>Start date:</td>
           <td>
             <input 
-             id="start" type="date" value="{{ general.start if general.start != '' else dob}}" min="{{dob}}" 
+              id="start" 
+              type="date" 
+              value="{{ general.start if general.start != '' else dob}}" 
+              min="{{dob}}" 
+              {%- if general.start == '' -%}class="date_suggest"{%- endif -%}
               {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
               onchange="OpenUpdateDatesConfirmation(this.value);" 
             />
@@ -138,14 +142,14 @@
         {% for entry in procedures %}
         <tr>
           <td name="name">{{entry.name}}</td>
-          <td name="start_date">{{entry.start_date}}</td>
-          <td name="end_date">{{entry.end_date}}</td>
+          <td name="start_date">{{entry.start_date if entry.start_date|length > 1 else "---"}}</td>
+          <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}}</td>
           <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
             <a class="mod" title="Remove entry.">-</a>
           </td>
           <td onclick="Add(this.parentNode);">
-            <a class="mod" title="Edit this entry.">edit</a>
+            <i class="mod u" title="Edit this entry.">edit</i>
           </td>
         <tr>
         {% endfor %}
@@ -171,14 +175,14 @@
         {% for entry in post_procedures %}
         <tr>
           <td name="name">{{entry.name}}</td>
-          <td name="start_date">{{entry.start_date}}</td>
-          <td name="end_date">{{entry.end_date}}</td>
+          <td name="start_date">{{entry.start_date if entry.start_date|length > 1 else "---"}}</td>
+          <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}} </td>
           <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
             <a class="mod" title="Remove entry.">-</a>
           </td>
           <td onclick="Add(this.parentNode);">
-            <a class="mod" title="Edit this entry.">edit</a>
+            <i class="mod u" title="Edit this entry.">edit</i>
           </td>
         <tr>
         {% endfor %}
@@ -200,13 +204,13 @@
         {% for entry in viruses %}
           <tr>
             <td name="name">{{entry.name}}</td>
-            <td name="date">{{entry.date}}</td>
+            <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Edit this entry.">edit</a>
+              <i class="mod u" title="Edit this entry.">edit</i>
             </td>
           </tr>
         {% endfor %}
@@ -230,7 +234,7 @@
         {% for entry in anesthesia %}
           <tr>
             <td name="name">{{entry.name}}</td>
-            <td name="date">{{entry.date}}</td>
+            <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td name="concentration">{{entry.concentration}}</td>
             <td name="toe_pinch">
@@ -242,7 +246,7 @@
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Edit this entry.">edit</a>
+              <i class="mod u" title="Edit this entry.">edit</i>
             </td>
           </tr>
         {% endfor %}
@@ -265,7 +269,7 @@
         {% for entry in analgesic %}
           <tr>
             <td name="name">{{entry.name}}</td>
-            <td name="date">{{entry.date}}</td>
+            <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td name="concentration">{{entry.concentration}}</td>
             <td 
@@ -275,7 +279,7 @@
               <a class="mod" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
-              <a class="mod" title="Edit this entry.">edit</a>
+              <i class="mod u" title="Edit this entry.">edit</i>
             </td>
           </tr>
         {% endfor %}

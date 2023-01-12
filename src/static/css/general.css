@@ -73,6 +73,7 @@ li {
   background-color: rgba(163, 180, 196, 0.5);
 }
 
+
 /* animal-data table */
 .err {
   color: #992e32;
@@ -86,8 +87,17 @@ li {
   padding: 0.5rem;
 }
 
+.u {
+  text-decoration-line: underline;
+}
+
 .mod:hover {
   cursor: pointer;
+}
+
+/* input */ 
+.date_suggest {
+  color: #b5b5b5;
 }
 
 /* graph */ 

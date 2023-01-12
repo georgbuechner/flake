@@ -24,8 +24,10 @@
     <tr>
       <td><label for="date">Date:</label></td>
       <td><input 
-        type="date" name="date" id="date" placeholder="date"
+        type="date" name="date" id="date" placeholder="date" min={{dob}}
         {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+        onchange="RemoveDateSuggest(this);"
+        required
       /></td>
     </tr>
 
