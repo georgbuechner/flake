@@ -1,13 +1,29 @@
 <form action="viruses" method="POST">
-  <select name="name" id="name" onchange='Set(this, {{json_definitions|safe}})'>
-    {% for definition in definitions %}
-      <option value="{{definition.name}}">{{definition.name}}</option>
-    {% endfor %}
-  </select>
-  <br><br>
-  <input type="text" name="days_after_start" id="days_after_start" placeholder="days after start">
-  <br><br>
-  <input type="text" name="amount" id="amount" placeholder="amount">
+  <table class="center">
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><select name="name" id="name" onchange='Set(this, {{json_definitions|safe}})'>
+        {% for definition in definitions %}
+          <option value="{{definition.name}}">{{definition.name}}</option>
+        {% endfor %}
+        </select></td>
+    </tr>
+    <tr>
+      <td><label for="days_after_start">Days after start:</label></td>
+      <td>
+        <input 
+          type="text" 
+          name="days_after_start" 
+          id="days_after_start"
+          placeholder="days after start"
+        />
+      </td>
+    </tr>
+    <tr>
+      <td><label for="amount">Amount:</label></td>
+      <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
+    </tr>
+  </table>
   <br><br>
   <input type='submit' name='submit'/>
 </form>

@@ -1,14 +1,34 @@
 <form action="procedures" method="POST">
-  <input type="text" name="name" id="name" placeholder="name">
-  <br><br>
-  <input type="text" name="days_after_start" id="days_after_start" placeholder="days after start">
-  <br><br>
-  <input type="text" name="duration" id="duration" placeholder="duration in days">
-  <br><br>
-  <label for="surgery">Surgery?</label>
-  <input 
-    type="checkbox" name="surgery" id="surgery" 
-  >
+  <table class="center">
+
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><input type="text" name="name" id="name" placeholder="name"></td>
+    </tr>
+
+    <tr>
+      <td><label for="days_after_start">Days after start:</label></td>
+      <td>
+        <input 
+          type="text" 
+          name="days_after_start" 
+          id="days_after_start" 
+          placeholder="days after start"
+        />
+      </td>
+    </tr>
+
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><input type="text" name="duration" id="duration" placeholder="duration in days"></td>
+    </tr>
+
+    <tr>
+      <td><label for="surgery">Surgery?</label></td>
+      <td><input type="checkbox" name="surgery" id="surgery"></td>
+    </tr>
+
+  </table>
   <br><br>
   <input type='submit' name='submit'/>
 </form>

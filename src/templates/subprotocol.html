@@ -72,31 +72,41 @@
 
     {% if category=="general" %}
       <form action="general" method="POST">
-        <input 
-          type="number" 
-          name="num_availible_animals" 
-          id="num_availible_animals" 
-          placeholder="number of availible animals"
-          value="{{data['num_availible_animals'] if 'num_availible_animals' in data}}"
-        >
-        <br><br>
-        <select name="death_drug" id="death_drug">
-          {% for definition in definitions %}
-            <option 
-              value="{{definition.name}}"
-              {%- if definition.name == data["death_drug"] %} selected {%- endif -%} 
-            >{{definition.name}}</option>
-          {% endfor %}
-        </select>
-        <br><br>
-        <input 
-          type="text" 
-          name="allowed_users" 
-          id="allowed_users" 
-          placeholder="allowed users"
-          value="{{data['allowed_users'] if 'allowed_users' in data}}"
-        >
-        <br><br>
+        <table class="center">
+          <tr>
+            <td><label for="num_availible_animals">Number of allowed animals:</label></td>
+            <td><input 
+              type="number" 
+              name="num_availible_animals" 
+              id="num_availible_animals" 
+              placeholder="number of availible animals"
+              value="{{data['num_availible_animals'] if 'num_availible_animals' in data}}"
+            >
+            </td>
+          </tr>
+          <tr>
+            <td><label for="death_drug">Death drug:</label> </td>
+            <td><select name="death_drug" id="death_drug">
+              {% for definition in definitions %}
+                <option 
+                  value="{{definition.name}}"
+                  {%- if definition.name == data["death_drug"] %} selected {%- endif -%} 
+                >{{definition.name}}</option>
+              {% endfor %}
+              </select></td>
+          </tr>
+          <tr>
+            <td><label for="allowed_users">Allowed users:</label></td>
+            <td><input 
+              type="text" 
+              name="allowed_users" 
+              id="allowed_users" 
+              placeholder="allowed users"
+              value="{{data['allowed_users'] if 'allowed_users' in data}}"
+            ></td>
+          </tr>
+        </table>
+        <br>
         <input type='submit' name='submit'/>
       </form>
 
@@ -185,21 +195,29 @@
 
     {% elif category=="watercontrol" %}
       <form action="watercontrol" method="POST">
-        <label for="allowed">Allowed?</label>
-        <input 
-          type="checkbox" name="allowed" id="allowed" 
-          {% if 'allowed' in data and data['allowed'] == True %} checked {% endif %}
-        >
-        <br><br>
-        <input 
-          type="text" name="days_after_start" id="days_after_start" placeholder="days after start"
-          value="{{data['days_after_start'] if 'days_after_start' in data}}"
-        >
-        <br><br>
-        <input 
-          type="text" name="duration" id="duration" placeholder="duration in days"
-          value="{{data['duration'] if 'duration' in data}}"
-        >
+        <table class="center">
+          <tr>
+            <td><label for="allowed">Allowed?</label></td>
+            <td><input 
+              type="checkbox" name="allowed" id="allowed" 
+              {% if 'allowed' in data and data['allowed'] == True %} checked {% endif %}
+            ></td>
+          </tr>
+          <tr>
+            <td><label for="days_after_start">Days after start:</label>
+            <td><input 
+              type="text" name="days_after_start" id="days_after_start" placeholder="days after start"
+              value="{{data['days_after_start'] if 'days_after_start' in data}}"
+            ></td>
+          </tr>
+          <tr>
+            <td><label for="duration">Duration:</label>
+            <td><input 
+              type="text" name="duration" id="duration" placeholder="duration in days"
+              value="{{data['duration'] if 'duration' in data}}"
+            ></td>
+          </tr>
+          </table>
         <br><br>
         <input type='submit' name='submit'/>
       </form>

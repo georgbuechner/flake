@@ -1,13 +1,29 @@
 <form action="medication" method="POST">
-  <input type="text" name="name" id="name" placeholder="name">
-  <br><br>
-  <input type="text" name="amount" id="amount" placeholder="amount">
-  <br><br>
-  <input type="text" name="concentration" id="concentration" placeholder="concentration">
-  <br><br>
-  <input 
-    type="text" name="days_after_surgery" id="days_after_surgery" placeholder="days_after_surgery"
-  >
+  <table class="center">
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><input type="text" name="name" id="name" placeholder="name"></td>
+    </tr>
+    <tr>
+      <td><label for="amount">Amount:</label></td>
+      <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
+    </tr>
+    <tr>
+      <td><label for="concentration">Concentration:</label></td>
+      <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
+    </tr>
+    <tr>
+      <td><label for="days_after_surgery">Days after surgery:</label></td>
+      <td>
+        <input 
+          type="text" 
+          name="days_after_surgery" 
+          id="days_after_surgery" 
+          placeholder="days_after_surgery"
+        />
+      </td>
+    </tr>
+  </table>
   <br><br>
   <input type='submit' name='submit'/>
 </form>

@@ -1,22 +1,44 @@
 <form action="{{category}}" method="POST">
-  <select id="name" name="name" autocomplete="off">
-    <option value="---" selected>---</option>
-    {% for e in availible_procedures %} 
-      <option value="{{e.name}}">{{e.name}}</option> 
-    {% endfor %}
-  </select>
-  <br><br>
-  <input 
-    type="date" name="start_date" id="start_date" placeholder="start date"
-    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-  />
-  <br><br>
-  <input 
-    type="date" name="end_date" id="end_date" placeholder="end date"
-    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-  />
-  <br><br>
-  <input type="text" name="experimenter" id="experimenter" placeholder="experimenter">
+  <table class="center">
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><select id="name" name="name" autocomplete="off">
+        <option value="---" selected>---</option>
+        {% for e in availible_procedures %} 
+          <option value="{{e.name}}">{{e.name}}</option> 
+        {% endfor %}
+        </select></td>
+    </tr>
+
+    <tr>
+      <td><label for="start_date">Start date:</label></td>
+      <td><input 
+        type="date" name="start_date" id="start_date" placeholder="start date"
+        {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+      /></td>
+    </tr>
+
+    <tr>
+      <td><label for="end_date">End date:</label></td>
+      <td><input 
+        type="date" name="end_date" id="end_date" placeholder="end date"
+        {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+      /></td>
+    </tr>
+
+    <tr>
+      <td><label for="experimenter">Experimenter:</label></td>
+      <td>
+        <input 
+          type="text" 
+          name="experimenter" 
+          id="experimenter"
+          placeholder="experimenter"
+        />
+      </td>
+    </tr>
+
+  </table>
   <br><br>
   <input type='submit' name='submit'/>
 </form>

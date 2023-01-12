@@ -1,17 +1,30 @@
 <form action="viruses" method="POST">
-   <select id="name" name="name" autocomplete="off" onchange='Set(this, {{json_viruses|safe}})'>
-    <option value="---" selected>---</option>
-    {% for e in availible_viruses %}
-      <option value="{{e.name}}">{{e.name}}</option>
-    {% endfor %}
-  </select>
-  <br><br>
-  <input 
-    type="date" name="date" id="date" placeholder="date"
-    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-  >
-  <br><br>
-  <input type="text" name="amount" id="amount" placeholder="amount">
+  <table class="center">
+
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td><select id="name" name="name" autocomplete="off" onchange='Set(this, {{json_viruses|safe}})'>
+        <option value="---" selected>---</option>
+        {% for e in availible_viruses %}
+          <option value="{{e.name}}">{{e.name}}</option>
+        {% endfor %}
+      </select></td>
+    </tr>
+
+    <tr>
+      <td><label for="date">Date:</label></td>
+      <td><input 
+        type="date" name="date" id="date" placeholder="date"
+        {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+      /></td>
+    </tr>
+
+    <tr>
+      <td><label for="amount">Amount:</label></td>
+      <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
+    </tr>
+    
+  </table>
   <br><br>
   <input type='submit' name='submit'/>
 </form>

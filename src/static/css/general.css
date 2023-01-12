@@ -23,7 +23,6 @@ a {
 /* tables */ 
 th, td {
   padding: 5px;
-  padding: text-align;
   border-bottom: 1px solid #ddd;
 }
 

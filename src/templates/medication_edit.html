@@ -1,33 +1,52 @@
 <form action="{{category}}" method="POST">
-  {% if category == "anesthesia" %}
-    <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_anesthetic|safe}})'>
-      <option value="---" selected>---</option>
-      {% for medication in availible_anesthetic %}
-        <option value="{{medication.name}}">{{medication.name}}</option>
-      {% endfor %}
-    </select>
-  {% else %} 
-    <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_analgestic|safe}})'>
-      <option value="---" selected>---</option>
-      {% for medication in availible_analgesic %}
-        <option value="{{medication.name}}">{{medication.name}}</option>
-      {% endfor %}
-    </select>
-  {% endif %}
+  <table class="center">
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td>
+      {% if category == "anesthesia" %}
+        <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_anesthetic|safe}})'>
+          <option value="---" selected>---</option>
+          {% for medication in availible_anesthetic %}
+            <option value="{{medication.name}}">{{medication.name}}</option>
+          {% endfor %}
+        </select>
+      {% else %} 
+        <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_analgestic|safe}})'>
+          <option value="---" selected>---</option>
+          {% for medication in availible_analgesic %}
+            <option value="{{medication.name}}">{{medication.name}}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      </td>
+    </tr>
+
+    <tr>
+      <td><label for="date">Date:</label></td>
+      <td><input 
+        type="date" name="date" id="date" placeholder="date"
+        {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+      /></td>
+    </tr>
+
+    <tr>
+      <td><label for="amount">Amount:</label></td>
+      <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
+    </tr>
+
+    <tr>
+      <td><label for="concentration">Concentration:</label></td>
+      <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
+    </tr>
+
+    {% if category == "anesthesia" %}
+      <tr>
+        <td><label for="toe_pinch">Toe pinch?</label></td>
+        <td><input type="checkbox" name="toe_pinch" id="toe_pinch"></td>
+      </tr>
+    {% endif %}
+  </table>
   <br><br>
-  <input 
-    type="date" name="date" id="date" placeholder="date"
-    {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-  />
-  <br><br>
-  <input type="text" name="amount" id="amount" placeholder="amount">
-  <br><br>
-  <input type="text" name="concentration" id="concentration" placeholder="concentration">
-  <br><br>
-  {% if category == "anesthesia" %}
-    <input type="checkbox" name="toe_pinch" id="toe_pinch">
-    <br><br>
-  {% endif %}
 
   <input type='submit' name='submit'/>
 </form>
