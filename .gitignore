@@ -1,3 +1,5 @@
 **/__pycache__
 src/output/*
 !src/output/.keep
+src/signatures/* 
+!src/signatures/default.png
