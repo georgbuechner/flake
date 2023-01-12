@@ -6,6 +6,7 @@ from docx import Document
 from docx.shared import Cm
 from typing import Dict, List, Tuple
 from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
+from utils.utils import get_signature_path
 
 class DCreator:
 
@@ -79,7 +80,7 @@ class DCreator:
             update_paragraph(cells[cell].paragraphs[0], f"{{{x}}}", "")  # remove tag
             for i, val in data:
                 if cat == "sig":
-                    add_signiture(cells[i].paragraphs[0], user, 0.29)
+                    add_signature(cells[i].paragraphs[0], user, 0.29)
                 else:
                     update_paragraph_fast(cells[i].paragraphs[0], "", val)
 
@@ -130,10 +131,10 @@ class DCreator:
             # Tag found
             if key in fields:
                 update_paragraph(par, result.group(0), fields[key])
-            # If signiture, add image 
-            elif key == "signiture":
+            # If signature, add image 
+            elif key == "signature":
                 update_paragraph(par, result.group(0), "")
-                add_signiture(par, fields['user'], 2)
+                add_signature(par, fields['user'], 2)
             # Empty (---) if tag not found.
             else:
                 update_paragraph(par, result.group(0), "---")
@@ -239,10 +240,11 @@ def update_paragraph(par, old, new):
 def update_paragraph_fast(par, old, new):
     par.text = par.text.replace(old, new)
 
-def add_signiture(par, user: str, height: float):
+def add_signature(par, user: str, height: float):
     p = par.insert_paragraph_before("")
     r = p.add_run()
-    if os.path.exists(f"data/signitures/{user}.png"):
-        r.add_picture(f"data/signitures/{user}.png", height=Cm(height))
+    path, _ = get_signature_path(user)
+    if path:
+        r.add_picture(f"src/{path}", height=Cm(height))
     else:
-        r.add_picture(f"data/signitures/default.png", height=Cm(height))
+        r.add_picture(f"src/signatures/default.png", height=Cm(height))

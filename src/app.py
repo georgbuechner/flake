@@ -3,12 +3,13 @@ import html
 from flask import Flask, render_template, request, send_file, redirect, url_for
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
-from data_manager.dmanager import DManager, escape_protocol, date_filled
+from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import hash_pw, sort_query
+from utils.utils import hash_pw, sort_query, escape, has_signature, get_signature_path
 from jinja2 import Environment, PackageLoader, select_autoescape
+from os.path import exists as file_exists
 import os
 import subprocess
 import tempfile
@@ -215,6 +216,46 @@ def settings():
     return render_template(
         "settings.html", user_email=current_user.email, user_name=current_user.name
     )
+
+@app.route("/account")
+@login_required
+def account():
+    has_sig = has_signature(current_user.name)
+    return render_template(
+        "account.html", 
+        escaped_user=escape(current_user.name),
+        has_signature=has_signature(current_user.name),
+        user_email=current_user.email, 
+        user_name=current_user.name
+    )
+
+@app.route("/signature/<user>")
+@login_required 
+def get_signature(user: str):
+    path, mimetype = get_signature_path(current_user.name)
+    return send_file(path, mimetype = mimetype)
+
+@app.route("/delete/signature/<escaped_user>", methods=["POST"])
+@login_required 
+def remove_signature(escaped_user: str):
+    if has_signature(current_user.name):
+        path, mimetype = get_signature_path(current_user.name)
+        os.remove(f"src/{path}")
+        return "", 200
+    else: 
+        return "no signature found", 404
+
+@app.route("/upload/signature/<escaped_user>", methods=["POST"])
+@login_required 
+def upload_signature(escaped_user: str):
+    remove_signature(escaped_user)
+    content = request.files
+    file = content.get("sig")
+    if file.mimetype == "image/jpeg":
+        file.save(f"src/signatures/{escaped_user}.jpg")
+    else:
+        file.save(f"src/signatures/{escaped_user}.png")
+    return "", 200
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
@@ -485,7 +526,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
 def add_protocal():
-    escaped_name = escape_protocol(request.form["name"]).strip()
+    escaped_name = escape(request.form["name"]).strip()
     protocol = Protocol.query.get(escaped_name)
     if protocol:
         return render_template(

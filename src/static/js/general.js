@@ -1,5 +1,4 @@
-async function UploadPyratData() 
-{
+async function UploadPyratData() {
   const elem = document.getElementById("pyrat_csv");
   if (elem.files.length == 0) {
     alert("No file selected!");

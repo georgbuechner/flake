@@ -14,7 +14,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import sort_query
+from utils.utils import sort_query, escape
 from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
 
 # Main tables
@@ -461,7 +461,7 @@ class DManager:
                 if key in self.mapping:
                     data[self.mapping[key]] = value
                     if self.mapping[key] == "protocol":
-                        data["protocol_escaped"] = escape_protocol(value)
+                        data["protocol_escaped"] = escape(value)
             # Create or update animal-data
             animal_id = data["id"]
             print("from_csv: ", animal_id, data)
@@ -524,17 +524,6 @@ class DManager:
 
 def date_filled(date_str: str) -> bool: 
     return len(date_str) == 10
-
-
-def escape_protocol(protocol: str) -> str: 
-    """! Escape protocol-string to be url compatible. 
-
-    Removes whitespaces (" ") and replaces slashs ("/") underscore ("_").
-    
-    @param protocol  Protocol-name.
-    @return Escaped protocol-name.
-    """
-    return protocol.replace(" ", "").replace("/", "_")
 
 
 def get_surgery_start(protocol: str):
