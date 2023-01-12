@@ -47,21 +47,29 @@ class DCreator:
         start = strtodate(self.fields["general"]["start"]) 
         last_date = copy.deepcopy(start)
         weights = json.loads(self.fields["general"]["weights"])
+        start_weight = weights[0]
         watercontrols = json.loads(self.fields["general"]["watercontrol_mask"])
         monthly_weights = []
         data = {
-            "data": {"weights": [], "watercontrol": [], "sig": []}, 
+            "data": {"weights": [], "watercontrol": [], "sig": [], ">20": [], ">10":[]}, 
             "month_str": datetostr_month(last_date)
         }
         for i, w in enumerate(weights):
             data["data"]["weights"].append((last_date.day+1, f"{w:.1f}")) 
             data["data"]["watercontrol"].append((last_date.day+1, "W" if watercontrols[i] else "")) 
+            print("start, cur, %: ", start_weight, weights[i], (start_weight-weights[i])/start_weight)
+            data["data"][">20"].append(
+                (last_date.day+1, "C" if (start_weight-weights[i])/start_weight > 0.2 else "")
+            ) 
+            data["data"][">10"].append(
+                (last_date.day+1, "A" if (start_weight-weights[i])/start_weight > 0.1 else "")
+            ) 
             data["data"]["sig"].append((last_date.day+1, "")) 
             cur_date = incdate(last_date, 1)
             if cur_date.month != last_date.month:
                 monthly_weights.append(data)
                 data = {
-                    "data": {"weights": [], "watercontrol": [], "sig": []}, 
+                    "data": {"weights": [], "watercontrol": [], "sig": [], ">20":[], ">10":[]}, 
                     "month_str": datetostr_month(cur_date)
                 }
             last_date = cur_date
@@ -82,7 +90,7 @@ class DCreator:
                 if cat == "sig":
                     add_signature(cells[i].paragraphs[0], user, 0.29)
                 else:
-                    update_paragraph_fast(cells[i].paragraphs[0], "", val)
+                    update_paragraph(cells[i].paragraphs[0], "", val)
 
         remember_i = {}
         for i, month in enumerate(monthly_weights):
