@@ -210,27 +210,58 @@ class DManager:
     def get_p9_data(self, escaped_protocol: str): 
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
+        def procedures(procedures, anesthesia, analgesia, viruses):
+            anesthesia = sort_query(anesthesia, "date")
+            analgesia = sort_query(analgesia, "date")
+            viruses = sort_query(viruses, "date")
+            data = {}
+            for p in sort_query(procedures, "start_date"): 
+                if p.start_date not in data: 
+                    d = {"start": p.start_date, "end":p.end_date, "names": p.name}
+                    d["anesthesia"] = ", ".join([m.string() for m in anesthesia if m.date == p.start_date])
+                    d["analgesia"] = ", ".join([m.string() for m in analgesia if m.date == p.start_date])
+                    d["viruses"] = ", ".join([v.string() for v in viruses if v.date == p.start_date])
+                    data[p.start_date] = d
+                else: 
+                    data[p.start_date]["names"] += f", {p.name}"
+            return data
         for sub in protocol.get_subprotocols():
             full_protocol = f"{escaped_protocol}/{sub}"
-            print("gathering: ", full_protocol)
             generals = General.query.filter(General.experiment == full_protocol)
             data = {"animals": []}
-            print("all generals: ", generals)
             if generals.first():
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
                     print("got: ", general)
                     animal_data = AnimalData.query.get(general.animal_id)
                     if date_filled(animal_data.death_date):
-                        data["animals"].append(
-                            {"general": general, "animal_data": animal_data}
-                        )
+                        data["animals"].append({
+                            "general": general, 
+                            "animal_data": animal_data,
+                            "procedures": procedures(
+                                Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
+                                Anesthesia.query.filter(Anesthesia.animal_id == animal_data.mla_num),
+                                Analgesia.query.filter(Analgesia.animal_id == animal_data.mla_num),
+                                Virus.query.filter(Virus.animal_id == animal_data.mla_num),
+                            ),
+                            "pprocedures": procedures(
+                                PostProcedure.query.filter(PostProcedure.animal_id == animal_data.mla_num),
+                                Anesthesia.query.filter(Anesthesia.animal_id == animal_data.mla_num),
+                                Analgesia.query.filter(Analgesia.animal_id == animal_data.mla_num),
+                                Virus.query.filter(Virus.animal_id == animal_data.mla_num),
+                            )
+                        })
                 data["start"] = data["animals"][0]["general"].start
                 data["end"] = data["animals"][0]["animal_data"].death_date
+                data["mlas"] = ". ".join([a["animal_data"].mla_num for a in data["animals"]])
+                data["sexes"] = ". ".join([a["animal_data"].sex for a in data["animals"]])
+                data["lines"] = ". ".join([a["animal_data"].line for a in data["animals"]])
+                data["users"] = ". ".join([a["animal_data"].user for a in data["animals"]])
                 subprotocols[full_protocol] = data
             else: 
                 print("No data for this subprotocol")
-        return subprotocols
+        print(subprotocols)
+        return subprotocols, protocol.name
 
     def update_dates(
         self, animal_id: str, start_date_str: str, autofill: bool
@@ -495,7 +526,6 @@ class DManager:
             return 0, 100
         dates_counter[0] += 1 if date_filled(general.start) else 0
         animal_data = AnimalData.query.get(animal_id)
-        print("__is_stored: ", animal_data, "death_date: ", animal_data.death_date)
         if not ignore_death_date:
             dates_counter[0] += 1 if date_filled(animal_data.death_date) else 0
         for Table in [Anesthesia, Analgesia, Virus]: 
@@ -511,14 +541,11 @@ class DManager:
 
     def __update_stored(self, animal_id): 
         x, of = self.__is_stored(animal_id)
-        print("Update stored: ", x, of)
         animal_data = AnimalData.query.get(animal_id) 
         if x == of:
             animal_data.stored = True
-            print("Update stored: set stored to True.")
         else: 
             animal_data.stored = False
-            print("Update stored: set stored to False.")
         db.session.commit()
 
 

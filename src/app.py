@@ -454,8 +454,8 @@ def generate_paragraph_9(escaped_protocol: str):
         autoescape=select_autoescape()
     )
     template = env.get_template("main.tex")
-    subprotocols = dmanager.get_p9_data(escaped_protocol)
-    txt = template.render(subprotocols=subprotocols)
+    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
+    txt = template.render(subprotocols=subprotocols, protocol=protocol)
     tmp_path = tempfile.mkdtemp() 
     full_path = f"{tmp_path}/main.tex"
     f = open(full_path, "w") 
@@ -468,8 +468,8 @@ def generate_paragraph_9(escaped_protocol: str):
     proc=subprocess.Popen(
         ["pdflatex", full_path], 
         cwd=tmp_path, 
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.STDOUT
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)

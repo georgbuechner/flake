@@ -1,5 +1,5 @@
-\documentclass[8pt, a4paper, openany, landscape]{report}
-\usepackage[left=0.5cm,top=1cm, bottom=3cm, right=1cm]{geometry}
+\documentclass[8pt, a4paper, openany, landscape]{article}
+\usepackage[headheight=186pt, left=1cm,top=8cm, bottom=4cm, right=1cm]{geometry}
 
 % my custom stlye and functions stuff
 \usepackage[utf8]{inputenc}
@@ -7,11 +7,15 @@
 \usepackage{ngerman}
 \usepackage[scaled]{helvet}
 \usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{soul} % underline with linebreak (\uline, \ul)
+\usepackage{hyperref}
 
 % tables
 \usepackage{array}
 \usepackage{rotating}
 \usepackage{longtable}
+\usepackage{multirow}
 
 % \graphicspath{ {../images/} }
 
@@ -30,37 +34,44 @@
 \addbibresource{literatur.bib}
 
 \usepackage{csquotes}
-
 \usepackage{setspace}
-\usepackage{wrapfig}
 
 
-\begin{document}
-\sffamily
-
-\begin{minipage}[c]{5cm}
-  \includegraphics[scale=0.3]{logo.jpg}
-\end{minipage}
-\parbox[c]{15cm}{
-  \begin{center}
-    \large{
-      \textbf{\underline{Aufzeichnungen} über Versuchsvorhaben, in dem Wirbeltiere, Kopffüßer
-      oder Zehnfußkrebse verwendet werden.}\\
-      \textbf{(§ 9 Abs.~5 TierSchG und § 29 TierSchVersV)}\\
-    }
-    \textit{(Ordnungswidrig nach § 18 Abs. 1 Nr. 3 TierSchG handelt, wer vorsätzlich oder fahrlässig
-    entgegen § 30 Abs. 1 TierSchVersV die Einhaltung der Vorschriften des § 29 Abs. 1
-    TierSchVersV nicht sicherstellt. Diese Ordnungswidrigkeit kann nach § 18 Abs. 4 TierSchG mit
-    einer Geldbuße bis zu fünftausend Euro geahndet werden.)}
-  \end{center}
-}%
-
-
-\begin{center}
-  \textbf{itenden Aufzeichnungen“ des Landesamtes für Gesundheit und Soziales!}
-\end{center}
-
-
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{ %
+  \fancyhead[L]{
+    \sffamily
+    \begin{tabular}{ll}
+      \begin{tabular}[t]{c}
+        \includegraphics[scale=0.3]{logo.jpg}
+      \end{tabular} &
+        \begin{tabular}[b]{c}
+          \large{
+             \textbf{\underline{Aufzeichnungen} über Versuchsvorhaben, in dem Wirbeltiere, Kopffüßer
+             oder Zehnfußkrebse verwendet werden.}
+           }\tabularnewline
+           \large{
+             \textbf{(§ 9 Abs.~5 TierSchG und § 29 TierSchVersV)}
+           }\tabularnewline
+          \small{
+            \textit{(Ordnungswidrig nach § 18 Abs. 1 Nr. 3 TierSchG handelt, wer vorsätzlich oder 
+              fahrlässig entgegen § 30 Abs. 1 TierSchVersV die Einhaltung}
+          }\tabularnewline 
+          \small{\textit{der Vorschriften des § 29 Abs. 1 TierSchVersV nicht sicherstellt. 
+              Diese Ordnungswidrigkeit kann nach § 18 Abs. 4 TierSchG mit
+              einer Geldbuße}
+          }\tabularnewline 
+          \small{\textit{bis zu fünftausend Euro geahndet werden.)}}\tabularnewline
+        \end{tabular}
+    \end{tabular}
+    \begin{tabular}{p{19.7cm}r}
+      & \fbox{Registrierungsnummer der Behörde: {{protocol}} } \\
+    \end{tabular}
+    \begin{center}
+      \textbf{Bitte beachten Sie die \glqq Hinweise zum Führen der
+        versuchsbegleitenden Aufzeichnungen\grqq des Landesamtes für Gesundheit und Soziales!
+      }
+    \end{center}
 \vspace{0.5 cm}
 \begin{tabular}{
     |>{\centering\arraybackslash}m{2cm}
@@ -74,25 +85,29 @@
     >{\centering\arraybackslash}m{1.9cm}|
 }
   \hline 
-  Beginn und Abschluss &
+  \multirow{2}{*}{\parbox{2cm}{
+    \begin{center}
+      Beginn und Abschluss
+    \end{center}
+  }} &
   \multicolumn{3}{c|}{Verwendete Tiere} &
-  \parbox{1.5cm}{
+  \multirow{2}{*}{\parbox{1.5cm}{
     \begin{center}
     \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
     \end{center}
-  }&
-   \parbox[c]{7cm}{
+  }}&
+  \multirow{2}{*}{\parbox[c]{7cm}{
     \begin{center}
       Art und Auführung \textbf{\underline{jedes}} Einzelversuchs (inkl.~Betäubungsverfahren, Tötungsmethode), sowie besondere Vorkommnisse.
     \end{center}
-  } &
-  \parbox[c]{2cm}{
+  }} &
+  \multirow{2}{*}{\parbox[c]{2cm}{
     \begin{center}
       \textbf{\underline{tatsächlicher}} Schweregrad (Belasung) 
       \footnotesize{nach § 35 Abs.~2 Nr.~4 TierSchVersV}
     \end{center}
-  } &
-  \begin{turn}{-90}\small{Wider-}\end{turn} \begin{turn}{-90}\small{verwendung}\end{turn} &
+  }} &
+  \multirow{2}{*}{\begin{turn}{-90}\small{Wider-}\end{turn} \begin{turn}{-90}\small{verwendung}\end{turn}} &
   \multicolumn{2}{c|}{
     \parbox[c]{2.4cm}{
       \begin{center}
@@ -102,52 +117,103 @@
       \end{center}
     }%
   } &
-  \parbox[c]{2cm}{
+  \multirow{2}{*}{\parbox[c]{2cm}{
     Name \textbf{\underline{und}} Unterschrift \\
-
     \small{Versuchs-durchführender}
-  } &
-  \parbox[c]{2cm}{
+  }} &
+  \multirow{2}{*}{\parbox[c]{2cm}{
     Unterschrift \\
-
     \smallskip 
     \small{Leiter / Stellvertreter }
-  } \\
-
+  }} \\
       \cline{2-4}
       \cline{9-10}
       & \small{An-zahl} & \small{Art / Bezeichnung (Stamm/ Linie)} & m/w & & & &
       & Verbleib der Tiere & \tiny{Datum / Unterschrift nach tierärtztlicher Untersuchung} & & \\
       &                 &                                          &     & & & & &  &  & & \\
   \hline
-      {% for sub, d in subprotocols.items() %}
-        {{d.start}} - {{d.end}} &  
-        {{d.animals|length}} &  
-        {% for animal in d.animals%} 
-          \footnotesize{ {{animal.animal_data.line}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
-        {% endfor %} &     
-        {% for animal in d.animals%} 
-          \footnotesize{ {{animal.animal_data.sex}} }{%- if loop.index < d.animals|length -%},{%- endif -%}
-        {% endfor %} &     
-        {% for animal in d.animals%} 
-          \footnotesize{ {{animal.animal_data.mla_num}} }{%- if loop.index < d.animals|length -%},{%- endif -%} 
-        {% endfor %} &
-          &  & Nein & \footnotesize{Tötung durch {{d.subprotocol.death_drug}} } & Entfällt &
-        {% for animal in d.animals%} 
-          \footnotesize{ {{animal.animal_data.user}} }{%- if loop.index < d.animals|length -%},{%- endif -%}
-        {% endfor %} &     
-          ML \\
-        \hline
-      {% endfor %}
-  \hline
 \end{tabular}
+  }%
+  \fancyfoot[L]{
+    \begin{center}
+      \textbf{Aufbewahrungszeitraum: 5 Jahre ab dem Zeitpunkt, an dem das gesamte Versuchsvorhaben 
+      abgeschlossen wurde (Fristablauf).}
+    \end{center}
+    \begin{tabular}{p{4cm}p{22cm}r}
+      \textbf{Impressum:} & 
+      \textbf{Die TierSchutzBeauftragten der Charité-Universitätsmedizin Berlin} & \\
+      Stand \today & 
+      Web: \url{http://tierschutz.charite.de/}; 
+      E-Mail: \href{mailto:tierschutz@charite.de}{tierschutz@charite.de}
+      & \multirow{2}{*}\thepage\\
+    \end{tabular}
+  }
+  \fancyfoot[C]{}
+  \fancyfoot[R]{}
+}
 
-\begin{center}
-  \textbf{Aufbewahrungszeitraum: 5 Jahre ab dem Zeitpunkt, an dem das gesamte Versuchsvorhaben abgeschlossen wurde (Fristablauf).}
-\end{center}
+\pagestyle{plain}
 
-Stand 10.01.23\\
-\textbf{Impressum}
-
+\begin{document}
+\sffamily
+\raggedbottom
+\begin{longtable}{
+    |>{\centering\arraybackslash}m{2cm}
+    | >{\centering}m{0.5cm}| >{\centering}m{2cm}| >{\centering}m{0.5cm}| 
+    >{\centering\arraybackslash}m{1.5cm}|
+    >{\centering\arraybackslash}m{7cm}|
+    >{\centering\arraybackslash}m{2cm}|
+    >{\centering\arraybackslash}m{0.8cm}
+    | *2{>{\centering}m{1.2cm}| }
+    >{\centering\arraybackslash}m{1.9cm}|
+    >{\centering\arraybackslash}m{1.9cm}|
+}
+  \hline 
+  {% for sub, d in subprotocols.items() %}
+    {% for animal in d.animals %} 
+      {% if loop.index0 == 0 %}
+        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{ {{d.start}} - {{d.end}} }} &
+        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.5cm}{ {{d.animals|length}} }} &
+        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{ {{d.lines}} }}&
+        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.5cm}{ {{d.sexes}} }}&
+        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.5cm}{ {{d.mlas}} }}&
+      {% else %}
+         & & & & &
+      {% endif %}
+      \parbox[t]{7cm}{
+        \small{
+          \emph{ {{animal.animal_data.mla_num}}}:
+          {% for start, p in animal.procedures.items() %} 
+            \ul{ {{p.start}} - {{p.end}}: {{p.names}}:}\\
+            {%- if p.anesthesia|length > 0 -%}Anesthesia: {{p.anesthesia}}\\{%- endif -%}
+            {%- if p.analgesia|length > 0 -%}Analgesia: {{p.analgesia}}{%- endif -%}
+            {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
+          {% endfor %}
+          {% for start, p in animal.pprocedures.items() %} 
+            \ul{ {{p.start}} - {{p.end}}: {{p.names}}}
+          {% endfor %}
+        }
+      }&
+    {% if loop.index0 == 0 %}
+      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{Leicht} }&
+      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.8cm}{Nein} }&
+      \multirow{ {{d.animals|length}}}{*}{
+        \parbox[t]{1.2cm}{\footnotesize{Tötung durch {{d.subprotocol.death_drug}} } } 
+      }&
+      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.2cm}{Entfällt} }&
+      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.9cm}{ {{d.users}} }}&
+      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.9cm}{ ML }}\\
+    {% else %}
+      & & & & & \\
+    {% endif%}
+    
+    \hline
+    {% endfor %}
+  {% endfor %}
+  \hline
+\end{longtable}
+\raggedbottom
 
 \end{document}
+
+

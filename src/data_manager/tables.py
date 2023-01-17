@@ -66,7 +66,6 @@ class AnimalData(db.Model):
         self.stored = False
 
     def update(self, data: Dict[str, any]): 
-        print(data["id"], data)
         self.sex = data["sex"]
         self.line = data["line"]
         self.dob = data["dob"]
@@ -430,7 +429,10 @@ class Anesthesia(db.Model):
         self.amount = a["amount"]
         self.concentration = a["concentration"] 
         self.toe_pinch = "toe_pinch" in a 
-        print("Changed concentration to: ", self.concentration)
+
+    def string(self): 
+        return f"{self.name} ({self.concentration})"
+
 
 class Analgesia(db.Model): 
     __tablename__ = "analgesia"
@@ -478,6 +480,9 @@ class Analgesia(db.Model):
         self.date = a["date"] 
         self.amount = a["amount"]
         self.concentration = a["concentration"] 
+
+    def string(self): 
+        return f"{self.name} ({self.concentration})"
 
 class Procedure(db.Model): 
     __tablename__ = "procedures"
@@ -563,6 +568,9 @@ class Virus(db.Model):
     def update(self, virus: Dict[str, any]):
         self.date = virus["date"]
         self.amount = virus["amount"]
+
+    def string(self): 
+        return f"{self.name}"
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
