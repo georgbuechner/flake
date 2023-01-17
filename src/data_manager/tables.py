@@ -66,8 +66,9 @@ class AnimalData(db.Model):
         self.stored = False
 
     def update(self, data: Dict[str, any]): 
+        print(data["id"], data)
         self.sex = data["sex"]
-        self.line = data["sex"]
+        self.line = data["line"]
         self.dob = data["dob"]
         self.death_date = str(data["death_date"])
         self.user = data["user"]
