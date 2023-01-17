@@ -3,7 +3,7 @@
     <tr>
       <td><label for="name">Name:</label></td>
       <td><select 
-        type="text" name="name" id="name" placeholder="name" onchange="Set(this)"
+        type="text" name="name" id="name" placeholder="name" onchange='Set(this, {{json_definitions|safe}});'
       >
         {% for definition in definitions %}
           <option value="{{definition.name}}">{{definition.name}}</option>

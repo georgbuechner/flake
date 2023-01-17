@@ -264,15 +264,16 @@ class PProcedure(db.Model):
 
     @classmethod
     def from_json(cls, protocol: str, p: Dict[str, any]): 
+        surgery = AProcedure.query.get(p["name"]).surgery
         return cls(
-            protocol, p["name"], p["days_after_start"], p["duration"], "surgery" in p
+            protocol, p["name"], p["days_after_start"], p["duration"], surgery
         )
 
     def update(self, procedure: Dict[str, any]): 
         self.name = procedure["name"] 
         self.days_after_start = procedure["days_after_start"] 
         self.duration = procedure["duration"] 
-        self.surgery = "surgery" in procedure
+        self.surgery = AProcedure.query.get(procedure["name"]).surgery
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"

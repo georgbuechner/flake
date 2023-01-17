@@ -3,7 +3,7 @@
     <tr>
       <td><label for="name">Name:</label></td>
       <td><select 
-        type="text" name="name" id="name" placeholder="name" onchange="Set(this)"
+        type="text" name="name" id="name" placeholder="name" onchange='Set(this, {{json_definitions|safe}});'
       >
         {% for definition in definitions %}
           <option value="{{definition.name}}">{{definition.name}}</option>
@@ -33,8 +33,12 @@
       </td>
     </tr>
     <tr>
-      <td><label for="surgery">Surgery?</label></td>
-      <td><input type="checkbox" name="surgery" id="surgery"></td>
+      <td title="Property must be set in definitions.">
+        <label for="surgery" >Surgery?</label>
+      </td>
+      <td title="Property must be set in definitions.">
+        <input type="checkbox" name="surgery" id="surgery" disabled>
+      </td>
     </tr>
   </table>
   <br><br>
