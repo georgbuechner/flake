@@ -1,5 +1,6 @@
 \documentclass[8pt, a4paper, openany, landscape]{article}
-\usepackage[headheight=186pt, left=1cm,top=8cm, bottom=4cm, right=1cm]{geometry}
+%\usepackage[headheight=186pt, left=1cm,top=8cm, bottom=4cm, right=1cm]{geometry}
+\usepackage[headheight=86pt, left=1cm,top=4cm, bottom=4cm, right=1cm]{geometry}
 
 % my custom stlye and functions stuff
 \usepackage[utf8]{inputenc}
@@ -73,66 +74,6 @@
       }
     \end{center}
 \vspace{0.5 cm}
-\begin{tabular}{
-    |>{\centering\arraybackslash}m{2cm}
-    | >{\centering}m{0.5cm}| >{\centering}m{2cm}| >{\centering}m{0.5cm}| 
-    >{\centering\arraybackslash}m{1.5cm}|
-    >{\centering\arraybackslash}m{7cm}|
-    >{\centering\arraybackslash}m{2cm}|
-    >{\centering\arraybackslash}m{0.8cm}
-    | *2{>{\centering}m{1.2cm}| }
-    >{\centering\arraybackslash}m{1.9cm}|
-    >{\centering\arraybackslash}m{1.9cm}|
-}
-  \hline 
-  \multirow{2}{*}{\parbox{2cm}{
-    \begin{center}
-      Beginn und Abschluss
-    \end{center}
-  }} &
-  \multicolumn{3}{c|}{Verwendete Tiere} &
-  \multirow{2}{*}{\parbox{1.5cm}{
-    \begin{center}
-    \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
-    \end{center}
-  }}&
-  \multirow{2}{*}{\parbox[c]{7cm}{
-    \begin{center}
-      Art und Auführung \textbf{\underline{jedes}} Einzelversuchs (inkl.~Betäubungsverfahren, Tötungsmethode), sowie besondere Vorkommnisse.
-    \end{center}
-  }} &
-  \multirow{2}{*}{\parbox[c]{2cm}{
-    \begin{center}
-      \textbf{\underline{tatsächlicher}} Schweregrad (Belasung) 
-      \footnotesize{nach § 35 Abs.~2 Nr.~4 TierSchVersV}
-    \end{center}
-  }} &
-  \multirow{2}{*}{\begin{turn}{-90}\small{Wider-}\end{turn} \begin{turn}{-90}\small{verwendung}\end{turn}} &
-  \multicolumn{2}{c|}{
-    \parbox[c]{2.4cm}{
-      \begin{center}
-        Verfahren nach Abschluss \\ 
-        \smallskip
-        \footnotesize{(§ 28 TierSchVersV)}
-      \end{center}
-    }%
-  } &
-  \multirow{2}{*}{\parbox[c]{2cm}{
-    Name \textbf{\underline{und}} Unterschrift \\
-    \small{Versuchs-durchführender}
-  }} &
-  \multirow{2}{*}{\parbox[c]{2cm}{
-    Unterschrift \\
-    \smallskip 
-    \small{Leiter / Stellvertreter }
-  }} \\
-      \cline{2-4}
-      \cline{9-10}
-      & \small{An-zahl} & \small{Art / Bezeichnung (Stamm/ Linie)} & m/w & & & &
-      & Verbleib der Tiere & \tiny{Datum / Unterschrift nach tierärtztlicher Untersuchung} & & \\
-      &                 &                                          &     & & & & &  &  & & \\
-  \hline
-\end{tabular}
   }%
   \fancyfoot[L]{
     \begin{center}
@@ -156,57 +97,125 @@
 
 \begin{document}
 \sffamily
+
+
 \raggedbottom
 \begin{longtable}{
-    |>{\centering\arraybackslash}m{2cm}
+    |>{\centering\arraybackslash}m{1.9cm}
     | >{\centering}m{0.5cm}| >{\centering}m{2cm}| >{\centering}m{0.5cm}| 
     >{\centering\arraybackslash}m{1.5cm}|
     >{\centering\arraybackslash}m{7cm}|
+    >{\centering\arraybackslash}m{0.5cm}|
     >{\centering\arraybackslash}m{2cm}|
-    >{\centering\arraybackslash}m{0.8cm}
+    >{\centering\arraybackslash}m{0.5cm}
     | *2{>{\centering}m{1.2cm}| }
-    >{\centering\arraybackslash}m{1.9cm}|
-    >{\centering\arraybackslash}m{1.9cm}|
+    >{\centering\arraybackslash}m{2cm}|
+    >{\centering\arraybackslash}m{1.7cm}|
 }
   \hline 
+  \multirow{2}{*}{\parbox{1.9cm}{
+    \begin{center}
+      Beginn und Abschluss
+    \end{center}
+  }} &
+  \multicolumn{3}{c|}{Verwendete Tiere} &
+  \multirow{2}{*}{\parbox{1.5cm}{
+    \begin{center}
+    \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
+    \end{center}
+  }}&
+  \multirow{2}{*}{\parbox[c]{7cm}{
+    \begin{center}
+      Art und Auführung \textbf{\underline{jedes}} Einzelversuchs (inkl.~Betäubungsverfahren, Tötungsmethode), sowie besondere Vorkommnisse.
+    \end{center}
+  }} &
+  \multirow{2}{*}{\begin{turn}{-90}\small{Sub-}\end{turn} \begin{turn}{-90}\small{protocol}\end{turn}} &
+  \multirow{2}{*}{\parbox[c]{2cm}{
+    \begin{center}
+      \textbf{\underline{tatsächlicher}} Schweregrad (Belasung) 
+      \footnotesize{nach § 35 Abs.~2 Nr.~4 TierSchVersV}
+    \end{center}
+  }} &
+  \multirow{2}{*}{\begin{turn}{-90}\small{Wieder-}\end{turn} \begin{turn}{-90}\small{verwendung (j/n)}\end{turn}} &
+  \multicolumn{2}{c|}{
+    \parbox[c]{2.4cm}{
+      \begin{center}
+        Verfahren nach Abschluss \\ 
+        \smallskip
+        \footnotesize{(§ 28 TierSchVersV)}
+      \end{center}
+    }%
+  } &
+  \multirow{2}{*}{\parbox[c]{2cm}{
+    Name \textbf{\underline{und}} Unterschrift \\
+    \small{Versuchs-durchführender}
+  }} &
+  \multirow{2}{*}{\parbox[c]{1.7cm}{
+    Unterschrift \\
+    \smallskip 
+    \small{Leiter / Stellvertreter }
+  }} \\
+      \cline{2-4}
+      \cline{10-11}
+      & \small{An-zahl} & \small{Art / Bezeichnung (Stamm/ Linie)} & m/w & & & & &
+      & Verbleib der Tiere & \tiny{Datum / Unterschrift nach tierärtztlicher Untersuchung} & & \\
+      &                 &                                          &     & & & & &  &  & & & \\
+  \hline
+
+  \endhead
+  \hline
+  \endfoot 
+  \endlastfoot
   {% for sub, d in subprotocols.items() %}
-    {% for animal in d.animals %} 
-      {% if loop.index0 == 0 %}
-        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{ {{d.start}} - {{d.end}} }} &
-        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.5cm}{ {{d.animals|length}} }} &
-        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{ {{d.lines}} }}&
-        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.5cm}{ {{d.sexes}} }}&
-        \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.5cm}{ {{d.mlas}} }}&
-      {% else %}
-         & & & & &
-      {% endif %}
+    {% for a in d.animals %} 
+      \setlength{\fboxsep}{0.4cm}
+      \parbox[t]{1.9cm}{ {{a.start}} - {{a.end}} } &
+      \setlength{\fboxsep}{0.4cm}
+      \parbox[t]{0.5cm}{ 1 } &
+      \setlength{\fboxsep}{0.4cm}
+      \parbox[t]{2cm}{ {{a.animal_data.line}} }&
+      \setlength{\fboxsep}{0.4cm}
+      \parbox[t]{0.5cm}{ {{a.animal_data.sex}} }&
+      \setlength{\fboxsep}{0.4cm}
+      \parbox[t]{1.5cm}{ {{a.animal_data.mla}} }&
+
+      {% for p in a.procedures %} 
+        {% if loop.index0 > 0 %}
+           & & & & &
+        {% else %}
+      \setlength{\fboxsep}{0.4cm}
+        {% endif %}
       \parbox[t]{7cm}{
-        \small{
-          \emph{ {{animal.animal_data.mla_num}}}:
-          {% for start, p in animal.procedures.items() %} 
-            \ul{ {{p.start}} - {{p.end}}: {{p.names}}:}\\
+          \small{
+            {% if p.start == p.end %}
+              \ul{ {{p.start}}: {{p.names}}}\\
+            {% else %}
+              \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
+            {% endif %}
             {%- if p.anesthesia|length > 0 -%}Anesthesia: {{p.anesthesia}}\\{%- endif -%}
-            {%- if p.analgesia|length > 0 -%}Analgesia: {{p.analgesia}}{%- endif -%}
+            {%- if p.analgesia|length > 1 -%}Analgesia: {{p.analgesia}}\\{%- endif -%}
             {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
-          {% endfor %}
-          {% for start, p in animal.pprocedures.items() %} 
-            \ul{ {{p.start}} - {{p.end}}: {{p.names}}}
-          {% endfor %}
-        }
-      }&
-    {% if loop.index0 == 0 %}
-      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{2cm}{Leicht} }&
-      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{0.8cm}{Nein} }&
-      \multirow{ {{d.animals|length}}}{*}{
-        \parbox[t]{1.2cm}{\footnotesize{Tötung durch {{d.subprotocol.death_drug}} } } 
-      }&
-      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.2cm}{Entfällt} }&
-      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.9cm}{ {{d.users}} }}&
-      \multirow{ {{d.animals|length}}}{*}{ \parbox[t]{1.9cm}{ ML }}\\
-    {% else %}
-      & & & & & \\
-    {% endif%}
-    
+          }
+        }&
+      {% if loop.index0 == 0 %}
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{2cm}{A} &
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{2cm}{Leicht} &
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{0.5cm}{N} &
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{1.2cm}{\footnotesize{Tötung}} &
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{1.2cm}{Entfällt} &
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{2cm}{ {{a.animal_data.user}} }&
+        \setlength{\fboxsep}{0.4cm}
+        \parbox[t]{1.7cm}{ ML }\\
+      {% else %}
+        & & & & & &\\
+      {% endif%}
+    {% endfor %}
     \hline
     {% endfor %}
   {% endfor %}

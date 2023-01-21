@@ -17,8 +17,18 @@ def datetostr_month(date: datetime) -> str:
 def incdate(date: datetime, days: int) -> datetime: 
     return date + timedelta(days=days) 
 
-def daterange(date1: str, date2: str) -> List[datetime]:
+def daterange(date1: datetime, date2: datetime) -> List[datetime]:
     return [date1 + timedelta(days=x) for x in range((date2-date1).days+1)]
+
+def daterange_str(date1: str, date2: str) -> List[str]:
+    d1 = strtodate(date1)
+    d2 = strtodate(date2)
+    return [datetostr(d1 + timedelta(days=x), SOURCE_DATE_FORMAT) for x in range((d2-d1).days+1)]
 
 def is_date(date_str: str) -> bool:
     return isinstance(date_str, datetime)
+
+def convert(
+    date_str: str, out_format: str = OUTPUT_DATE_FORMAT
+) -> str:
+    return datetostr(strtodate(date_str), out_format)
