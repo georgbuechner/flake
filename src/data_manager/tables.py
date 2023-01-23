@@ -576,7 +576,6 @@ def table_to_json(table):
     """! Removes fields added by sql-alchamy. """
     return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}
 
-   
 
 EXPERIMENT_TABLES = {
     "anesthesia": Anesthesia, 

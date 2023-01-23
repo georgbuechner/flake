@@ -199,13 +199,13 @@
         }&
       {% if loop.index0 == 0 %}
         \setlength{\fboxsep}{0.4cm}
-        \parbox[t]{2cm}{A} &
+        \parbox[t]{2cm}{ {{d.experiment}} } &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{2cm}{Leicht} &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{0.5cm}{N} &
         \setlength{\fboxsep}{0.4cm}
-        \parbox[t]{1.2cm}{\footnotesize{Tötung}} &
+        \parbox[t]{1.2cm}{\footnotesize{ {% if a.end != "???" -%}Tötung{%- else -%}---{% endif -%}}} &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{1.2cm}{Entfällt} &
         \setlength{\fboxsep}{0.4cm}
