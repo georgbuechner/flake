@@ -200,8 +200,13 @@ class DManager:
             watercontrol = PWatercontrol.query.get(full_protocol)
             data = table_to_json(watercontrol) if watercontrol else {}
             return data, {}
+        # Get tables for all other categories.
         Table = PROTOCOL_TABLES[category]
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
+        # Sort tables by days_after_start/ days_after_surgery:
+        sort_key = "days_after_start" if "days_after_start" in Table.__dict__ else "days_after_surgery"
+        protocol_data = sort_query(protocol_data, sort_key)
+        # Get definitions:
         definition_category = category if category not in ["anesthesia", "analgesia"] else "medication"
         DefinitionsTable = DEFINITION_TABLES[definition_category]
         definitions = DefinitionsTable.query.all()

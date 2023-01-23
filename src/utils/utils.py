@@ -12,13 +12,18 @@ def sort_query(obj_list, key: str):
 
     @return Sorted list.
     """
-    if obj_list.first():
-        obj_list = [x for x in obj_list]
-        def sort_by_key(e):
+    def sort_by_key(e):
+        if "date" in key:
             return table_to_json(e)[key]
-        obj_list.sort(key=sort_by_key)
-        return obj_list
-    return []
+        return int(table_to_json(e)[key])
+    print("OBJ_LIST: ", type(obj_list))
+    if not isinstance(obj_list, list):
+        if obj_list.first():
+            obj_list = [x for x in obj_list]
+        else:
+            return []
+    obj_list.sort(key=sort_by_key)
+    return obj_list
 
 
 def hash_pw(password: str, salt: str = None) -> str: 

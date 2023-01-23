@@ -263,11 +263,11 @@ def upload_signature(escaped_user: str):
 def availible(category: str):
     data = {}
     if category == "medication":
-        data=AMedication.query.all()
+        data=sort_query(AMedication.query.all(), "days_after_surgery")
     if category == "procedures":
-        data=AProcedure.query.all()
+        data=sort_query(AProcedure.query.all(), "days_after_start")
     if category == "viruses":
-        data=AVirus.query.all()
+        data=sort_query(AVirus.query.all(), "days_after_start")
     return render_template(
         "definitions.html", 
         user_email=current_user.email, 
