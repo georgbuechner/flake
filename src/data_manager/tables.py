@@ -532,6 +532,7 @@ class PostProcedure(db.Model):
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
         return cls(animal_id, procedure.name, "", "", experimenter)
+        
 
     @classmethod 
     def from_json(cls, animal_id: str, p: Dict[str, any]): 

@@ -16,7 +16,6 @@ def sort_query(obj_list, key: str):
         if "date" in key:
             return table_to_json(e)[key]
         return int(table_to_json(e)[key])
-    print("OBJ_LIST: ", type(obj_list))
     if not isinstance(obj_list, list):
         if obj_list.first():
             obj_list = [x for x in obj_list]

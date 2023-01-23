@@ -17,8 +17,7 @@ from data_manager.tables import *
 from utils.utils import sort_query, escape
 from utils.dt_utils import * 
 
-# Main tables
-T_NOTES = "notes"
+SACRIFICE_DATE = -1
 
 class DManager:
     """! The data-manager class.
@@ -125,14 +124,11 @@ class DManager:
         # Initialize procedures:
         surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
-            if int(protocol_procedure.days_after_start) > surgery_start: 
-                procedure = PostProcedure.from_default(
-                    animal_id, animal_data.user, protocol_procedure
-                )
+            days_after_start = int(protocol_procedure.days_after_start)
+            if  days_after_start > surgery_start or days_after_start == SACRIFICE_DATE: 
+                procedure = PostProcedure.from_default(animal_id, animal_data.user, protocol_procedure)
             else: 
-                procedure = Procedure.from_default(
-                    animal_id, animal_data.user, protocol_procedure
-                )
+                procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
             db.session.add(procedure)
         # Initialize medication:
         for protocol_anesthesia in PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol):
@@ -148,6 +144,8 @@ class DManager:
             virus = Virus.from_default(animal_id, protocol_virus)
             db.session.add(virus)
         db.session.commit()
+        # If sacrifice-date already exists, set sacrifice-date for procedures referencing sacrifice-date
+        fill_sacrifice_date(animal_id, full_protocol)
         return "", 200
 
     def update_experiment_data_entry(
@@ -295,8 +293,8 @@ class DManager:
         general = General.query.get(animal_id)
         old_start_date = general.start
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
-        db.session.commit()
         if autofill is False: 
+            db.session.commit()
             return "Start date updated without updating other dates.", 200
         general = General.query.get(animal_id)
         surgery_start = get_surgery_start(general.experiment)
@@ -329,6 +327,7 @@ class DManager:
             default_entry = PVirus.query.get((general.experiment, x.name))
             x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
+        fill_sacrifice_date(animal_id, general.experiment)
         self.__update_stored(animal_id)
         return f"Dates where updated. Make sure to doublecheck! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
@@ -522,6 +521,7 @@ class DManager:
                 db.session.add(animal_data)
             print("from csv: ", animal_id, animal_data)
             db.session.commit()
+            fill_sacrifice_date(animal_id, general.experiment)
             self.__update_stored(animal_id)
         return updated, len(df)
 
@@ -567,7 +567,7 @@ class DManager:
 
 
 def date_filled(date_str: str) -> bool: 
-    return len(date_str) == 10
+    return date_str and len(date_str) == 10
 
 
 def get_surgery_start(protocol: str):
@@ -595,3 +595,14 @@ def get_surgery_dates(animal_id: str, protocol: str):
             for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
                 surgery_dates.append(date)
     return surgery_dates
+
+def fill_sacrifice_date(animal_id: str, protocol: str):
+    animal_data = AnimalData.query.get(animal_id)
+    post_procedures = PostProcedure.query.filter(PostProcedure.animal_id == animal_id)
+    if post_procedures.first() and date_filled(animal_data.death_date): 
+        for post_procedure in post_procedures: 
+            default = PProcedure.query.get((protocol, post_procedure.name))
+            if int(default.days_after_start) == SACRIFICE_DATE:
+                post_procedure.start_date = animal_data.death_date
+                post_procedure.end_date = animal_data.death_date
+                db.session.commit()
