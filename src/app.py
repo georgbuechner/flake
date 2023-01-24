@@ -28,10 +28,15 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
+
 with app.app_context():
+    # Example to remove tables
     # Create tables
-    # AnimalData.__table__.drop(db.engine)
     db.create_all()
+    # Update example
+    # for general in General.query.all():
+    #     general.suffering = PGeneral.query.get(general.experiment)
+    # db.session.commit()
 
 @login_manager.user_loader 
 def user_loader(user_id): 
@@ -270,11 +275,11 @@ def upload_signature(escaped_user: str):
 def availible(category: str):
     data = {}
     if category == "medication":
-        data=AMedication.query.all()
+        data=sort_query(AMedication.query.all(), "days_after_surgery")
     if category == "procedures":
-        data=AProcedure.query.all()
+        data=sort_query(AProcedure.query.all(), "days_after_start")
     if category == "viruses":
-        data=AVirus.query.all()
+        data=sort_query(AVirus.query.all(), "days_after_start")
     return render_template(
         "definitions.html", 
         user_email=current_user.email, 
@@ -341,6 +346,22 @@ def update_dates(animal_id: str, autofill: bool):
     """
     print(f"Updateing dates: {animal_id}, {request.form['date']}")
     return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
+
+@app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
+@login_required
+def update_suffering(animal_id: str, suffering: str): 
+    """! Updates the dates an animal 
+
+    @param animal_id  ID of animal for which to add data.
+
+    @return error-/ success-message and status code.
+    """
+    print(f"Updateing suffering: {animal_id}, {suffering}")
+    general = General.query.get(animal_id)
+    general.suffering = suffering 
+    db.session.commit()
+    return "", 200
+
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required
@@ -475,8 +496,8 @@ def generate_paragraph_9(escaped_protocol: str):
     proc=subprocess.Popen(
         ["pdflatex", full_path], 
         cwd=tmp_path, 
-        # stdout=subprocess.DEVNULL,
-        # stderr=subprocess.STDOUT
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)

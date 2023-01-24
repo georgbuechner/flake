@@ -15,10 +15,9 @@ from utils.parser_weights_and_water import (
 )
 from data_manager.tables import * 
 from utils.utils import sort_query, escape
-from utils.dt_utils import strtodate, datetostr, incdate, daterange, SOURCE_DATE_FORMAT
+from utils.dt_utils import * 
 
-# Main tables
-T_NOTES = "notes"
+SACRIFICE_DATE = -1
 
 class DManager:
     """! The data-manager class.
@@ -120,19 +119,17 @@ class DManager:
         self.__clear_experiment_data(animal_id)
         # Initialize general 
         watercontrol = PWatercontrol.query.get(full_protocol)
-        general = General(animal_id, full_protocol, watercontrol.allowed)
+        default_general = PGeneral.query.get(full_protocol)
+        general = General(animal_id, full_protocol, watercontrol.allowed, default_general.suffering)
         db.session.add(general)
         # Initialize procedures:
         surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
-            if int(protocol_procedure.days_after_start) > surgery_start: 
-                procedure = PostProcedure.from_default(
-                    animal_id, animal_data.user, protocol_procedure
-                )
+            days_after_start = int(protocol_procedure.days_after_start)
+            if  days_after_start > surgery_start or days_after_start == SACRIFICE_DATE: 
+                procedure = PostProcedure.from_default(animal_id, animal_data.user, protocol_procedure)
             else: 
-                procedure = Procedure.from_default(
-                    animal_id, animal_data.user, protocol_procedure
-                )
+                procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
             db.session.add(procedure)
         # Initialize medication:
         for protocol_anesthesia in PAnesthesia.query.filter(PAnesthesia.protocol == full_protocol):
@@ -148,6 +145,8 @@ class DManager:
             virus = Virus.from_default(animal_id, protocol_virus)
             db.session.add(virus)
         db.session.commit()
+        # If sacrifice-date already exists, set sacrifice-date for procedures referencing sacrifice-date
+        fill_sacrifice_date(animal_id, full_protocol)
         return "", 200
 
     def update_experiment_data_entry(
@@ -200,8 +199,13 @@ class DManager:
             watercontrol = PWatercontrol.query.get(full_protocol)
             data = table_to_json(watercontrol) if watercontrol else {}
             return data, {}
+        # Get tables for all other categories.
         Table = PROTOCOL_TABLES[category]
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
+        # Sort tables by days_after_start/ days_after_surgery:
+        sort_key = "days_after_start" if "days_after_start" in Table.__dict__ else "days_after_surgery"
+        protocol_data = sort_query(protocol_data, sort_key)
+        # Get definitions:
         definition_category = category if category not in ["anesthesia", "analgesia"] else "medication"
         DefinitionsTable = DEFINITION_TABLES[definition_category]
         definitions = DefinitionsTable.query.all()
@@ -210,53 +214,65 @@ class DManager:
     def get_p9_data(self, escaped_protocol: str): 
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
-        def procedures(procedures, anesthesia, analgesia, viruses):
+        def to_string(elems, procedure): 
+            dates = daterange_str(procedure.start_date, procedure.end_date)
+            return ", ".join([e.string() for e in elems if e.date in dates])
+
+        def procedures(procedures, post_procedures, anesthesia, analgesia, viruses):
             anesthesia = sort_query(anesthesia, "date")
             analgesia = sort_query(analgesia, "date")
             viruses = sort_query(viruses, "date")
+            procedures = sort_query(procedures, "start_date")
+            procedures.extend(sort_query(post_procedures, "start_date"))
             data = {}
-            for p in sort_query(procedures, "start_date"): 
-                if p.start_date not in data: 
-                    d = {"start": p.start_date, "end":p.end_date, "names": p.name}
-                    d["anesthesia"] = ", ".join([m.string() for m in anesthesia if m.date == p.start_date])
-                    d["analgesia"] = ", ".join([m.string() for m in analgesia if m.date == p.start_date])
-                    d["viruses"] = ", ".join([v.string() for v in viruses if v.date == p.start_date])
-                    data[p.start_date] = d
+            for p in procedures: 
+                # Skip if date not yet filled.
+                if not date_filled(p.start_date) or not date_filled(p.end_date):
+                    continue
+                default = PProcedure.query.get((general.experiment, p.name))
+                if (p.start_date, p.end_date) not in data: 
+                    data[(p.start_date, p.end_date)] = {
+                        "start": convert(p.start_date), "end": convert(p.end_date), "names": p.name,
+                    }
                 else: 
-                    data[p.start_date]["names"] += f", {p.name}"
-            return data
+                    data[(p.start_date, p.end_date)]["names"] += f", {p.name}"
+                if default.surgery or p.name == "post-operation":
+                    data[(p.start_date, p.end_date)]["anesthesia"] = to_string(anesthesia, p)
+                    data[(p.start_date, p.end_date)]["analgesia"] = to_string(analgesia, p)
+                    data[(p.start_date, p.end_date)]["viruses"] = to_string(viruses, p)
+            return list(data.values())
+
         for sub in protocol.get_subprotocols():
             full_protocol = f"{escaped_protocol}/{sub}"
             generals = General.query.filter(General.experiment == full_protocol)
-            data = {"animals": []}
+            data = {"animals": [], "experiment": sub}
             if generals.first():
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
-                    print("got: ", general)
                     animal_data = AnimalData.query.get(general.animal_id)
+                    # Get all procedures with matching medication:
+                    all_procedures = procedures(
+                            Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
+                            PostProcedure.query.filter(PostProcedure.animal_id == animal_data.mla_num),
+                            Anesthesia.query.filter(Anesthesia.animal_id == animal_data.mla_num),
+                            Analgesia.query.filter(Analgesia.animal_id == animal_data.mla_num),
+                            Virus.query.filter(Virus.animal_id == animal_data.mla_num),
+                        )
+                    # Skip if start-date is not yet set or procedures are empty.
+                    if not date_filled(general.start) or len(all_procedures) == 0:
+                        continue
+                    # Use "???" if animal's date of death is not yet set.
                     if date_filled(animal_data.death_date):
-                        data["animals"].append({
-                            "general": general, 
-                            "animal_data": animal_data,
-                            "procedures": procedures(
-                                Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
-                                Anesthesia.query.filter(Anesthesia.animal_id == animal_data.mla_num),
-                                Analgesia.query.filter(Analgesia.animal_id == animal_data.mla_num),
-                                Virus.query.filter(Virus.animal_id == animal_data.mla_num),
-                            ),
-                            "pprocedures": procedures(
-                                PostProcedure.query.filter(PostProcedure.animal_id == animal_data.mla_num),
-                                Anesthesia.query.filter(Anesthesia.animal_id == animal_data.mla_num),
-                                Analgesia.query.filter(Analgesia.animal_id == animal_data.mla_num),
-                                Virus.query.filter(Virus.animal_id == animal_data.mla_num),
-                            )
-                        })
-                data["start"] = data["animals"][0]["general"].start
-                data["end"] = data["animals"][0]["animal_data"].death_date
-                data["mlas"] = ". ".join([a["animal_data"].mla_num for a in data["animals"]])
-                data["sexes"] = ". ".join([a["animal_data"].sex for a in data["animals"]])
-                data["lines"] = ". ".join([a["animal_data"].line for a in data["animals"]])
-                data["users"] = ". ".join([a["animal_data"].user for a in data["animals"]])
+                        end_date = convert(animal_data.death_date) 
+                    else:
+                        end_date = "???"
+                    data["animals"].append({
+                        "general": general, 
+                        "animal_data": animal_data, 
+                        "procedures": all_procedures,
+                        "start": convert(general.start),
+                        "end": end_date
+                    })
                 subprotocols[full_protocol] = data
             else: 
                 print("No data for this subprotocol")
@@ -278,8 +294,8 @@ class DManager:
         general = General.query.get(animal_id)
         old_start_date = general.start
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
-        db.session.commit()
         if autofill is False: 
+            db.session.commit()
             return "Start date updated without updating other dates.", 200
         general = General.query.get(animal_id)
         surgery_start = get_surgery_start(general.experiment)
@@ -304,7 +320,7 @@ class DManager:
             for x in table.query.filter(table.animal_id == animal_id): 
                 default = PProcedure.query.get((general.experiment, x.name))
                 x.start_date = get_date(int(default.days_after_start))
-                x.end_date = get_date(int(default.days_after_start)+int(default.duration))
+                x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
         update_procedure(Procedure) 
         update_procedure(PostProcedure) 
         # Update viruses:
@@ -312,6 +328,7 @@ class DManager:
             default_entry = PVirus.query.get((general.experiment, x.name))
             x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
+        fill_sacrifice_date(animal_id, general.experiment)
         self.__update_stored(animal_id)
         return f"Dates where updated. Make sure to doublecheck! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
@@ -357,6 +374,7 @@ class DManager:
         else: 
             protocol_entry = Table.from_json(protocol, data)
             db.session.add(protocol_entry)
+        print("Updated or newly added data: ", table_to_json(protocol_entry))
         db.session.commit()
 
     def delete_protocol_entry(
@@ -505,6 +523,7 @@ class DManager:
                 db.session.add(animal_data)
             print("from csv: ", animal_id, animal_data)
             db.session.commit()
+            fill_sacrifice_date(animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}")
             self.__update_stored(animal_id)
         return updated, len(df)
 
@@ -550,7 +569,7 @@ class DManager:
 
 
 def date_filled(date_str: str) -> bool: 
-    return len(date_str) == 10
+    return date_str and len(date_str) == 10
 
 
 def get_surgery_start(protocol: str):
@@ -578,3 +597,14 @@ def get_surgery_dates(animal_id: str, protocol: str):
             for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
                 surgery_dates.append(date)
     return surgery_dates
+
+def fill_sacrifice_date(animal_id: str, protocol: str):
+    animal_data = AnimalData.query.get(animal_id)
+    post_procedures = PostProcedure.query.filter(PostProcedure.animal_id == animal_id)
+    if post_procedures.first() and date_filled(animal_data.death_date): 
+        for post_procedure in post_procedures: 
+            default = PProcedure.query.get((protocol, post_procedure.name))
+            if int(default.days_after_start) == SACRIFICE_DATE:
+                post_procedure.start_date = animal_data.death_date
+                post_procedure.end_date = animal_data.death_date
+                db.session.commit()

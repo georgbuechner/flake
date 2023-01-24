@@ -121,6 +121,29 @@ async function GenerateWeightList(animal_id, weight) {
   }
 }
 
+async function UpdateSuffering(animal_id, suffering) {
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/suffering/'+animal_id+"/"+suffering, 
+      {method: "POST", body: new FormData()}); 
+    // Handle response:
+    console.log('HTTP response code: ' + r.status); 
+    if (r.status === 200) {
+      window.location=window.location;
+    }
+    else if (r.status > 400 && r.status < 500) {
+      let response_text = await r.text()
+      alert("Error code: " + r.status + ": " + response_text);
+    }
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
+
+
 async function GenerateMainSheet(animal_id, type) {
   console.log("animal_id: ", animal_id);
   var req = new XMLHttpRequest();

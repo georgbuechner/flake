@@ -105,6 +105,22 @@
               value="{{data['allowed_users'] if 'allowed_users' in data}}"
             ></td>
           </tr>
+          <tr> 
+            <td><label for"suffering">Suffering:</label></td>
+            <td>
+              <select id="suffering" name="suffering" autocomplete="off">
+                <option 
+                  value="Leicht" {%- if data.suffering == "Leicht" -%}selected{%- endif -%}
+                >Leicht</option>
+                <option 
+                  value="Mittel" {%- if data.suffering == "Mittel" -%}selected{%- endif -%}
+                >Mittel</option>
+                <option 
+                  value="Schwer" {%- if data.suffering == "Schwer" -%}selected{%- endif -%}
+                >Schwer</option>
+              </select>
+            </td>
+          </tr>
         </table>
         <br>
         <input type='submit' name='submit'/>
