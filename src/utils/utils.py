@@ -110,10 +110,8 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
         fernet = Fernet(encoded_password)
         csecret = fernet.encrypt(secret.encode())
         clab_password = fernet.encrypt(lab_password.encode())
-        print(csecret, clab_password)
         config["secret"] = csecret.decode("utf-8")
         config["lab_password"] = clab_password.decode("utf-8")
-        print(config)
         # Store updated config
         with open(path, "w") as f:
             json.dump(config, f)
