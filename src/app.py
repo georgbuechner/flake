@@ -7,19 +7,23 @@ from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import hash_pw, sort_query, escape, has_signature, get_signature_path
+from utils.utils import (
+    hash_pw, sort_query, escape, has_signature, get_signature_path, get_keys_from_config
+)
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import os
 import subprocess
 import tempfile
 import shutil
+from cryptography.fernet import Fernet
 
+SECRET, LAB_PASSWORD = get_keys_from_config("server.config")
 
 # Create global instance of sql-connector, data-manager and flask-app.
 dmanager = DManager()
 app = Flask(__name__)
-app.secret_key = 'super secret string'  # Change this!
+app.secret_key = SECRET
 login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
@@ -33,8 +37,6 @@ with app.app_context():
     # for general in General.query.all():
     #     general.suffering = PGeneral.query.get(general.experiment)
     # db.session.commit()
-
-LARKUM_PASSWORD = "larkum"
 
 @login_manager.user_loader 
 def user_loader(user_id): 
@@ -72,8 +74,13 @@ def login():
     """
     if request.method == "GET":
         return render_template("login.html", msg="")
+    # Check lab password first.
+    if request.form["lab_password"] != LAB_PASSWORD:
+        return render_template("login.html", msg="Lab password incorrect")
+    # Get user
     user = User.query.get(request.form["email"])
     if user:
+        # Get hashed password and check password.
         hashed_password, _ = hash_pw(request.form["password"], user.salt)
         if user.password == str(hashed_password):
             login_user(user)
@@ -93,7 +100,7 @@ def register():
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:
         return render_template("register.html", msg="Passwords don't match!")
-    if request.form["lab_password"] != LARKUM_PASSWORD:
+    if request.form["lab_password"] != LAB_PASSWORD:
         return render_template("register.html", msg="Lab password incorrect!")
     hashed_password, salt = hash_pw(request.form["password"])
     user = User( 

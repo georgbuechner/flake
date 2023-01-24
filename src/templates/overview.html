@@ -23,15 +23,12 @@
     {% include "overview_table.html" %}
 
     <br><br>
-
-    <label>Upload pyrat csv: <label>
-    <input type="file" id="pyrat_csv" accept=".csv" /></input>
-    <input type="submit" id="submit" value="upload" onclick="UploadPyratData()">
+    <input type="submit" id="submit" value="Upload pyrat data" onclick="OpenModel('upload_modal')">
 
   </div>
 
   <dialog id="confirm_modal" style="height: 100px; width: 50%;" category="">
-    <button onclick="CloseModal();" style="float: right;">Close</button>
+    <button onclick="Refresh();" style="float: right;">Close</button>
     <br><br>
     <p id="set_subprotocol_msg"></p>
     <br>
@@ -42,6 +39,21 @@
        <!-- submit is added by javascript -->
     </input>
   </dialog>
+
+  <dialog id="upload_modal" style="height: 100px; width: 50%;" category="">
+    <button onclick="CloseModal('upload_modal');" style="float: right;">Close</button>
+    <br><br>
+    <p>Upload a csv-file which you have exported from pyrat. Make sure that the
+    following fields are included: 
+    <i>ID, Sex, Line / Strain (Name), DOB, Sacrifice date, Responsible, License
+      number, and Origin</i>. (It is also possible to use the german names)
+    </p>
+    <br>
+    <label>Upload pyrat csv: <label>
+    <input type="file" id="pyrat_csv" accept=".csv" /></input>
+    <input type="submit" id="submit" value="upload" onclick="UploadPyratData()">
+  </dialog>
+
 
 </body>
 
