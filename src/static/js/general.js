@@ -101,9 +101,16 @@ function NotResponsible() {
   return false;
 }
 
-function CloseModal() { 
+function Refresh() {
   window.location=window.location;
-  var dialog = document.getElementById("confirm_modal"); 
-  document.getElementById("set_subprotocol_msg").innerHTML = ""; 
+}
+
+function CloseModal(modal_name) { 
+  var dialog = document.getElementById(modal_name); 
   dialog.close(); 
+}
+
+function OpenModel(modal_name) {
+  var dialog = document.getElementById(modal_name); 
+  dialog.showModal(); 
 }
