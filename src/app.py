@@ -33,10 +33,6 @@ with app.app_context():
     # Example to remove tables
     # Create tables
     db.create_all()
-    # Update example
-    # for general in General.query.all():
-    #     general.suffering = PGeneral.query.get(general.experiment)
-    # db.session.commit()
 
 @login_manager.user_loader 
 def user_loader(user_id): 

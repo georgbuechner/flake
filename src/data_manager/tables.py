@@ -50,6 +50,7 @@ class AnimalData(db.Model):
     user = db.Column(db.String, primary_key=False)
     protocol = db.Column(db.String, primary_key=False)
     protocol_escaped = db.Column(db.String, primary_key=False)
+    supplier = db.Column(db.String, primary_key=False)
     subprotocol = db.Column(db.String, primary_key=False)
     stored = db.Column(db.Boolean, primary_key=False)
 
@@ -62,6 +63,7 @@ class AnimalData(db.Model):
         self.user = data["user"]
         self.protocol = data["protocol"]
         self.protocol_escaped = data["protocol_escaped"]
+        self.supplier = data["supplier"]
         self.subprotocol = "---"
         self.stored = False
 
@@ -73,6 +75,7 @@ class AnimalData(db.Model):
         self.user = data["user"]
         self.protocol = data["protocol"]
         self.protocol_escaped = data["protocol_escaped"]
+        self.supplier = data["supplier"]
 
 class Note(db.Model):
     __tablename__ = "notes" 
@@ -622,3 +625,25 @@ def drop(name, Table):
 def drop_all(tables): 
     for name, Table in tables.items(): 
         drop(name, Table)
+
+def safe_table(name: str, Table, drop_table: bool): 
+    data = [table_to_json(x) for x in Table.query.all()]
+    if drop_table:
+        drop(name, Table)
+    with open(f"{name}.json", "w") as f:
+        json.dump(data, f)
+
+
+def update_table(name: str, Table, update: Dict[str, any]): 
+    """ Updates a table after changes where made to database. 
+
+    First start app without database changes and run `safe_table`.
+    Then start app again with database changes and run `update_table`.
+    """
+    with open(f"{name}.json", "w") as f:
+        data = json.load(f)
+    for x in data: 
+        x.update(update)
+        entry = Table(x)
+        db.session.add(entry)
+    db.session.commit()

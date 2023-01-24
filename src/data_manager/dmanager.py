@@ -249,6 +249,7 @@ class DManager:
             if generals.first():
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
+                    print("General: ", table_to_json(general))
                     animal_data = AnimalData.query.get(general.animal_id)
                     # Get all procedures with matching medication:
                     all_procedures = procedures(
