@@ -119,7 +119,8 @@ class DManager:
         self.__clear_experiment_data(animal_id)
         # Initialize general 
         watercontrol = PWatercontrol.query.get(full_protocol)
-        general = General(animal_id, full_protocol, watercontrol.allowed)
+        default_general = PGeneral.query.get(full_protocol)
+        general = General(animal_id, full_protocol, watercontrol.allowed, default_general.suffering)
         db.session.add(general)
         # Initialize procedures:
         surgery_start = get_surgery_start(full_protocol)
@@ -373,6 +374,7 @@ class DManager:
         else: 
             protocol_entry = Table.from_json(protocol, data)
             db.session.add(protocol_entry)
+        print("Updated or newly added data: ", table_to_json(protocol_entry))
         db.session.commit()
 
     def delete_protocol_entry(
@@ -521,7 +523,7 @@ class DManager:
                 db.session.add(animal_data)
             print("from csv: ", animal_id, animal_data)
             db.session.commit()
-            fill_sacrifice_date(animal_id, general.experiment)
+            fill_sacrifice_date(animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}")
             self.__update_stored(animal_id)
         return updated, len(df)
 

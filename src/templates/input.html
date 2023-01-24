@@ -104,6 +104,25 @@
             />
           </td>
         </tr>
+        <tr> 
+          <td><label for"suffering">Suffering:</label></td>
+          <td>
+            <select 
+              id="suffering" name="suffering" autocomplete="off"
+              onchange="UpdateSuffering('{{animal_id}}', this.value);" 
+            >
+              <option 
+                value="Leicht" {%- if general.suffering == "Leicht" -%}selected{%- endif -%}
+              >Leicht</option>
+              <option 
+                value="Mittel" {%- if general.suffering == "Mittel" -%}selected{%- endif -%}
+              >Mittel</option>
+              <option 
+                value="Schwer" {%- if general.suffering == "Schwer" -%}selected{%- endif -%}
+              >Schwer</option>
+            </select>
+          </td>
+        </tr>
         <tr>
           <td> <label>Start weight: </label>
           <td> 

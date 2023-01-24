@@ -170,23 +170,33 @@ class PGeneral(db.Model):
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
     death_drug = db.Column(db.String, primary_key=False)
     allowed_users = db.Column(db.String, primary_key=False)
+    suffering = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, protocol: str, num_availible_animals: int, death_drug: str, allowed_users: str
+        self, 
+        protocol: str, 
+        num_availible_animals: int, 
+        death_drug: str, 
+        allowed_users: str,
+        suffering: str
     ):
         self.protocol = protocol 
         self.num_availible_animals = num_availible_animals 
         self.death_drug = death_drug 
         self.allowed_users = allowed_users 
+        self.suffering = suffering
 
     @classmethod 
     def from_json(cls, protocol: str, g: Dict[str, any]): 
-        return cls(protocol, g["num_availible_animals"], g["death_drug"], g["allowed_users"])
+        return cls(
+            protocol, g["num_availible_animals"], g["death_drug"], g["allowed_users"], g["suffering"]
+        )
 
     def update(self, general: Dict[str, any]): 
         self.num_availible_animals = general["num_availible_animals"]
         self.death_drug = general["death_drug"]
         self.allowed_users = general["allowed_users"]
+        self.suffering = general["suffering"]
 
 class PAnesthesia(db.Model): 
     __tablename__ = "protocol_anesthesia"
@@ -360,8 +370,9 @@ class General(db.Model):
     watercontrol = db.Column(db.Boolean, primary_key=False) 
     weights = db.Column(db.String, primary_key=False)
     watercontrol_mask = db.Column(db.String, primary_key=False)
+    suffering = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id: str, experiment: str, watercontrol: bool): 
+    def __init__(self, animal_id: str, experiment: str, watercontrol: bool, suffering: bool): 
         self.animal_id = animal_id 
         self.start = ""
         self.end = ""
@@ -370,6 +381,7 @@ class General(db.Model):
         self.watercontrol = watercontrol
         self.weights = json.dumps([])
         self.watercontrol_mask = json.dumps([])
+        self.suffering = suffering
 
 class Anesthesia(db.Model): 
     __tablename__ = "anesthesia"
@@ -598,3 +610,15 @@ DEFINITION_TABLES = {
     "procedures": AProcedure, 
     "viruses": AVirus
 }
+
+def drop(name, Table): 
+    inp = input(f"Are you sure you want to drop table {name} (yes/no): ")
+    if inp == "yes":
+        Table.__table__.drop(db.engine)
+        print(f"Table {name} droped!")
+    else:
+        print(f"Table {name} not droped")
+
+def drop_all(tables): 
+    for name, Table in tables.items(): 
+        drop(name, Table)
