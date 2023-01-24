@@ -18,11 +18,12 @@ import tempfile
 import shutil
 from cryptography.fernet import Fernet
 
+SECRET, LAB_PASSWORD = get_keys_from_config("server.config")
 
 # Create global instance of sql-connector, data-manager and flask-app.
 dmanager = DManager()
 app = Flask(__name__)
-app.secret_key = 'super secret string'  # Change this!
+app.secret_key = SECRET
 login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
@@ -31,8 +32,6 @@ with app.app_context():
     # Create tables
     # AnimalData.__table__.drop(db.engine)
     db.create_all()
-
-LARKUM_PASSWORD = "larkum"
 
 @login_manager.user_loader 
 def user_loader(user_id): 
@@ -70,8 +69,13 @@ def login():
     """
     if request.method == "GET":
         return render_template("login.html", msg="")
+    # Check lab password first.
+    if request.form["lab_password"] != LAB_PASSWORD:
+        return render_template("login.html", msg="Lab password incorrect")
+    # Get user
     user = User.query.get(request.form["email"])
     if user:
+        # Get hashed password and check password.
         hashed_password, _ = hash_pw(request.form["password"], user.salt)
         if user.password == str(hashed_password):
             login_user(user)
@@ -91,7 +95,7 @@ def register():
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:
         return render_template("register.html", msg="Passwords don't match!")
-    if request.form["lab_password"] != LARKUM_PASSWORD:
+    if request.form["lab_password"] != LAB_PASSWORD:
         return render_template("register.html", msg="Lab password incorrect!")
     hashed_password, salt = hash_pw(request.form["password"])
     user = User( 
@@ -601,6 +605,4 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     return redirect("/settings/protocols/" + escaped_protocol)
 
 if __name__=="__main__":
-    secret, lab_password = get_keys_from_config("server.config")
-    print(f"secret: {secret}, lab_password: {lab_password}")
     app.run(debug=True)

@@ -2,6 +2,7 @@ import base64
 import bcrypt
 import json
 import os
+import getpass
 from typing import Dict, List
 from data_manager.tables import table_to_json
 from os.path import exists as file_exists
@@ -86,7 +87,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
     if secret != "":
         password = config["password"]["password"].encode()
         salt = config["password"]["salt"].encode()
-        inp = input("password: ") 
+        inp = getpass.getpass("password: ") 
         if hash_pw(inp, salt)[0] == password:
             encoded_password, _ = encode_password(inp.encode(), salt)
             fernet = Fernet(encoded_password) 
@@ -94,10 +95,10 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
         else: 
             exit("wrong password") 
     else: 
-        secret = input("Secret: ")
-        lab_password = input("lab password (used for registration): ")
-        password = input("password (for decrypting config): ")
-        r_password = input("retype password: ")
+        secret = getpass.getpass("Secret: ")
+        lab_password = getpass.getpass("lab password (used for registration): ")
+        password = getpass.getpass("password (for decrypting config): ")
+        r_password = getpass.getpass("retype password: ")
         if password != r_password: 
             exit("Passwords do not match!") 
         # Store password
