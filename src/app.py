@@ -7,13 +7,16 @@ from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import hash_pw, sort_query, escape, has_signature, get_signature_path
+from utils.utils import (
+    hash_pw, sort_query, escape, has_signature, get_signature_path, get_keys_from_config
+)
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import os
 import subprocess
 import tempfile
 import shutil
+from cryptography.fernet import Fernet
 
 
 # Create global instance of sql-connector, data-manager and flask-app.
@@ -598,4 +601,6 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     return redirect("/settings/protocols/" + escaped_protocol)
 
 if __name__=="__main__":
+    secret, lab_password = get_keys_from_config("server.config")
+    print(f"secret: {secret}, lab_password: {lab_password}")
     app.run(debug=True)
