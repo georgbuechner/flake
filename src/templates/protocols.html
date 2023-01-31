@@ -32,6 +32,9 @@
           <td>
             <a href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
           </td>
+           <td onclick="DelSub('{{protocol.escaped}}', '');">
+             <a class="mod" title="Remove entry.">-</a>
+           </td>
         </tr>
       {% endfor %}
     </table>

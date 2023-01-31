@@ -9,9 +9,13 @@ function Close(modal_name) {
 }
 
 async function DelSub(protocol, subprotocol) {
+  let params = protocol 
+  if (subprotocol != "") 
+    protocol +="/" + subprotocol;
+  console.log(protocol, subprotocol, params);
   try {
     // Send request:
-    let r = await fetch("/settings/protocols/remove/"+protocol+"/"+subprotocol, {
+    let r = await fetch("/settings/protocols/remove/" + params, {
       method: "POST", body: new FormData}); 
     // Handle response:
     if (r.status === 200)

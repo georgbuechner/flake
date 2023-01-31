@@ -596,6 +596,25 @@ def add_subprotocal(escaped_protocol):
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
 
+@app.route("/settings/protocols/remove/<escaped_protocol>", methods=["POST"]) 
+@login_required 
+def remove_protocol(escaped_protocol):
+    protocol = Protocol.query.get(escaped_protocol)
+
+    # Delete all data matchin protocol:
+    general = PGeneral.query.get(escaped_protocol)
+    if general: 
+        db.session.delete(general)
+    for Table in PROTOCOL_TABLES.values(): 
+        entries = Table.query.filter(Table.protocol == escaped_protocol)
+        if entries.first(): 
+            for entry in entries:
+                db.session.delete(Table.query.get((escaped_protocol, entry.name)))
+    # Remove protocol.
+    db.session.delete(protocol)
+    db.session.commit()
+    return redirect("/settings/protocols")
+
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
 def remove_subprotocol(escaped_protocol, subprotocol):
