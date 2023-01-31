@@ -511,7 +511,7 @@ class DManager:
                 if key in self.mapping:
                     data[self.mapping[key]] = value
                     if self.mapping[key] == "protocol":
-                        data["protocol_escaped"] = escape(value)
+                        data["protocol_escaped"] = escape(str(value))
             # Create or update animal-data
             animal_id = data["id"]
             print("from_csv: ", animal_id, data)
