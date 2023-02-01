@@ -6,7 +6,7 @@
     "DOB": "dob",
     "Line / Strain (Name)": "line",
     "Sacrifice date": "death_date",
-    "License number": "protocol",
+    "License number": "protocol_pyrat",
     "Origin": "supplier"
   },
   "de": {
@@ -16,7 +16,7 @@
     "Geb.":"dob",
     "Linie / Stamm (Name)": "line",
     "Sterbedatum":"death_date",
-    "Lizenznummer": "protocol",
+    "Lizenznummer": "protocol_pyrat",
     "Herkunft": "supplier"
   }
 }

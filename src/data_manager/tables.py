@@ -48,6 +48,7 @@ class AnimalData(db.Model):
     dob = db.Column(db.String, primary_key=False)
     death_date = db.Column(db.String, primary_key=False)
     user = db.Column(db.String, primary_key=False)
+    protocol_pyrat = db.Column(db.String, primary_key=False)
     protocol = db.Column(db.String, primary_key=False)
     protocol_escaped = db.Column(db.String, primary_key=False)
     supplier = db.Column(db.String, primary_key=False)

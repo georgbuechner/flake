@@ -510,8 +510,11 @@ class DManager:
                 value = row[key]
                 if key in self.mapping:
                     data[self.mapping[key]] = value
-                    if self.mapping[key] == "protocol":
-                        data["protocol_escaped"] = escape(str(value))
+                    if self.mapping[key] == "protocol_pyrat":
+                        for protocol in Protocol.query.all()
+                            if value in protocol.name:
+                                data["protocol"] = protocol.name
+                                data["protocol_escaped"] = escape(str(protocol.name))
             # Create or update animal-data
             animal_id = data["id"]
             print("from_csv: ", animal_id, data)
