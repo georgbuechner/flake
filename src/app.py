@@ -32,6 +32,7 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
+    # drop("general", General)
     db.create_all()
 
 @login_manager.user_loader 
@@ -229,13 +230,39 @@ def settings():
 @login_required
 def account():
     has_sig = has_signature(current_user.name)
+    registered_users = [ x.name for x in User.query.all()]
+    print("registered_users: ", registered_users)
+    print("pyrat users: ", dmanager.users())
+    users = [(x, x in registered_users) for x in dmanager.users()]
+    print("availible users: ", users)
     return render_template(
         "account.html", 
+        users=users, 
         escaped_user=escape(current_user.name),
         has_signature=has_signature(current_user.name),
         user_email=current_user.email, 
         user_name=current_user.name
     )
+
+@app.route("/account/<email>/update/username/<username>", methods=["POST"])
+@login_required 
+def update_username(email, username):
+    user = User.query.get(email)
+    if user:
+        user.name = html.unescape(username)
+        db.session.commit()
+        return "", 200
+    return "User not found", 404
+
+@app.route("/account/<email>/delete/", methods=["POST"])
+@login_required 
+def delete_username(email):
+    user = User.query.get(email)
+    if user:
+        db.session.delete(user)
+        logout_user()
+        return redirect("/login")
+    return "User not found", 404
 
 @app.route("/signature/<user>")
 @login_required 
@@ -264,6 +291,7 @@ def upload_signature(escaped_user: str):
     else:
         file.save(f"src/signatures/{escaped_user}.png")
     return "", 200
+
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")

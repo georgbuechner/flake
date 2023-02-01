@@ -47,3 +47,34 @@ async function DeleteSignature(escaped_user) {
     alert("Unkown error. Sorry", e);
   }
 }
+
+async function ChangeUsername(email, user) {
+  try {
+    // Send request:
+    let r = await fetch("/account/"+email+"/update/username/"+user, 
+      {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else 
+      alert("Unkown error. Sorry " + r.status);
+  } catch(e) {
+    console.log(e);
+    alert("Unkown error. Sorry", e);
+  }
+}
+
+async function DeleteAccount(email) {
+  try {
+    // Send request:
+    let r = await fetch("/account/"+email+"/delete/", {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else 
+      alert("Unkown error. Sorry " + r.status);
+  } catch(e) {
+    console.log(e);
+    alert("Unkown error. Sorry", e);
+  }
+}

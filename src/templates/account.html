@@ -30,13 +30,35 @@
     <table class="center">
       <tr>
         <td>Username</th>
-        <td>{{user_name}}</th>
+        <td>
+          {% if user_name == "guest" %}
+            <select id="username" onchange="ChangeUsername('{{user_email}}', this.value)">
+              <option value="{{user_name}}">{{user_name}}</option>
+              {% for (user, used) in users %}
+                <option 
+                  value="{{user}}" 
+                  {% if used %}
+                    disabled
+                    title="User already in use"
+                  {% endif %}
+                >{{user}}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            {{user_name}}
+          {% endif %}
+        </th>
       </tr>
       <tr>
         <td>E-Mail</th>
         <td>{{user_email}}</th>
       </tr>
     </table>
+
+    <br>
+    <input 
+      type="submit" id="submit" value="Delete Account" onclick="DeleteAccount('{{user_email}}')"
+    >
 
     <br><br>
 
