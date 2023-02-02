@@ -32,3 +32,6 @@ def convert(
     date_str: str, out_format: str = OUTPUT_DATE_FORMAT
 ) -> str:
     return datetostr(strtodate(date_str), out_format)
+
+def today() -> datetime:
+    return datetime.now()

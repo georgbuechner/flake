@@ -432,8 +432,6 @@ class DManager:
 
         # Get animal data and watercontrol infos:
         animal_data = AnimalData.query.get(animal_id)
-        if not date_filled(animal_data.death_date): 
-            return "Animal is not yet sacrificed", 200
         start_date = general.start
         if not date_filled(start_date): 
             return "Missing start-date", 401
@@ -441,7 +439,9 @@ class DManager:
 
         # Get some values 
         start_weight = float(start_weight) if start_weight != "" else -1
-        sacrifice_date = strtodate(animal_data.death_date)
+        sacrifice_date = today()
+        if date_filled(animal_data.death_date): 
+            sacrifice_date = strtodate(animal_data.death_date)
         start_date = strtodate(start_date) 
         dob = strtodate(animal_data.dob)
         age_at_start = (start_date - dob).days
