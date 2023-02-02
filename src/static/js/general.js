@@ -96,6 +96,37 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
   }
 }
 
+async function UpdateProtocol(protocol, animal_id, force) {
+  console.log(subprotocol, animal_id, force);
+  let formData = new FormData();
+  // Add extracted data to form.
+  formData.append("protocol", protocol);
+  formData.append("animal_id", animal_id);
+  formData.append("force", force);
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/protocol', {method: "POST", body: formData}); 
+    // Handle response:
+    if (r.status === 200) {
+      window.location=window.location;
+    }
+    if (r.status === 409) {
+      let response_text = await r.text()
+      var dialog = document.getElementById("confirm_modal"); 
+      document.getElementById("set_subprotocol_msg").innerHTML = response_text; 
+      document.getElementById("set_subprotocol_btn").setAttribute("onclick", 
+        "UpdateProtocol('"+protocol+"', '"+animal_id+"', true)");
+      dialog.showModal(); 
+    }
+    else
+      alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
+
+
 function NotResponsible() {
   alert("You're not responsible for this animal!")
   return false;

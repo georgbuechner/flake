@@ -93,6 +93,22 @@ class DManager:
         updated_msg = f"{len(updated)} updated ({' '.join(x for x in updated)})"
         return inserted_msg + " " + updated_msg, 206 
 
+    def set_protocol(
+        self, animal_id: str, protocol: str, force: bool
+    ) -> Tuple[str, int]:
+        print(animal_id, protocol, force)
+        x, of = self.__is_stored(animal_id, ignore_death_date=True)
+        if x > 0 and force is False: 
+            return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
+        animal_data = AnimalData.query.get(animal_id)
+        animal_data.protocol = protocol
+        animal_data.protocol_escaped = escape(protocol)
+        animal_data.subprotocol = "---"
+        self.__clear_experiment_data(animal_id)
+        db.session.commit()
+        return "", 200
+
+
     def set_subprotocol(
         self, animal_id: str, subprotocol: str, force: bool
     ) -> Tuple[str, int]:
@@ -106,6 +122,7 @@ class DManager:
 
         @return Tuple of error-message and http-return-code.
         """
+        print(animal_id, subprotocol, force)
         x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
@@ -277,7 +294,6 @@ class DManager:
                 subprotocols[full_protocol] = data
             else: 
                 print("No data for this subprotocol")
-        print(subprotocols)
         return subprotocols, protocol.name
 
     def update_dates(
@@ -509,10 +525,10 @@ class DManager:
             for key in df.keys():
                 value = row[key]
                 if key in self.mapping:
-                    data[self.mapping[key]] = value
+                    data[self.mapping[key]] = str(value)
                     if self.mapping[key] == "protocol_pyrat":
-                        for protocol in Protocol.query.all()
-                            if value in protocol.name:
+                        for protocol in Protocol.query.all():
+                            if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
             # Create or update animal-data

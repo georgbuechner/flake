@@ -62,8 +62,9 @@ class AnimalData(db.Model):
         self.dob = data["dob"]
         self.death_date = str(data["death_date"])
         self.user = data["user"]
-        self.protocol = data["protocol"]
-        self.protocol_escaped = data["protocol_escaped"]
+        self.protocol_pyrat = data["protocol_pyrat"]
+        self.protocol = data["protocol"] if "protocol" in data else "---"
+        self.protocol_escaped = data["protocol_escaped"] if "protocol_escaped" in data else "---"
         self.supplier = data["supplier"]
         self.subprotocol = "---"
         self.stored = False
@@ -74,8 +75,9 @@ class AnimalData(db.Model):
         self.dob = data["dob"]
         self.death_date = str(data["death_date"])
         self.user = data["user"]
-        self.protocol = data["protocol"]
-        self.protocol_escaped = data["protocol_escaped"]
+        self.protocol_pyrat = data["protocol_pyrat"]
+        self.protocol = data["protocol"] if "protocol" in data else "---"
+        self.protocol_escaped = data["protocol_escaped"] if "protocol_escaped" in data else "---"
         self.supplier = data["supplier"]
 
 class Note(db.Model):

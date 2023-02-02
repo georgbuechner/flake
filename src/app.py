@@ -34,6 +34,8 @@ with app.app_context():
     # Create tables
     # drop("general", General)
     db.create_all()
+    # drop("animal_data", AnimalData)
+    # drop_all(EXPERIMENT_TABLES)
 
 @login_manager.user_loader 
 def user_loader(user_id): 
@@ -358,6 +360,22 @@ def update_animal_subprotocol():
     force = request.form.get("force") == "true"
     txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
     return txt, status
+
+@app.route("/update/animal_data/protocol", methods=["POST"])
+@login_required
+def update_animal_protocol(): 
+    """! Updates the subprotocol of an animal and initializes experiment-data.
+
+    @param subprotocol  the new subprotocol
+
+    @return error-/ success-message and status code.
+    """
+    subprotocol = request.form.get("protocol")
+    animal_id = request.form.get("animal_id")
+    force = request.form.get("force") == "true"
+    txt, status = dmanager.set_protocol(animal_id, subprotocol, force) 
+    return txt, status
+
 
 @app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required

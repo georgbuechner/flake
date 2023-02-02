@@ -6,8 +6,9 @@
       <th>Line / Strain (Name)</th>
       <th>DOB</th>
       <th>Sacrifice date</th>
-      <th>Protocol</th>
       <th>Supplier</th>
+      <th>Protocol (pyrat)</th>
+      <th>Protocol (flake)</th>
       <th>Sub Protocol</th>
     </tr>
     {% for entry in animal_data %}
@@ -18,8 +19,21 @@
         <td>{{entry.line}}</td>
         <td>{{entry.dob}}</td>
         <td>{{entry.death_date}}</td>
-        <td>{{entry.protocol}}</td>
         <td>{{entry.supplier}}</td>
+        <td>{{entry.protocol_pyrat}}</td>
+        <td>
+          <select 
+            id="protocol_flake" autocomplete="off" 
+            onchange="UpdateProtocol(this.value, this.parentNode.parentNode.children[0].innerHTML, false)"
+          >
+            <option value="---">---</option>
+            {% for protocol in protocols.keys() %}
+            <option 
+                value="{{protocol}}" {%- if protocol==entry.protocol -%}selected{%- endif -%}
+            >{{protocol}}</option>
+            {% endfor %}
+          </select>
+        </td>
         <td>
           {% if animal_id %}
             {{entry.subprotocol}}
@@ -31,8 +45,8 @@
               <option value="---" selected>---</option>
               {% for sub in protocols[entry.protocol] %}
                 <option 
-                  value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}>{{sub}}
-                </option>
+                  value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}
+                >{{sub}}</option>
               {% endfor %}
             </select>
           {% endif %}
