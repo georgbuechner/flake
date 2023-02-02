@@ -151,11 +151,9 @@ class DManager:
         def create_medication_from_template(Template, Medication):
             for template in Template.query.filter(Template.protocol == full_protocol):
                 if int(template.days_after_surgery) == SACRIFICE_DATE: 
-                    print("SF: ", table_to_json(template))
                     medication = Medication.from_default(animal_id, template, SACRIFICE_DATE)
                     db.session.add(medication)
                 else:
-                    print(f"N: {template.days_after_surgery} times", table_to_json(template))
                     for x in range(int(template.days_after_surgery)+1):
                         medication = Medication.from_default(animal_id, template, x)
                         db.session.add(medication)
@@ -347,6 +345,8 @@ class DManager:
         db.session.commit()
         fill_sacrifice_date(animal_id, general.experiment)
         self.__update_stored(animal_id)
+        if not date_filled(old_start_date):
+            self.generate_weight_list(animal_id, -1)
         return f"Dates where updated. Make sure to doublecheck! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
     def update_weights_and_watercontrol(
