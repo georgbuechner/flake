@@ -72,19 +72,20 @@
              <td name="amount">{{medication.amount}}</td> 
              <td name="concentration">{{medication.concentration}}</td> 
              <td name="days_after_surgery">{{medication.days_after_surgery}}</td> 
-             <td onclick="Add(this.parentNode);">
-               <a class="mod" title="Add new entry below.">edit</a>
-             </td>
              <td onclick="Del('medication', '{{medication.name}}');">
-               <a class="mod" title="Remove entry.">-</a>
+               <a class="mod thick" title="Remove entry.">-</a>
              </td>
+             <td onclick="Add(this.parentNode);">
+               <i class="mod u" title="Edit this entry.">edit</i>
+             </td>
+
           </tr>
         {% endfor %}
       </table>
       </table>
       <br>
       <br>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
 
     {% elif category=="procedures" %}
@@ -101,11 +102,11 @@
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
              <td name="duration">{{procedure.duration}}</td> 
              <td name="surgery">{{procedure.surgery}}</td> 
-             <td onclick="Add(this.parentNode);">
-               <a class="mod" title="Add new entry below.">edit</a>
-             </td>
              <td onclick="Del('procedures', '{{procedure.name}}');">
-               <a class="mod" title="Remove entry.">-</a>
+               <a class="mod thick" title="Remove entry.">-</a>
+             </td>
+             <td onclick="Add(this.parentNode);">
+               <i class="mod u" title="Edit this entry.">edit</i>
              </td>
           </tr>
         {% endfor %}
@@ -113,7 +114,7 @@
       </table>
       <br>
       <br>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="viruses" %}
       <table class="center">
@@ -127,18 +128,18 @@
              <td name="name">{{virus.name}}</td> 
              <td name="days_after_start">{{virus.days_after_start}}</td> 
              <td name="amount">{{virus.amount}}</td> 
-             <td onclick="Add(this.parentNode);">
-               <a class="mod" title="Add new entry below.">edit</a>
-             </td>
              <td onclick="Del('viruses', '{{virus.name}}');">
-               <a class="mod" title="Remove entry.">-</a>
+               <a class="mod thick" title="Remove entry.">-</a>
+             </td>
+             <td onclick="Add(this.parentNode);">
+               <i class="mod u" title="Edit this entry.">edit</i>
              </td>
           </tr>
         {% endfor %}
       </table>
       <br>
       <br>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
     {% endif %}
   </div>
 

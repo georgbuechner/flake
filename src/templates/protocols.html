@@ -33,14 +33,14 @@
             <a href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
           </td>
            <td onclick="DelSub('{{protocol.escaped}}', '');">
-             <a class="mod" title="Remove entry.">-</a>
+             <a class="mod thick" title="Remove entry.">-</a>
            </td>
         </tr>
       {% endfor %}
     </table>
     <br>
     <br>
-    <a class="mod" title="Add new protocol." onclick="AddProtocol();">+</a>
+    <a class="mod thick" title="Add new protocol." onclick="AddProtocol();">+</a>
 
   <dialog id="add_protocol_modal" style="height: 150px; width: 60%;" category="">
     <button onclick="Close('add_protocol_modal')" style="float: right;">Close</button>

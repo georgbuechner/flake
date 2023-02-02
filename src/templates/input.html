@@ -165,7 +165,7 @@
           <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}}</td>
           <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
-            <a class="mod" title="Remove entry.">-</a>
+            <a class="mod thick" title="Remove entry.">-</a>
           </td>
           <td onclick="Add(this.parentNode);">
             <i class="mod u" title="Edit this entry.">edit</i>
@@ -173,7 +173,7 @@
         <tr>
         {% endfor %}
       </table>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="post_procedures" %}
 
@@ -198,7 +198,7 @@
           <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}} </td>
           <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
-            <a class="mod" title="Remove entry.">-</a>
+            <a class="mod thick" title="Remove entry.">-</a>
           </td>
           <td onclick="Add(this.parentNode);">
             <i class="mod u" title="Edit this entry.">edit</i>
@@ -206,7 +206,7 @@
         <tr>
         {% endfor %}
       </table>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="viruses" %}
       <h3>Viruses
@@ -226,7 +226,7 @@
             <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
-              <a class="mod" title="Remove entry.">-</a>
+              <a class="mod thick" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
               <i class="mod u" title="Edit this entry.">edit</i>
@@ -234,7 +234,7 @@
           </tr>
         {% endfor %}
       </table>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="anesthesia" %}
       <h3>Anesthesia
@@ -262,7 +262,7 @@
             <td 
               onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}', '{{entry.date}}');"
             >
-              <a class="mod" title="Remove entry.">-</a>
+              <a class="mod thick" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
               <i class="mod u" title="Edit this entry.">edit</i>
@@ -270,7 +270,7 @@
           </tr>
         {% endfor %}
       </table>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="analgesia" %}
       <h3>Analgesia
@@ -295,7 +295,7 @@
               onclick="Del('{{category}}', '{{entry.name}}', 'experiment',
               '{{animal_id}}', '{{entry.date}}');"
             >
-              <a class="mod" title="Remove entry.">-</a>
+              <a class="mod thick" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
               <i class="mod u" title="Edit this entry.">edit</i>
@@ -303,7 +303,7 @@
           </tr>
         {% endfor %}
       </table>
-      <a class="mod" title="Add new entry." onclick="Add();">+</a>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% endif %}
     
