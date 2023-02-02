@@ -72,6 +72,7 @@
 
     {% if category=="general" %}
       <form action="general" method="POST">
+        <input type="text" name="uuid" id="uuid" style="display:none" value="{{data['uuid']}}"/>
         <table class="center">
           <tr>
             <td><label for="num_availible_animals">Number of allowed animals:</label></td>
@@ -83,17 +84,6 @@
               value="{{data['num_availible_animals'] if 'num_availible_animals' in data}}"
             >
             </td>
-          </tr>
-          <tr>
-            <td><label for="death_drug">Death drug:</label> </td>
-            <td><select name="death_drug" id="death_drug">
-              {% for definition in definitions %}
-                <option 
-                  value="{{definition.name}}"
-                  {%- if definition.name == data["death_drug"] %} selected {%- endif -%} 
-                >{{definition.name}}</option>
-              {% endfor %}
-              </select></td>
           </tr>
           <tr>
             <td><label for="allowed_users">Allowed users:</label></td>
@@ -127,6 +117,14 @@
       </form>
 
     {% elif category=="anesthesia" or category=="analgesia" %}
+    <p>Concerning <i>days-after-surgery</i>-field:<br>
+      If <b>0</b>, then the drug is applied <i>once</i> at the day of the surgery.<br>
+      If <b>1</b>, then the drug is applied at the day of the surgery and the following day<br>
+      If <b>2</b>, then the drug is applied at the day of the surgery and the two
+      following days and so one with values 3, 4, 5, ... <br>
+      If <b><i>-1</i></b>, then the drug is applied at the date at which the animal was
+      sacrificed. 
+      <p>
       <table class="center">
         <tr>
           <th>Name</td> 
@@ -136,6 +134,7 @@
         </tr>
         {% for medication in data %}
            <tr>
+             <td name="uuid" style="display:none">{{medication.uuid}}</td> 
              <td name="name">{{medication.name}}</td> 
              <td name="amount">{{medication.amount}}</td> 
              <td name="concentration">{{medication.concentration}}</td> 
@@ -143,9 +142,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td 
-               onclick="Del('{{category}}', '{{medication.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');"
-             >
+             <td onclick="DelProtocolEntry('{{category}}', '{{medication.uuid}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -169,6 +166,7 @@
         </tr>
         {% for procedure in data %}
            <tr>
+             <td name="uuid" style="display:none">{{procedure.uuid}}</td> 
              <td name="name">{{procedure.name}}</td> 
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
              <td name="duration">{{procedure.duration}}</td> 
@@ -176,7 +174,7 @@
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('procedures', '{{procedure.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="DelProtocolEntry('procedures', '{{procedure.uuid}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -196,13 +194,14 @@
         </tr>
         {% for virus in data %}
            <tr>
+             <td name="uuid" style="display:none">{{virus.uuid}}</td> 
              <td name="name">{{virus.name}}</td> 
              <td name="days_after_start">{{virus.days_after_start}}</td> 
              <td name="amount">{{virus.amount}}</td> 
              <td onclick="Add(this.parentNode);">
                <a class="mod" title="Add new entry below.">edit</a>
              </td>
-             <td onclick="Del('viruses', '{{virus.name}}', 'protocol', '{{protocol.escaped}}/{{subprotocol}}');">
+             <td onclick="DelProtocolEntry('viruses', '{{virus.uuid}}');">
                <a class="mod" title="Remove entry.">-</a>
              </td>
           </tr>
@@ -214,6 +213,7 @@
 
     {% elif category=="watercontrol" %}
       <form action="watercontrol" method="POST">
+        <input type="text" name="uuid" id="uuid" style="display:none" value="{{data['uuid']}}"/>
         <table class="center">
           <tr>
             <td><label for="allowed">Allowed?</label></td>
@@ -244,7 +244,7 @@
   </div>
 
 
-  <dialog id="edit_modal" style="height: 200px; width: 80%;" category="">
+  <dialog id="edit_modal" style="height: 300px; width: 80%;" category="">
     <button onclick="CloseModal()" style="float: right;">Close</button>
     <h2>Entry</h2>
     {% if category=="anesthesia" or category=="analgesia" %}

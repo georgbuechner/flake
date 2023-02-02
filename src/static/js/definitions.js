@@ -27,6 +27,24 @@ function RemoveDateSuggest(elem) {
     elem.classList.remove("date_suggest");
 }
 
+async function DelProtocolEntry(category, uuid) {
+  console.log(category, uuid);
+  try {
+    // Send request:
+    let r = await fetch("/settings/protocols/delete/"+category+"/"+uuid, 
+      {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else 
+      alert("Unkown error. Sorry " + r.status);
+  } catch(e) {
+    console.log(e);
+    alert("Unkown error. Sorry", e);
+  }
+}
+
+
 async function Del(category, name, type, identifier, date) {
   const escaped_name = escape(name).replace("/", "_");
   let base_url = "";

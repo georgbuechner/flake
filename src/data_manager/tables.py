@@ -1,5 +1,6 @@
 import json
 import math
+import uuid
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
 
@@ -172,50 +173,51 @@ class AVirus(db.Model):
 class PGeneral(db.Model):
     __tablename__ = "protocol_general"
 
-    protocol = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
-    death_drug = db.Column(db.String, primary_key=False)
     allowed_users = db.Column(db.String, primary_key=False)
     suffering = db.Column(db.String, primary_key=False)
 
     def __init__(
         self, 
+        uuid: str,
         protocol: str, 
         num_availible_animals: int, 
-        death_drug: str, 
         allowed_users: str,
         suffering: str
     ):
+        self.uuid = uuid
         self.protocol = protocol 
         self.num_availible_animals = num_availible_animals 
-        self.death_drug = death_drug 
         self.allowed_users = allowed_users 
         self.suffering = suffering
 
     @classmethod 
-    def from_json(cls, protocol: str, g: Dict[str, any]): 
+    def from_json(cls, uuid: str, protocol: str, g: Dict[str, any]): 
         return cls(
-            protocol, g["num_availible_animals"], g["death_drug"], g["allowed_users"], g["suffering"]
+            uuid, protocol, g["num_availible_animals"], g["allowed_users"], g["suffering"]
         )
 
     def update(self, general: Dict[str, any]): 
         self.num_availible_animals = general["num_availible_animals"]
-        self.death_drug = general["death_drug"]
         self.allowed_users = general["allowed_users"]
         self.suffering = general["suffering"]
 
 class PAnesthesia(db.Model): 
     __tablename__ = "protocol_anesthesia"
 
-    protocol = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
+    name = db.Column(db.String, primary_key=False) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
+        self, uuid: str, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
     ):
+        self.uuid = uuid
         self.protocol = protocol 
         self.name = name 
         self.amount = amount
@@ -223,27 +225,33 @@ class PAnesthesia(db.Model):
         self.days_after_surgery = days_after_surgery 
 
     @classmethod
-    def from_json(cls, protocol: str, m: Dict[str, any]): 
-        return cls(protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+    def from_json(cls, uuid: str, protocol: str, m: Dict[str, any]): 
+        return cls(uuid, protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
         self.amount = medication["amount"] 
         self.concentration = medication["concentration"] 
         self.days_after_surgery = medication["days_after_surgery"]
- 
+
+    def x_days_after(self): 
+        return int(self.days_after_surgery)
+
+
 class PAnalgesia(db.Model): 
     __tablename__ = "protocol_analgesia"
 
-    protocol = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
+    name = db.Column(db.String, primary_key=False) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
+        self, uuid: str, protocol: str, name: str, amount: str, concentration:str, days_after_surgery: str
     ):
+        self.uuid = uuid
         self.protocol = protocol 
         self.name = name 
         self.amount = amount
@@ -251,27 +259,32 @@ class PAnalgesia(db.Model):
         self.days_after_surgery = days_after_surgery 
 
     @classmethod
-    def from_json(cls, protocol: str, m: Dict[str, any]): 
-        return cls(protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+    def from_json(cls, uuid: str, protocol: str, m: Dict[str, any]): 
+        return cls(uuid, protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
         self.amount = medication["amount"] 
         self.concentration = medication["concentration"] 
         self.days_after_surgery = medication["days_after_surgery"]
- 
+
+    def x_days_after(self): 
+        return int(self.days_after_surgery)
+
 class PProcedure(db.Model): 
     __tablename__ = "protocol_procedures"
 
-    protocol = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
+    name = db.Column(db.String, primary_key=False) 
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
+        self, uuid: str, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
     ):
+        self.uuid = uuid
         self.protocol = protocol
         self.name = name 
         self.days_after_start = days_after_start 
@@ -279,10 +292,10 @@ class PProcedure(db.Model):
         self.surgery = surgery
 
     @classmethod
-    def from_json(cls, protocol: str, p: Dict[str, any]): 
+    def from_json(cls, uuid :str, protocol: str, p: Dict[str, any]): 
         surgery = AProcedure.query.get(p["name"]).surgery
         return cls(
-            protocol, p["name"], p["days_after_start"], p["duration"], surgery
+            uuid, protocol, p["name"], p["days_after_start"], p["duration"], surgery
         )
 
     def update(self, procedure: Dict[str, any]): 
@@ -291,50 +304,60 @@ class PProcedure(db.Model):
         self.duration = procedure["duration"] 
         self.surgery = AProcedure.query.get(procedure["name"]).surgery
 
+    def x_days_after(self): 
+        return int(self.days_after_start)
+
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
 
-    protocol = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
+    name = db.Column(db.String, primary_key=False) 
     days_after_start = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, days_after_start: str, amount: str
+        self, uuid: str, protocol: str, name: str, days_after_start: str, amount: str
     ):
+        self.uuid = uuid
         self.protocol = protocol
         self.name = name 
         self.days_after_start = days_after_start 
         self.amount = amount
 
     @classmethod
-    def from_json(cls, protocol: str, v: Dict[str, any]): 
-        return cls(protocol, v["name"], v["days_after_start"], v["amount"])
+    def from_json(cls, uuid: str, protocol: str, v: Dict[str, any]): 
+        return cls(uuid, protocol, v["name"], v["days_after_start"], v["amount"])
 
     def update(self, p: Dict[str, any]): 
         self.name = p["name"] 
         self.days_after_start = p["days_after_start"] 
         self.amount = p["amount"] 
 
+    def x_days_after(self): 
+        return int(self.days_after_start)
+
 class PWatercontrol(db.Model): 
     __tablename__ = "protocol_watercontrol"
 
-    protocol = db.Column(db.String, primary_key=True) 
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
     allowed = db.Column(db.Boolean, primary_key=False) 
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, protocol: str, allowed: bool, days_after_start: str, duration: str
+        self, uuid: str, protocol: str, allowed: bool, days_after_start: str, duration: str
     ):
+        self.uuid = uuid
         self.protocol = protocol
         self.allowed = allowed
         self.days_after_start = days_after_start 
         self.duration = duration
 
     @classmethod
-    def from_json(cls, protocol: str, w: Dict[str, any]): 
-        return cls(protocol, "allowed" in w, w["days_after_start"], w["duration"])
+    def from_json(cls, uuid: str, protocol: str, w: Dict[str, any]): 
+        return cls(uuid, protocol, "allowed" in w, w["days_after_start"], w["duration"])
 
     def update(self, watercontrol: Dict[str, any]): 
         self.allowed = "allowed" in watercontrol
@@ -399,6 +422,7 @@ class Anesthesia(db.Model):
     concentration = db.Column(db.String, primary_key=False)
     toe_pinch = db.Column(db.Boolean, primary_key=False)
     days_after_surgery = db.Column(db.Integer, primary_key=False)
+    protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
     def __init__(
         self, 
@@ -408,7 +432,8 @@ class Anesthesia(db.Model):
         amount: str, 
         concentration: str, 
         toe_pinch: bool = True,
-        days_after_surgery: int = -1
+        days_after_surgery: int = -1,
+        protocol_entry_uuid: str = ""
     ):
         """! Initializes Anesthesia. 
 
@@ -423,16 +448,18 @@ class Anesthesia(db.Model):
         self.concentration = concentration 
         self.toe_pinch = toe_pinch
         self.days_after_surgery = days_after_surgery
+        self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod
-    def from_default(cls, animal_id: str, a: PAnesthesia, days_after_surgery: int):
+    def from_default(cls, animal_id: str, anesthesia: PAnesthesia, days_after_surgery: int):
         return cls(
             animal_id, 
-            a.name, 
+            anesthesia.name, 
             str(days_after_surgery), 
-            a.amount,
-            a.concentration, 
-            days_after_surgery=days_after_surgery
+            anesthesia.amount,
+            anesthesia.concentration, 
+            days_after_surgery=days_after_surgery,
+            protocol_entry_uuid=anesthesia.uuid
         )
 
     @classmethod
@@ -451,6 +478,9 @@ class Anesthesia(db.Model):
     def string(self): 
         return f"{self.name} ({self.concentration})"
 
+    def set_date(self, date): 
+        self.date = date
+
 
 class Analgesia(db.Model): 
     __tablename__ = "analgesia"
@@ -461,6 +491,7 @@ class Analgesia(db.Model):
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     days_after_surgery = db.Column(db.Integer, primary_key=False)
+    protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
     def __init__(
         self, 
@@ -469,7 +500,8 @@ class Analgesia(db.Model):
         date: str, 
         amount: str, 
         concentration: str, 
-        days_after_surgery: int = -1
+        days_after_surgery: int = -1,
+        protocol_entry_uuid: str = ""
     ):
         """! Initializes Analgesia. 
 
@@ -483,11 +515,18 @@ class Analgesia(db.Model):
         self.amount = amount 
         self.concentration = concentration 
         self.days_after_surgery = days_after_surgery
+        self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod
-    def from_default(cls, animal_id: str, a: PAnalgesia, days_after_surgery: int):
+    def from_default(cls, animal_id: str, analgesia: PAnalgesia, days_after_surgery: int):
         return cls(
-            animal_id, a.name, str(days_after_surgery), a.amount, a.concentration, days_after_surgery
+            animal_id, 
+            analgesia.name, 
+            str(days_after_surgery), 
+            analgesia.amount, 
+            analgesia.concentration, 
+            days_after_surgery,
+            protocol_entry_uuid=analgesia.uuid
         )
 
     @classmethod
@@ -502,6 +541,9 @@ class Analgesia(db.Model):
     def string(self): 
         return f"{self.name} ({self.concentration})"
 
+    def set_date(self, date): 
+        self.date = date
+
 class Procedure(db.Model): 
     __tablename__ = "procedures"
 
@@ -510,17 +552,27 @@ class Procedure(db.Model):
     start_date = db.Column(db.String, primary_key=False) 
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
+    protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id: str, name: str, start: str, end: str, experimenter: str): 
+    def __init__(
+        self, 
+        animal_id: str, 
+        name: str, 
+        start: str, 
+        end: str, 
+        experimenter: str,
+        protocol_entry_uuid: str = ""
+    ): 
         self.animal_id = animal_id 
         self.name = name 
         self.start_date = start
         self.end_date = end
         self.experimenter = experimenter
+        self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
-        return cls(animal_id, procedure.name, "", "", experimenter)
+        return cls(animal_id, procedure.name, "", "", experimenter, procedure.uuid)
 
     @classmethod 
     def from_json(cls, animal_id: str, p: Dict[str, any]): 
@@ -531,6 +583,11 @@ class Procedure(db.Model):
         self.end_date = p["end_date"]
         self.experimenter = p["experimenter"]
 
+    def set_date(self, date): 
+        self.start_date = date
+        self.end_date = date
+
+ 
 class PostProcedure(db.Model): 
     __tablename__ = "post_procedures"
 
@@ -539,17 +596,27 @@ class PostProcedure(db.Model):
     start_date = db.Column(db.String, primary_key=False) 
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
+    protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id: str, name: str, start: str, end: str, experimenter: str): 
+    def __init__(
+        self, 
+        animal_id: str, 
+        name: str, 
+        start: str, 
+        end: str, 
+        experimenter: str, 
+        protocol_entry_uuid: str = ""
+    ): 
         self.animal_id = animal_id 
         self.name = name 
         self.start_date = start
         self.end_date = end
         self.experimenter = experimenter
+        self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
-        return cls(animal_id, procedure.name, "", "", experimenter)
+        return cls(animal_id, procedure.name, "", "", experimenter, procedure.uuid)
         
 
     @classmethod 
@@ -561,6 +628,10 @@ class PostProcedure(db.Model):
         self.end_date = p["end_date"]
         self.experimenter = p["experimenter"]
 
+    def set_date(self, date): 
+        self.start_date = date
+        self.end_date = date
+
     
 class Virus(db.Model): 
     __tablename__ = "virus"
@@ -569,16 +640,18 @@ class Virus(db.Model):
     name = db.Column(db.String, primary_key=True) 
     date = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
+    protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id, name: str, date: str, amount: str): 
+    def __init__(self, animal_id, name: str, date: str, amount: str, protocol_entry_uuid: str = ""): 
         self.animal_id = animal_id 
         self.name = name
         self.date = date 
         self.amount = amount
+        self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod 
     def from_default(cls, animal_id: str, virus: PVirus): 
-        return cls(animal_id, virus.name, "", virus.amount)
+        return cls(animal_id, virus.name, "", virus.amount, virus.uuid)
 
     @classmethod 
     def from_json(cls, animal_id: str, virus: Dict[str, any]): 
@@ -590,6 +663,9 @@ class Virus(db.Model):
 
     def string(self): 
         return f"{self.name}"
+
+    def set_date(self, date): 
+        self.date = date
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
@@ -643,10 +719,14 @@ def update_table(name: str, Table, update: Dict[str, any]):
     First start app without database changes and run `safe_table`.
     Then start app again with database changes and run `update_table`.
     """
-    with open(f"{name}.json", "w") as f:
-        data = json.load(f)
+    print("Updating table: ", name)
+    try:
+        with open(f"{name}.json", "r") as f:
+            data = json.load(f)
+    except: 
+        return
     for x in data: 
-        x.update(update)
-        entry = Table(x)
+        # x.update(update_table)
+        entry = Table.from_json(str(uuid.uuid4()), x["protocol"], x)
         db.session.add(entry)
     db.session.commit()

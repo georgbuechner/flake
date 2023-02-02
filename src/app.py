@@ -33,7 +33,15 @@ with app.app_context():
     # Example to remove tables
     # Create tables
     # drop("general", General)
+    # drop_all(EXPERIMENT_TABLES)
     db.create_all()
+
+    # drop("pgeneral", PGeneral)
+    # drop("protocol_watercontrol", PWatercontrol)
+    # update_table("pgeneral", PGeneral, False)
+    # update_table("protocol_watercontrol", PWatercontrol, False)
+    # for name, Table in PROTOCOL_TABLES.items():
+    #     update_table(name, Table, None)
     # drop("animal_data", AnimalData)
     # drop_all(EXPERIMENT_TABLES)
 
@@ -566,12 +574,11 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
     )
     return redirect(request.referrer)
 
-@app.route("/settings/protocols/<protocol>/<subprotocol>/delete/<category>/<name>", methods=["POST"])
+@app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
-def delete_protocol_entry(protocol: str, subprotocol: str, category: str, name: str): 
-    name = html.unescape(name).replace("_", "/")
-    dmanager.delete_protocol_entry(category, f"{protocol}/{subprotocol}", name)
-    return redirect(f"/settings/protocols/{protocol}/{subprotocol}/{category}")
+def delete_protocol_entry(category: str, uuid: str): 
+    dmanager.delete_protocol_entry(category, uuid)
+    return redirect(request.referrer)
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
