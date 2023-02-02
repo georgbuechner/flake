@@ -3,11 +3,17 @@
   <table class="center">
     <tr>
       <td><label for="name">Name:</label></td>
-      <td><select name="name" id="name" onchange='Set(this, {{json_definitions|safe}})'>
-        {% for definition in definitions %}
-          <option value="{{definition.name}}">{{definition.name}}</option>
-        {% endfor %}
-        </select></td>
+      <td>
+        <select 
+          type="text" name="name" id="name" autocomplete="off"
+          onchange='Set(this, {{json_definitions|safe}})'
+        >
+          <option value="---" selected>---</option>
+          {% for definition in definitions %}
+            <option value="{{definition.name}}">{{definition.name}}</option>
+          {% endfor %}
+        </select>
+      </td>
     </tr>
     <tr>
       <td><label for="days_after_start">Days after start:</label></td>
