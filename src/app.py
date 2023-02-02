@@ -366,8 +366,14 @@ def update_animal_subprotocol():
     subprotocol = request.form.get("subprotocol")
     animal_id = request.form.get("animal_id")
     force = request.form.get("force") == "true"
-    txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
-    return txt, status
+    try:
+        txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
+        return txt, status
+    except Exception as err: 
+        _, _ = dmanager.set_subprotocol(animal_id, "---", force)
+        print(traceback.format_exc())
+        print(err)
+        return repr(err), 500
 
 @app.route("/update/animal_data/protocol", methods=["POST"])
 @login_required

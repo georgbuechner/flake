@@ -382,6 +382,15 @@ class Protocol(db.Model):
             self.subprotocols += subprotocol 
         else:
             self.subprotocols += ";" + subprotocol
+        
+        # Add default general and watercontrol
+        full_protocol = f"{self.escaped}/{subprotocol}"
+        watercontrol = PWatercontrol(str(uuid.uuid4()), full_protocol, False, 0, 0)
+        db.session.add(watercontrol)
+        general = PGeneral(str(uuid.uuid4()), full_protocol, 10, "", "Leicht")
+        db.session.add(general)
+        db.session.commit()
+        print("Added PWatercontrol for: ", full_protocol)
 
     def remove_subprotocol(self, subprotocol):
         subprotocols = self.get_subprotocols() 

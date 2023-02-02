@@ -437,7 +437,7 @@ class DManager:
         start_date = general.start
         if not date_filled(start_date): 
             return "Missing start-date", 401
-        watercontrol_infos = PWatercontrol.query.get(general.experiment)
+        watercontrol_infos = PWatercontrol.query.filter(PWatercontrol.protocol == general.experiment).first()
 
         # Get some values 
         start_weight = float(start_weight) if start_weight != "" else -1

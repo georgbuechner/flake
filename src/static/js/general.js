@@ -89,8 +89,10 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
         "UpdateSubprotocol('"+subprotocol+"', '"+animal_id+"', true)");
       dialog.showModal(); 
     }
-    else
+    else {
       alert("Something went wrong: Error code: " + r.status);
+      window.location=window.location;
+    }
   } catch(e) {
     alert("Something went wrong: " + e);
   }

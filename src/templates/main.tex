@@ -113,7 +113,8 @@
     >{\centering\arraybackslash}m{1.7cm}|
 }
   \hline 
-  \multirow{2}{*}{\parbox{1.9cm}{
+  \multirow{2}{*}{
+    \parbox[t]{1.9cm}{
     \begin{center}
       Beginn und Abschluss
     \end{center}
@@ -199,7 +200,9 @@
         }&
       {% if loop.index0 == 0 %}
         \setlength{\fboxsep}{0.4cm}
-        \parbox[t]{2cm}{ {{d.experiment}} } &
+        \parbox[t]{2cm}{ 
+          \begin{turn}{-90}\small{ {{d.experiment}}}\end{turn}  
+        } &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{2cm}{ {{a.general.suffering}}} &
         \setlength{\fboxsep}{0.4cm}

@@ -11,7 +11,7 @@ function Close(modal_name) {
 async function DelSub(protocol, subprotocol) {
   let params = protocol 
   if (subprotocol != "") 
-    protocol +="/" + subprotocol;
+    params +="/" + subprotocol;
   console.log(protocol, subprotocol, params);
   try {
     // Send request:
