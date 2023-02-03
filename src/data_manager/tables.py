@@ -3,6 +3,7 @@ import math
 import uuid
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
+from utils.dt_utils import date_filled
 
 db = SQLAlchemy()
 
@@ -74,11 +75,11 @@ class AnimalData(db.Model):
         self.sex = data["sex"]
         self.line = data["line"]
         self.dob = data["dob"]
-        self.death_date = str(data["death_date"])
+        if not date_filled(self.death_date):
+            self.death_date = str(data["death_date"])
         self.user = data["user"]
         self.protocol_pyrat = data["protocol_pyrat"]
-        self.protocol = data["protocol"] if "protocol" in data else "---"
-        self.protocol_escaped = data["protocol_escaped"] if "protocol_escaped" in data else "---"
+        # Don't update protocol.
         self.supplier = data["supplier"]
 
 class Note(db.Model):

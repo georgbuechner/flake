@@ -18,7 +18,14 @@
         <td>{{entry.sex}}</td>
         <td>{{entry.line}}</td>
         <td>{{entry.dob}}</td>
-        <td>{{entry.death_date}}</td>
+        <td>
+          {{entry.death_date}} 
+          <i 
+              style="margin-left: 2px;" 
+              class="fas fa-pen mod small" 
+              onclick="OpenEditDeathModel('{{entry.mla_num}}');"
+          ></i>
+        </td>
         <td>{{entry.supplier}}</td>
         <td>{{entry.protocol_pyrat}}</td>
         <td>

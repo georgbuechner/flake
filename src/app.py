@@ -32,8 +32,12 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
+    # drop("animal_data", AnimalData)
     # drop("general", General)
+    # drop("pgeneral", PGeneral)
+    # drop("protocol_watercontrol", PWatercontrol)
     # drop_all(EXPERIMENT_TABLES)
+    # drop_all(PROTOCOL_TABLES)
     db.create_all()
 
     # drop("pgeneral", PGeneral)
@@ -390,6 +394,19 @@ def update_animal_protocol():
     txt, status = dmanager.set_protocol(animal_id, subprotocol, force) 
     return txt, status
 
+@app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
+@login_required
+def update_animal_death_date(animal_id): 
+    """! Updates the subprotocol of an animal and initializes experiment-data.
+
+    @param subprotocol  the new subprotocol
+
+    @return error-/ success-message and status code.
+    """
+    death_date = request.form.get("death_date")
+    txt, status = dmanager.set_death_date(animal_id, death_date) 
+    return redirect(request.referrer)
+
 
 @app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required
@@ -552,8 +569,8 @@ def generate_paragraph_9(escaped_protocol: str):
     proc=subprocess.Popen(
         ["pdflatex", full_path], 
         cwd=tmp_path, 
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.STDOUT
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)

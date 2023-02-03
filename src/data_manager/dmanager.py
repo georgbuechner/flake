@@ -172,6 +172,18 @@ class DManager:
         fill_sacrifice_date(animal_id, full_protocol)
         return "", 200
 
+    def set_death_date(self, animal_id, death_date):
+        animal_data = AnimalData.query.get(animal_id)
+        if animal_data: 
+            animal_data.death_date = death_date
+            db.session.commit()
+            # Update medication/ procedures referencing sacrifice date (-1)
+            if animal_data.protocol_escaped != "---" and animal_data.subprotocol != "---":
+                full_protocol = f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
+                fill_sacrifice_date(animal_id, full_protocol)
+            return "", 200
+        return f"AnimalData for {animal_id} not found", 404
+
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, any]
     ):
@@ -580,10 +592,6 @@ class DManager:
         else: 
             animal_data.stored = False
         db.session.commit()
-
-
-def date_filled(date_str: str) -> bool: 
-    return date_str and len(date_str) == 10
 
 
 def get_surgery_start(protocol: str):

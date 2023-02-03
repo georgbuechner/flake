@@ -147,3 +147,9 @@ function OpenModel(modal_name) {
   var dialog = document.getElementById(modal_name); 
   dialog.showModal(); 
 }
+
+function OpenEditDeathModel(animal_id) {
+  const action = document.getElementById('death_date_edit_form').action; //Will retrieve it
+  document.getElementById('death_date_edit_form').action = action + "/" + animal_id;
+  OpenModel("death_edit_modal");
+}

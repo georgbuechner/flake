@@ -35,3 +35,6 @@ def convert(
 
 def today() -> datetime:
     return datetime.now()
+
+def date_filled(date_str: str) -> bool: 
+    return date_str and len(date_str) == 10
