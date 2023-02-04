@@ -6,7 +6,7 @@ with open(f"{path}.json", "r") as f:
     backup = json.load(f)
 
 for name, data in backup.items(): 
-    if name == "analgesia" or name == "anesthesia": 
+    if name == "analgesia" or name == "anesthesia" or name == "panalgesia" or name == "panesthesia" or name == "amedication": 
         for row in data:
             if row["name"] == "Ketamine / Xylazine":
                 row["concentration"] = "12.5 / 1.0"
@@ -34,6 +34,10 @@ for name, data in backup.items():
                 row["weight_independant"] = True
 
             elif row["name"] == "Isoflurane":
+                row["concentration"] = "1000"
+                row["dosis"] = ""
+
+            elif row["name"] == "Isofluran":
                 row["concentration"] = "1000"
                 row["dosis"] = ""
                 row["weight_independant"] = True
