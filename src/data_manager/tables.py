@@ -95,7 +95,7 @@ class AnimalData(db.Model):
 
     def to_json(self):
         return {
-            "": self.mla_num,
+            "id": self.mla_num,
             "sex": self.sex,
             "line": self.line,
             "dob": self.dob, 
