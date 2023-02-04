@@ -25,6 +25,23 @@ class User(db.Model):
     salt = db.Column(db.String, primary_key=False)
     authenticated = db.Column(db.Boolean, default=False)
 
+    def __init__(email: str, name: str, password: str, salt: str):
+        self.email = email 
+        self.name = name 
+        self.password = password 
+        self.salt = salt
+
+    @classmethod 
+    def from_json(cls, user: Dict[str, any]): 
+        return cls(
+            user["email"], user["name"], user["password"], user["salt"]
+        )
+
+    def to_json(self):
+        return {
+            "email": self.email, "name":self.name, "password": self.password, "salt": self.salt,
+        }
+
     def is_active(self):
         """! True, as all users are active."""
         return True
@@ -40,6 +57,7 @@ class User(db.Model):
     def is_anonymous(self):
         """! False, as anonymous users aren't supported."""
         return False
+
 
 class AnimalData(db.Model): 
     __tablename__ = "animal_data" 
@@ -68,8 +86,28 @@ class AnimalData(db.Model):
         self.protocol = data["protocol"] if "protocol" in data else "---"
         self.protocol_escaped = data["protocol_escaped"] if "protocol_escaped" in data else "---"
         self.supplier = data["supplier"]
-        self.subprotocol = "---"
-        self.stored = False
+        self.subprotocol = data["subprotocol"] if "subprotocol" in data else "---"
+        self.stored = data["stored"] if "stored" in data else False
+
+    @classmethod 
+    def from_json(cls, data: Dict[str, any]): 
+        return cls(data)
+
+    def to_json(self):
+        return {
+            "": self.mla_num,
+            "sex": self.sex,
+            "line": self.line,
+            "dob": self.dob, 
+            "death_date": self.death_date,
+            "user": self.user,
+            "protocol_pyrat": self.protocol_pyrat,
+            "protocol": self.protocol,
+            "protocol_escaped": self.protocol_escaped,
+            "supplier": self.supplier,
+            "subprotocol": self.subprotocol,
+            "stored": self.stored
+        }
 
     def update(self, data: Dict[str, any]): 
         self.sex = data["sex"]
@@ -93,7 +131,16 @@ class Note(db.Model):
         self.animal_id = animal_id
         self.category = category
         self.note = note
-    
+
+    @classmethod 
+    def from_json(cls, note: Dict[str, any]): 
+        return cls(note["animal_id"], note["category"], note["note"])
+
+    def to_json(self):
+        return {
+            "animal_id": self.animal_id, "category": self.category, "note": self.note
+        }
+
     def update(self, note: str):
         self.note = note
  
@@ -116,6 +163,14 @@ class AMedication(db.Model):
     @classmethod 
     def from_json(cls, m: Dict[str, any]): 
         return cls(m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    def to_json(self): 
+        return {
+            "name": self.name, 
+            "amount": self.amount, 
+            "concentration": self.concentration,
+            "days_after_surgery": self.days_after_surgery
+        }
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
@@ -144,6 +199,16 @@ class AProcedure(db.Model):
     def from_json(cls, p: Dict[str, any]): 
         return cls(p["name"], p["days_after_start"], p["duration"], "surgery" in p)
 
+    def to_json(self): 
+        data = {
+            "name": self.name, 
+            "days_after_start": self.days_after_start,
+            "duration": self.duration,
+        }
+        if self.surgery:
+            data["surgery"] = self.surgery
+        return data
+
     def update(self, procedure: Dict[str, any]): 
         self.name = procedure["name"] 
         self.days_after_start = procedure["days_after_start"] 
@@ -163,8 +228,15 @@ class AVirus(db.Model):
         self.amount = amount
 
     @classmethod 
-    def from_json(cls, v: Dict[str, any]): 
-        return cls(v["name"], v["days_after_start"], v["amount"])
+    def from_json(cls, virus: Dict[str, any]): 
+        return cls(virus["name"], virus["days_after_start"], virus["amount"])
+
+    def to_json(self): 
+        return { 
+            "name": self.name, 
+            "days_after_start": self.days_after_start,
+            "amount": self.amount
+        }
     
     def update(self, virus: Dict[str, any]): 
         self.name = virus["name"] 
@@ -195,10 +267,23 @@ class PGeneral(db.Model):
         self.suffering = suffering
 
     @classmethod 
-    def from_json(cls, uuid: str, protocol: str, g: Dict[str, any]): 
+    def from_form(cls, uuid: str, protocol: str, g: Dict[str, any]): 
         return cls(
             uuid, protocol, g["num_availible_animals"], g["allowed_users"], g["suffering"]
         )
+
+    @classmethod 
+    def from_json(cls, data: Dict[str, any]): 
+        return cls.from_form(data["uuid"], data["protocol"], data)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "num_availible_animals": self.num_availible_animals,
+            "allowed_users": self.allowed_users,
+            "suffering": self.suffering
+        }
 
     def update(self, general: Dict[str, any]): 
         self.num_availible_animals = general["num_availible_animals"]
@@ -226,8 +311,22 @@ class PAnesthesia(db.Model):
         self.days_after_surgery = days_after_surgery 
 
     @classmethod
-    def from_json(cls, uuid: str, protocol: str, m: Dict[str, any]): 
+    def from_form(cls, uuid: str, protocol: str, m: Dict[str, any]): 
         return cls(uuid, protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    @classmethod 
+    def from_json(cls, m: Dict[str, any]): 
+        return cls.from_form(m["uuid"], m["protocol"], m)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "name": self.name, 
+            "amount": self.amount,
+            "concentration": self.concentration,
+            "days_after_surgery": self.days_after_surgery,
+        }
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
@@ -260,8 +359,22 @@ class PAnalgesia(db.Model):
         self.days_after_surgery = days_after_surgery 
 
     @classmethod
-    def from_json(cls, uuid: str, protocol: str, m: Dict[str, any]): 
+    def from_form(cls, uuid: str, protocol: str, m: Dict[str, any]): 
         return cls(uuid, protocol, m["name"], m["amount"], m["concentration"], m["days_after_surgery"])
+
+    @classmethod 
+    def from_json(cls, m: Dict[str, any]): 
+        return cls.from_form(m["uuid"], m["protocol"], m)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "name": self.name, 
+            "amount": self.amount,
+            "concentration": self.concentration,
+            "days_after_surgery": self.days_after_surgery,
+        }
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
@@ -293,11 +406,25 @@ class PProcedure(db.Model):
         self.surgery = surgery
 
     @classmethod
-    def from_json(cls, uuid :str, protocol: str, p: Dict[str, any]): 
+    def from_form(cls, uuid :str, protocol: str, p: Dict[str, any]): 
         surgery = AProcedure.query.get(p["name"]).surgery
         return cls(
             uuid, protocol, p["name"], p["days_after_start"], p["duration"], surgery
         )
+
+    @classmethod 
+    def from_json(cls, procedure: Dict[str, any]): 
+        return cls.from_form(procedure["uuid"], procedure["protocol"], procedure)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "name": self.name, 
+            "days_after_start": self.days_after_start,
+            "duration": self.duration,
+            "surgery": self.surgery
+        }
 
     def update(self, procedure: Dict[str, any]): 
         self.name = procedure["name"] 
@@ -327,8 +454,21 @@ class PVirus(db.Model):
         self.amount = amount
 
     @classmethod
-    def from_json(cls, uuid: str, protocol: str, v: Dict[str, any]): 
+    def from_form(cls, uuid: str, protocol: str, v: Dict[str, any]): 
         return cls(uuid, protocol, v["name"], v["days_after_start"], v["amount"])
+
+    @classmethod 
+    def from_json(cls, virus: Dict[str, any]): 
+        return cls.from_form(virus["uuid"], virus["protocol"], virus)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "name": self.name, 
+            "days_after_start": self.days_after_start,
+            "amount": self.amount
+        }
 
     def update(self, p: Dict[str, any]): 
         self.name = p["name"] 
@@ -357,8 +497,22 @@ class PWatercontrol(db.Model):
         self.duration = duration
 
     @classmethod
-    def from_json(cls, uuid: str, protocol: str, w: Dict[str, any]): 
+    def from_form(cls, uuid: str, protocol: str, w: Dict[str, any]): 
         return cls(uuid, protocol, "allowed" in w, w["days_after_start"], w["duration"])
+
+    @classmethod 
+    def from_json(cls, watercontrol: Dict[str, any]): 
+        return cls.from_form(watercontrol["uuid"], watercontrol["protocol"], watercontrol)
+
+    def to_json(self): 
+        data = {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "days_after_start": self.days_after_start,
+            "duration": self.duration
+        }
+        if self.allowed: 
+            data["allowed"] = self.allowed
 
     def update(self, watercontrol: Dict[str, any]): 
         self.allowed = "allowed" in watercontrol
@@ -371,6 +525,20 @@ class Protocol(db.Model):
     name = db.Column(db.String, primary_key=False) 
     escaped = db.Column(db.String, primary_key=True)
     subprotocols = db.Column(db.String, primary_key=False)
+
+    def __init__(self, name: str, escaped: str, subprotocols: str):
+        self.name = name 
+        self.escaped = escaped 
+        self.subprotocols = subprotocols
+
+    @classmethod
+    def from_json(cls, protocol: Dict[str, any]): 
+        return cls(protocol["name"], protocol["escaped"], protocol["subprotocols"])
+
+    def to_json(self): 
+        return {
+            "name": self.name, "escaped": self.escaped, "subprotocols": self.subprotocols
+        }
 
     def get_subprotocols(self) -> List[str]:
         subprotocols = self.subprotocols.split(";")
@@ -391,7 +559,6 @@ class Protocol(db.Model):
         general = PGeneral(str(uuid.uuid4()), full_protocol, 10, "", "Leicht")
         db.session.add(general)
         db.session.commit()
-        print("Added PWatercontrol for: ", full_protocol)
 
     def remove_subprotocol(self, subprotocol):
         subprotocols = self.get_subprotocols() 
@@ -421,6 +588,34 @@ class General(db.Model):
         self.weights = json.dumps([])
         self.watercontrol_mask = json.dumps([])
         self.suffering = suffering
+
+    @classmethod 
+    def from_json(cls, general: Dict[str, any]):
+        return cls(
+            general["animal_id"],
+            general["start"],
+            general["end"],
+            general["experiment"],
+            general["start_weight"],
+            general["watercontrol"],
+            general["weights"],
+            general["watercontrol_mask"],
+            general["suffering"],
+        )
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "start": self.start,
+            "end": self.end,
+            "experiment": self.experiment,
+            "start_weight": self.start_weight,
+            "watercontrol": self.watercontrol,
+            "weights": self.weights,
+            "watercontrol_mask": self.watercontrol_mask,
+            "suffering":self.suffering,
+        }
+
 
 class Anesthesia(db.Model): 
     __tablename__ = "anesthesia"
@@ -473,11 +668,29 @@ class Anesthesia(db.Model):
         )
 
     @classmethod
-    def from_json(cls, animal_id: str, a: Dict[str, any]):
+    def from_form(cls, animal_id: str, a: Dict[str, any]):
         toe_pinch = "toe_pinch" in a
         return cls(
             animal_id, a["name"], a["date"], a["amount"], a["concentration"], toe_pinch
         )
+
+    @classmethod 
+    def from_json(cls, a: Dict[str, any]): 
+        return cls.from_form(a["animal_id"], a)
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "name": self.name, 
+            "date": self.date, 
+            "days_after_surgery": self.days_after_surgery, 
+            "amount": self.amount, 
+            "concentration": self.concentration, 
+            "days_after_surgery": self.days_after_surgery,
+            "toe_pinch": self.toe_pinch,
+            "protocol_entry_uuid": self.protocol_entry_uuid
+        }
+
 
     def update(self, a: Dict[str, any]):
         self.date = a["date"] 
@@ -540,8 +753,24 @@ class Analgesia(db.Model):
         )
 
     @classmethod
-    def from_json(cls, animal_id: str, a: Dict[str, any]):
+    def from_form(cls, animal_id: str, a: Dict[str, any]):
         return cls(animal_id, a["name"], a["date"], a["amount"], a["concentration"])
+
+    @classmethod 
+    def from_json(cls, a: Dict[str, any]): 
+        return cls.from_form(a["animal_id"], a)
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "name": self.name, 
+            "date": self.date, 
+            "days_after_surgery": self.days_after_surgery, 
+            "amount": self.amount, 
+            "concentration": self.concentration, 
+            "days_after_surgery": self.days_after_surgery,
+            "protocol_entry_uuid": self.protocol_entry_uuid
+        }
 
     def update(self, a: Dict[str, any]):
         self.date = a["date"] 
@@ -585,8 +814,22 @@ class Procedure(db.Model):
         return cls(animal_id, procedure.name, "", "", experimenter, procedure.uuid)
 
     @classmethod 
-    def from_json(cls, animal_id: str, p: Dict[str, any]): 
+    def from_form(cls, animal_id: str, p: Dict[str, any]): 
         return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
+
+    @classmethod 
+    def from_json(cls, procedure: Dict[str, any]): 
+        return cls.from_form(procedure["animal_id"], procedure)
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "name": self.name, 
+            "start_date": self.start_date, 
+            "end_date": self.end_date, 
+            "experimenter": self.experimenter, 
+            "protocol_entry_uuid": self.protocol_entry_uuid
+        }
 
     def update(self, p: Dict[str, any]):
         self.start_date = p["start_date"]
@@ -630,8 +873,22 @@ class PostProcedure(db.Model):
         
 
     @classmethod 
-    def from_json(cls, animal_id: str, p: Dict[str, any]): 
+    def from_form(cls, animal_id: str, p: Dict[str, any]): 
         return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
+
+    @classmethod 
+    def from_json(cls, procedure: Dict[str, any]): 
+        return cls.from_form(procedure["animal_id"], procedure)
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "name": self.name, 
+            "start_date": self.start_date, 
+            "end_date": self.end_date, 
+            "experimenter": self.experimenter, 
+            "protocol_entry_uuid": self.protocol_entry_uuid
+        }
 
     def update(self, p: Dict[str, any]):
         self.start_date = p["start_date"]
@@ -664,8 +921,21 @@ class Virus(db.Model):
         return cls(animal_id, virus.name, "", virus.amount, virus.uuid)
 
     @classmethod 
-    def from_json(cls, animal_id: str, virus: Dict[str, any]): 
+    def from_form(cls, animal_id: str, virus: Dict[str, any]): 
         return cls(animal_id, virus["name"], virus["date"], virus["amount"])
+
+    @classmethod 
+    def from_json(cls, virus: Dict[str, any]): 
+        return cls.from_form(virus["animal_id"], virus)
+
+    def to_json(self): 
+        return {
+            "animal_id": self.animal_id,
+            "name": self.name, 
+            "date": self.date, 
+            "amount": self.amount,
+            "protocol_entry_uuid": self.protocol_entry_uuid,
+        }
 
     def update(self, virus: Dict[str, any]):
         self.date = virus["date"]
@@ -703,40 +973,56 @@ DEFINITION_TABLES = {
     "viruses": AVirus
 }
 
-def drop(name, Table): 
-    inp = input(f"Are you sure you want to drop table {name} (yes/no): ")
-    if inp == "yes":
+ALL_TABLES = { 
+  # "user": User, 
+  "animal_data": AnimalData, 
+  "note": Note, 
+  "amedication": AMedication, 
+  "aprocedure": AProcedure, 
+  "avirus": AVirus, 
+  "pgeneral": PGeneral,
+  "panesthesia": PAnesthesia, 
+  "panalgesia": PAnalgesia, 
+  "pprocedure": PProcedure, 
+  "pvirus": PVirus, 
+  "pwatercontrol": PWatercontrol, 
+  "protocol": Protocol, 
+  "pgeneral": PGeneral, 
+  "anesthesia": Anesthesia, 
+  "analgesia": Analgesia, 
+  "procedure": Procedure, 
+  "post_procedure": PostProcedure, 
+  "virus": Virus
+}
+
+def drop(name, Table, confirm=False): 
+    if confirm:
+        inp = input(f"Are you sure you want to drop table {name} (yes/no): ")
+    if not confirm or inp == "yes":
         Table.__table__.drop(db.engine)
         print(f"Table {name} droped!")
     else:
         print(f"Table {name} not droped")
 
-def drop_all(tables): 
+def drop_all(tables, confirm=False): 
     for name, Table in tables.items(): 
-        drop(name, Table)
+        drop(name, Table, confirm)
 
-def safe_table(name: str, Table, drop_table: bool): 
-    data = [table_to_json(x) for x in Table.query.all()]
-    if drop_table:
-        drop(name, Table)
-    with open(f"{name}.json", "w") as f:
-        json.dump(data, f)
+def safe_all(path): 
+    backup = {} 
+    for table, Table in ALL_TABLES.items(): 
+        backup[table] = []
+        for row in Table.query.all(): 
+            backup[table].append(row.to_json())
+    print(backup)
+    with open(f"{path}.json", "w") as f:
+        json.dump(backup, f)
 
-
-def update_table(name: str, Table, update: Dict[str, any]): 
-    """ Updates a table after changes where made to database. 
-
-    First start app without database changes and run `safe_table`.
-    Then start app again with database changes and run `update_table`.
-    """
-    print("Updating table: ", name)
-    try:
-        with open(f"{name}.json", "r") as f:
-            data = json.load(f)
-    except: 
-        return
-    for x in data: 
-        # x.update(update_table)
-        entry = Table.from_json(str(uuid.uuid4()), x["protocol"], x)
-        db.session.add(entry)
+def load_backup(path): 
+    with open(f"{path}.json", "r") as f:
+        backup = json.load(f)
+    for name, data in backup.items(): 
+        for row in data:
+            table = ALL_TABLES[name].from_json(row)
+            db.session.add(table) 
     db.session.commit()

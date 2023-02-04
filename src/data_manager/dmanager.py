@@ -192,7 +192,7 @@ class DManager:
         if element:
             element.update(data)
         else: 
-            element = Table.from_json(animal_id, data)
+            element = Table.from_form(animal_id, data)
             db.session.add(element)
         db.session.commit()
         # Update stored? of animal-data
@@ -400,7 +400,7 @@ class DManager:
         if protocol_entry:
             protocol_entry.update(data)
         else: 
-            protocol_entry = Table.from_json(str(uuid.uuid4()), protocol, data)
+            protocol_entry = Table.from_form(str(uuid.uuid4()), protocol, data)
             db.session.add(protocol_entry)
         db.session.commit()
 

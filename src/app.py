@@ -32,22 +32,9 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
-    # drop("animal_data", AnimalData)
-    # drop("general", General)
-    # drop("pgeneral", PGeneral)
-    # drop("protocol_watercontrol", PWatercontrol)
-    # drop_all(EXPERIMENT_TABLES)
-    # drop_all(PROTOCOL_TABLES)
+    # drop_all(ALL_TABLES, False)
     db.create_all()
-
-    # drop("pgeneral", PGeneral)
-    # drop("protocol_watercontrol", PWatercontrol)
-    # update_table("pgeneral", PGeneral, False)
-    # update_table("protocol_watercontrol", PWatercontrol, False)
-    # for name, Table in PROTOCOL_TABLES.items():
-    #     update_table(name, Table, None)
-    # drop("animal_data", AnimalData)
-    # drop_all(EXPERIMENT_TABLES)
+    # load_backup("backup_2")
 
 @login_manager.user_loader 
 def user_loader(user_id): 
