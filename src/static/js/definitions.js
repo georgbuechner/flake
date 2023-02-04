@@ -4,9 +4,21 @@ function Add(entry) {
   if (entry !== undefined) {
     for (var i=0; i<entry.children.length; i++) {
       if (entry.children[i].hasAttribute("name")) {
-        var elem = document.getElementById(entry.children[i].getAttribute("name"));
-        if (elem.type == "checkbox")
+        const cur_name = entry.children[i].getAttribute("name");
+        var elem = document.getElementById(cur_name);
+        if (elem.type == "checkbox") {
           elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
+          if (entry.children[i].innerHTML === "True" && cur_name === "weight_independant") {
+            document.getElementById("amount").removeAttribute("readonly");
+            document.getElementById("dosis").setAttribute("readonly", "readonly");
+            document.getElementById("dosis").title = "Dosis cannot be set if weight-independant.";
+          }
+          else {
+            document.getElementById("dosis").removeAttribute("readonly");
+            document.getElementById("amount").setAttribute("readonly", "readonly");
+            document.getElementById("amount").title = "Amount is calculated based on a default of 30g oder the animals weight.";
+          }
+        }
         else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
           && entry.children[i].innerHTML == "---" 
           && document.getElementById("start") !== undefined) {

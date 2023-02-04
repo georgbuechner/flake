@@ -24,11 +24,16 @@
     <tr>
       <td><label for="date">Date:</label></td>
       <td><input 
-        type="date" name="date" id="date" placeholder="date" min={{dob}}
+        type="date" name="date" id="date" placeholder="date" min="{{dob}}" 
         {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
         onchange="RemoveDateSuggest(this);"
         required
       /></td>
+    </tr>
+
+    <tr>
+      <td><label for="weight_independant">Weight Independant?:</label></td>
+      <td><input type="checkbox" name="weight_independant" id="weight_independant"></td>
     </tr>
 
     <tr>
@@ -39,6 +44,11 @@
     <tr>
       <td><label for="concentration">Concentration:</label></td>
       <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
+    </tr>
+
+    <tr>
+      <td><label for="dosis">Dosis:</label></td>
+      <td><input type="text" name="dosis" id="dosis" placeholder="dosis"></td>
     </tr>
 
     {% if category == "anesthesia" %}

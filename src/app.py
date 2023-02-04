@@ -32,8 +32,9 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
-    # drop_all(ALL_TABLES, False)
     db.create_all()
+    # drop_all(ALL_TABLES, False)
+    # safe_all("backup")
     # load_backup("backup_2")
 
 @login_manager.user_loader 

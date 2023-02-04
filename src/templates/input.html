@@ -247,8 +247,10 @@
         <tr>
           <th>Anesthesia</th>
           <th>Date</th>
-          <th>Amount</th>
-          <th>Concentration</th>
+          <th>Amount (μl)</th> 
+          <th>Concentration (mg/ml)</th> 
+          <th>Dosis (mg/kg)</th> 
+          <th>Weight Independant</th> 
           <th>Toe pinch</th>
         </tr>
         {% for entry in anesthesia %}
@@ -257,6 +259,8 @@
             <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td name="concentration">{{entry.concentration}}</td>
+            <td name="dosis">{{entry.dosis}}</td> 
+            <td name="weight_independant">{{entry.weight_independant }}</td> 
             <td name="toe_pinch">
                 {%- if entry.toe_pinch -%} yes {%- else -%} no {%- endif -%}
             </td>
@@ -282,8 +286,11 @@
       <table class="center" id="analgesic">
         <tr>
           <th>Analgesia</th>
-          <th>Date</th>
-          <th>Amount</th>
+          <th>Date</th> 
+          <th>Amount (μl)</th> 
+          <th>Concentration (mg/ml)</th> 
+          <th>Dosis (mg/kg)</th> 
+          <th>Weight Independant</th> 
           <th>Concentration</th>
         </tr>
         {% for entry in analgesic %}
@@ -292,6 +299,8 @@
             <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td name="concentration">{{entry.concentration}}</td>
+            <td name="dosis">{{entry.dosis}}</td> 
+            <td name="weight_independant">{{entry.weight_independant }}</td> 
             <td 
               onclick="Del('{{category}}', '{{entry.name}}', 'experiment',
               '{{animal_id}}', '{{entry.date}}');"
@@ -327,7 +336,7 @@
   </div>
 
   <dialog id="notes_modal" style="height: 250px; width: 80%;" category="">
-    <h2>Notes</h4>
+    <h2>Notes</h2>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
     <br>
     <label id="save_notes_error" class="err"></label><br>
@@ -352,7 +361,7 @@
   </dialog>
 
   <dialog id="edit_modal" style="height: 300px; width: 80%;" category="">
-    <button onclick="CloseModal()" style="float: right;">Close</button>
+    <button onclick="CloseModal('edit_modal')" style="float: right;">Close</button>
     <h2>{{category}}</h2>
     {% if category == "anesthesia" or category == "analgesia" %}
       {% include "medication_edit.html" %}
@@ -372,8 +381,8 @@
     <br><br>
     <p>Do you want all dates to be updated accoring to the start date and protocol definitions.</p>
     <br>
-    <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}', true)"></input>
-    <input type="submit" value="No" onclick="UpdateDates('{{animal_id}}', false)"></input>
+    <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}', true)"/>
+    <input type="submit" value="No" onclick="UpdateDates('{{animal_id}}', false)"/>
   </dialog>
 
   <dialog id="death_edit_modal" style="height: 200px; width: 50%;" category="">

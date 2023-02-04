@@ -62,8 +62,10 @@
       <table class="center">
         <tr>
           <th>Name</td> 
-          <th>Amount</td> 
-          <th>Concentration</td> 
+          <th>Amount (μl)</td> 
+          <th>Concentration (mg/ml)</td> 
+          <th>Dosis (mg/kg)</td> 
+          <th>Weight Independant</td> 
           <th>Days after Surgery</td> 
         </tr>
         {% for medication in data %}
@@ -71,6 +73,8 @@
              <td name="name">{{medication.name}}</td> 
              <td name="amount">{{medication.amount}}</td> 
              <td name="concentration">{{medication.concentration}}</td> 
+             <td name="dosis">{{medication.dosis}}</td> 
+             <td name="weight_independant">{{medication.weight_independant }}</td> 
              <td name="days_after_surgery">{{medication.days_after_surgery}}</td> 
              <td onclick="Del('medication', '{{medication.name}}');">
                <a class="mod thick" title="Remove entry.">-</a>
