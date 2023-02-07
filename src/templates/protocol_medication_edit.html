@@ -4,20 +4,28 @@
 
     <tr>
       <td><label for="name">Name:</label></td>
-      <td><select 
-        type="text" name="name" id="name" autocomplete="off"
-        onchange='Set(this, {{json_definitions|safe}});'
-      >
-        <option value="---" selected>---</option>
-        {% for definition in definitions %}
-          <option value="{{definition.name}}">{{definition.name}}</option>
-        {% endfor %}
-      </select></td>
+      <td>
+        <select 
+          type="text" name="name" id="name" autocomplete="off"
+          onchange='Set(this, {{json_definitions|safe}});'
+        >
+          <option value="---" selected>---</option>
+          {% for definition in definitions %}
+            <option value="{{definition.name}}">{{definition.name}}</option>
+          {% endfor %}
+        </select>
+      </td>
     </tr>
 
     <tr>
       <td><label for="kind">Kind:</label></td>
-      <td><input type="text" name="kind" id="kind" placeholder="kind"></td>
+      <td>
+        <select type="text" name="kind" id="kind" autocomplete="off">
+        {% for kind in kinds %}
+          <option value="{{kind.name}}">{{kind.name}}</option>
+        {% endfor %}
+        </select>
+      </td>
     </tr>
 
     <tr>
@@ -36,15 +44,15 @@
       <td><input type="checkbox" name="weight_independant" id="weight_independant"></td>
     </tr>
     <tr>
-      <td><label for="amount">Amount:</label></td>
+      <td><label for="amount">Amount [μl]:</label></td>
       <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
     </tr>
     <tr>
-      <td><label for="concentration">Concentration:</label></td>
+      <td><label for="concentration">Concentration [mg/ml (1% = 10mg/ml)]:</label></td>
       <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
     </tr>
     <tr>
-      <td><label for="dosis">Dosis:</label></td>
+      <td><label for="dosis">Dosis [mg/kg]:</label></td>
       <td><input type="text" name="dosis" id="dosis" placeholder="dosis"></td>
     </tr>
   </table>

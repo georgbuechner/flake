@@ -84,6 +84,17 @@
         </button>
       </h3>
 
+      <p class="err" id="date_msg">
+        {% if age < 14 %} 
+            Animal is unrealistically young!<br>
+        {% endif %}
+        {% if general.start_weight < 2 %} 
+            Weight is unrealistically low!<br>
+        {% elif last_weight > 50 %} 
+            Final weight is unrealistically high!<br>
+        {% endif %}
+      </p>
+
       <table class="center">
         <tr>
           <td>Sub Experiment:</td>
@@ -322,7 +333,7 @@
     <button onclick="CloseModalWeights('{{animal_id}}', false)" class="right">Close</button>
   </dialog>
 
-  <dialog id="edit_modal" style="height: 350px; width: 80%;" category="">
+  <dialog id="edit_modal" style="height: 400px; width: 80%;" category="">
     <button onclick="CloseModal('edit_modal')" style="float: right;">Close</button>
     <h2>{{category}}</h2>
     {% if category == "medication" %}

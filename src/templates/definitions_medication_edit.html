@@ -6,7 +6,15 @@
     </tr>
     <tr>
       <td><label for="kind">Kind:</label></td>
-      <td><input type="text" name="kind" id="kind" placeholder="kind"></td>
+      <td>
+        <select type="text" name="kind" id="kind" autocomplete="off">
+        {% for kind in kinds %}
+          <option value="{{kind.name}}">{{kind.name}}</option>
+        {% endfor %}
+        </select>
+      </td>
+    </tr>
+
     </tr>
     <tr>
       <td><label for="procedure">Procedure:</label></td>
@@ -15,6 +23,7 @@
         {% for procedure in procedures %}
           <option value="{{procedure.name}}">{{procedure.name}}</option>
         {% endfor %}
+        </select>
       </td>
     </tr>
 

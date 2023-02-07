@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import shutil
 from cryptography.fernet import Fernet
+from utils.dt_utils import * 
 
 SECRET, LAB_PASSWORD = get_keys_from_config("server.config")
 
@@ -32,6 +33,7 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
+    drop("allowed_animals", PAllowedMice)
     db.create_all()
     # drop_all(ALL_TABLES, False)
     # safe_all("backup")
@@ -195,6 +197,7 @@ def input(animal_id: str, category: str):
         ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
         ref = {"name": ref_name, "link": request.referrer}
 
+    age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
         "input.html", 
         stored=True,
@@ -208,6 +211,7 @@ def input(animal_id: str, category: str):
         availible_medication=availible_medication,
         availible_procedures=availible_procedures,
         availible_viruses=availible_viruses,
+        availible_kinds=AKind.query.all(),
         json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
@@ -217,6 +221,8 @@ def input(animal_id: str, category: str):
         dob=animal_data.dob,
         protocols=dmanager.protocols_and_subprotocols(),
         notes={note.category:note.note for note in Note.query.filter(Note.animal_id == animal_id)},
+        age=age,
+        last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
         category=category,
         ref=ref, 
         user_email=current_user.email,
@@ -308,6 +314,7 @@ def availible(category: str):
         category=category,
         viruses=sort_query(AVirus.query.all(), "days_after_start"),
         procedures=sort_query(AProcedure.query.all(), "days_after_start"),
+        kinds=AKind.query.all(),
         medications=AMedication.query.all()
     )
 
@@ -609,6 +616,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             data=data,
             definitions=definitions,
             procedures=PProcedure.query.filter(PProcedure.protocol == full_protocol),
+            kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             msg=""
         )

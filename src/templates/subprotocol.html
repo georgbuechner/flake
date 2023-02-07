@@ -36,6 +36,12 @@
         </th> 
         <th>
           <a 
+            href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/allowed_animals"
+            {%- if category=="allowed_animals" %} class="active" {%- endif -%} 
+          >Allowed Animals</a>
+        </th> 
+        <th>
+          <a 
             href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/procedures"
             {%- if category=="procedures" %} class="active" {%- endif -%} 
           >Procedures</a>
@@ -68,16 +74,6 @@
       <form action="general" method="POST">
         <input type="text" name="uuid" id="uuid" style="display:none" value="{{data['uuid']}}"/>
         <table class="center">
-          <tr>
-            <td><label for="num_availible_animals">Number of allowed animals:</label></td>
-            <td><input 
-              type="number" 
-              name="num_availible_animals" 
-              id="num_availible_animals" 
-              placeholder="number of availible animals"
-              value="{{data['num_availible_animals'] if 'num_availible_animals' in data}}"
-            >
-            </td>
           </tr>
           <tr>
             <td><label for="allowed_users">Allowed users:</label></td>
@@ -109,6 +105,31 @@
         <br>
         <input type='submit' name='submit'/>
       </form>
+
+    {% elif category=="allowed_animals" %}
+      <table class="center">
+        <tr>
+          <th>Line</td> 
+          <th>Number allowed</td> 
+        </tr>
+        {% for line in data %}
+           <tr>
+             <td name="uuid" style="display:none">{{line.uuid}}</td> 
+             <td name="name">{{line.name}}</td> 
+             <td name="num_availible_animals">{{line.num_availible_animals}}</td> 
+             <td onclick="DelProtocolEntry('{{category}}', '{{line.uuid}}');">
+               <a class="mod thick" title="Remove entry.">-</a>
+             </td>
+             <td onclick="Add(this.parentNode);">
+               <i class="mod u" title="Edit this entry.">edit</i>
+             </td>
+          </tr>
+        {% endfor %}
+      </table>
+      </table>
+      <br>
+      <br>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="medication" %}
     <p>Concerning <i>days-after-surgery</i>-field:<br>
@@ -254,6 +275,8 @@
       {% include "protocol_procedures_edit.html" %}
     {% elif category=="viruses" %}
       {% include "protocol_virus_edit.html" %}
+    {% elif category=="allowed_animals" %}
+      {% include "protocol_allowed_edit.html" %}
     {% endif %}
     <br>
   </dialog>

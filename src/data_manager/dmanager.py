@@ -252,10 +252,14 @@ class DManager:
         Table = PROTOCOL_TABLES[category]
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
         # Sort tables by days_after_start:
-        if category != "medication":
+        if category != "medication" and category != "allowed_animals":
             protocol_data = sort_query(protocol_data, "days_after_start")
         # Get definitions:
-        definitions = DEFINITION_TABLES[category].query.all()
+        if category == "allowed_animals":
+            animal_data = AnimalData.query.all()
+            definitions = [*set([data.line for data in animal_data])]  
+        else:
+            definitions = DEFINITION_TABLES[category].query.all()
         return protocol_data, definitions
 
     def get_p9_data(self, escaped_protocol: str): 
