@@ -144,6 +144,26 @@ class Note(db.Model):
     def update(self, note: str):
         self.note = note
  
+class AKind(db.Model): 
+    __tablename__ = "availible_kinds" 
+
+    name = db.Column(db.String, primary_key=True) 
+
+    def __init__(self, name: str): 
+        self.name = name 
+
+    @classmethod 
+    def from_json(cls, kind: Dict[str, any]): 
+        print("Adding kind from json: ", kind)
+        return cls(kind["name"])
+
+    def to_json(self): 
+        return {"name": self.name}
+
+    def update(self, kind: Dict[str, any]): 
+        self.name = kind["name"] 
+
+
 class AMedication(db.Model): 
     __tablename__ = "availible_medication"
 
@@ -947,6 +967,7 @@ PROTOCOL_TABLES = {
 }
 
 DEFINITION_TABLES = { 
+    "kinds": AKind, 
     "medication": AMedication, 
     "procedures": AProcedure, 
     "viruses": AVirus
@@ -956,6 +977,7 @@ ALL_TABLES = {
   # "user": User, 
   "animal_data": AnimalData, 
   "note": Note, 
+  "akinds": AKind, 
   "amedication": AMedication, 
   "aprocedure": AProcedure, 
   "avirus": AVirus, 

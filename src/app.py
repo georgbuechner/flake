@@ -208,6 +208,7 @@ def input(animal_id: str, category: str):
         availible_medication=availible_medication,
         availible_procedures=availible_procedures,
         availible_viruses=availible_viruses,
+        availible_kinds=AKind.query.all(),
         json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
@@ -308,6 +309,7 @@ def availible(category: str):
         category=category,
         viruses=sort_query(AVirus.query.all(), "days_after_start"),
         procedures=sort_query(AProcedure.query.all(), "days_after_start"),
+        kinds=AKind.query.all(),
         medications=AMedication.query.all()
     )
 
@@ -609,6 +611,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             data=data,
             definitions=definitions,
             procedures=PProcedure.query.filter(PProcedure.protocol == full_protocol),
+            kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             msg=""
         )
