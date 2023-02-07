@@ -35,6 +35,20 @@ for name, data in backup.items():
 
         # Convert to new:
         for row in rows:
+            if "dosis" not in row:
+                if row["name"] == "Ketamin":
+                    row["dosis"] = "125"
+                elif row["name"] == "Xylazin":
+                    row["dosis"] = "10"
+                elif row["name"] == "Ketamin/ Xylazin":
+                    row["dosis"] = "125 / 10"
+                elif row["name"] == "Carprofen":
+                    row["dosis"] = "5"
+                elif row["name"] == "Buprenofen":
+                    row["dosis"] = "0.1"
+                else:
+                    row["dosis"] = ""
+
             med_entry = {
                 "name": row["name"], 
                 "days_after_surgery": row["days_after_surgery"], 
