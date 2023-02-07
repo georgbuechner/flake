@@ -94,7 +94,7 @@ def register():
     @return Rendered html registration-page from jinja2-template.
     """
     if request.method == "GET":
-        return render_template("register.html", msg="", users=dmanager.users())
+        return render_template("register.html", msg="")
     if User.query.get(request.form["email"]):
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:

@@ -23,9 +23,6 @@
         <input type='text' name='email' id='email' placeholder='email'/><br><br>
         <label for="name">Name: </label>
         <select name="name" id="name">
-          {% for user in users %}
-            <option value="{{user}}">{{user}}</option>
-          {% endfor %}
           <option value="guest" selected>Guest</option>
         </select><br><br>
         <input type='password' name='password' id='password' placeholder='password'/><br><br>
