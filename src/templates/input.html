@@ -84,6 +84,17 @@
         </button>
       </h3>
 
+      <p class="err" id="date_msg">
+        {% if age < 14 %} 
+            Animal is unrealistically young!<br>
+        {% endif %}
+        {% if general.start_weight < 2 %} 
+            Weight is unrealistically low!<br>
+        {% elif last_weight > 50 %} 
+            Final weight is unrealistically high!<br>
+        {% endif %}
+      </p>
+
       <table class="center">
         <tr>
           <td>Sub Experiment:</td>

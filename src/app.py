@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import shutil
 from cryptography.fernet import Fernet
+from utils.dt_utils import * 
 
 SECRET, LAB_PASSWORD = get_keys_from_config("server.config")
 
@@ -195,6 +196,7 @@ def input(animal_id: str, category: str):
         ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
         ref = {"name": ref_name, "link": request.referrer}
 
+    age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
         "input.html", 
         stored=True,
@@ -218,6 +220,8 @@ def input(animal_id: str, category: str):
         dob=animal_data.dob,
         protocols=dmanager.protocols_and_subprotocols(),
         notes={note.category:note.note for note in Note.query.filter(Note.animal_id == animal_id)},
+        age=age,
+        last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
         category=category,
         ref=ref, 
         user_email=current_user.email,

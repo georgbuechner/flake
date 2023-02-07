@@ -87,6 +87,10 @@ async function UpdateDates(animal_id, autofill) {
       alert(response_text);
       window.location=window.location;
     }
+    else if (r.status === 409) {
+      document.getElementById("date_msg").innerHTML = response_text;
+      CloseConfirmationModal();
+    }
     else if (r.status > 400 && r.status < 500) {
       alert("Error code: " + r.status + ": " + response_text);
     }
