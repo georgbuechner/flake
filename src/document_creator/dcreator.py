@@ -28,19 +28,8 @@ class DCreator:
             self.doc = Document(os.path.join(template_path, "default.docx"))
         # Data
         self.fields = experiment_data
-        self.fields["death_drugs"] = [
-            x for x in experiment_data["analgesia"] if x["date"] == animal_data["death_date"]
-        ]
-        self.fields["death_drugs"].extend(
-            [x for x in experiment_data["anesthesia"] if x["date"] == animal_data["death_date"]]
-        )
-        self.fields["anesthesia"] = [
-            x for x in experiment_data["anesthesia"] if x["date"] < animal_data["death_date"]
-        ]
-        self.fields["analgesia"] = [
-            x for x in experiment_data["analgesia"] if x["date"] < animal_data["death_date"]
-        ]
         print("Got death drugs: ", self.fields["death_drugs"])
+        print("Got medication: ", self.fields["medication"])
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
         print("GENERAL: ", self.fields["general"])

@@ -62,20 +62,22 @@
       <table class="center">
         <tr>
           <th>Name</td> 
+          <th>Kind</td> 
+          <th>Procedure</td> 
           <th>Amount (μl)</td> 
           <th>Concentration (mg/ml)</td> 
           <th>Dosis (mg/kg)</td> 
           <th>Weight Independant</td> 
-          <th>Days after Surgery</td> 
         </tr>
-        {% for medication in data %}
+        {% for medication in medications %}
            <tr>
              <td name="name">{{medication.name}}</td> 
+             <td name="kind">{{medication.kind}}</td> 
+             <td name="procedure">{{medication.procedure}}</td> 
              <td name="amount">{{medication.amount}}</td> 
              <td name="concentration">{{medication.concentration}}</td> 
              <td name="dosis">{{medication.dosis}}</td> 
              <td name="weight_independant">{{medication.weight_independant }}</td> 
-             <td name="days_after_surgery">{{medication.days_after_surgery}}</td> 
              <td onclick="Del('medication', '{{medication.name}}');">
                <a class="mod thick" title="Remove entry.">-</a>
              </td>
@@ -100,7 +102,7 @@
           <th>Duration </td> 
           <th>Surgery?</td> 
         </tr>
-        {% for procedure in data %}
+        {% for procedure in procedures %}
            <tr>
              <td name="name">{{procedure.name}}</td> 
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
@@ -127,7 +129,7 @@
           <th>Days After Start</td> 
           <th>Amount</td> 
         </tr>
-        {% for virus in data %}
+        {% for virus in viruses %}
            <tr>
              <td name="name">{{virus.name}}</td> 
              <td name="days_after_start">{{virus.days_after_start}}</td> 
@@ -147,7 +149,7 @@
     {% endif %}
   </div>
 
-  <dialog id="edit_modal" style="height: 250px; width: 80%;" category="">
+  <dialog id="edit_modal" style="height: 350px; width: 80%;" category="">
     <button onclick="CloseModal()" style="float: right;">Close</button>
     <h2>Entry</h2>
 

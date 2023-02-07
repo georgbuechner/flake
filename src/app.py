@@ -187,27 +187,28 @@ def input(animal_id: str, category: str):
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = General.query.get(animal_id)
     availible_viruses = PVirus.query.filter(PVirus.protocol == general.experiment)
-    availible_anesthetic=PAnesthesia.query.filter(PAnesthesia.protocol == general.experiment)
-    availible_analgesic=PAnalgesia.query.filter(PAnalgesia.protocol == general.experiment)
+    availible_medication=PMedication.query.filter(PMedication.protocol == general.experiment)
     availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment)
+
+    ref = False
+    if "/users/" in request.referrer or "/protocols/" in request.referrer: 
+        ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
+        ref = {"name": ref_name, "link": request.referrer}
 
     return render_template(
         "input.html", 
         stored=True,
         general=general,
+        medication=Medication.query.filter(Medication.animal_id == animal_id),
         viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "date"),
-        anesthesia=sort_query(Anesthesia.query.filter(Anesthesia.animal_id == animal_id), "date"),
-        analgesic=sort_query(Analgesia.query.filter(Analgesia.animal_id == animal_id), "date"),
         procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
         post_procedures=sort_query(
             PostProcedure.query.filter(PostProcedure.animal_id == animal_id), "start_date"
         ),
-        availible_anesthetic=availible_anesthetic,
-        availible_analgesic=availible_analgesic,
+        availible_medication=availible_medication,
         availible_procedures=availible_procedures,
         availible_viruses=availible_viruses,
-        json_anesthetic=json.dumps([table_to_json(x) for x in availible_anesthetic]),
-        json_analgestic=json.dumps([table_to_json(x) for x in availible_analgesic]),
+        json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
         animal_id=animal_id,
@@ -217,6 +218,7 @@ def input(animal_id: str, category: str):
         protocols=dmanager.protocols_and_subprotocols(),
         notes={note.category:note.note for note in Note.query.filter(Note.animal_id == animal_id)},
         category=category,
+        ref=ref, 
         user_email=current_user.email,
         user_name=current_user.name
     )
@@ -299,19 +301,14 @@ def upload_signature(escaped_user: str):
 @app.route("/settings/definitions/<category>")
 @login_required
 def availible(category: str):
-    data = {}
-    if category == "medication":
-        data=sort_query(AMedication.query.all(), "days_after_surgery")
-    if category == "procedures":
-        data=sort_query(AProcedure.query.all(), "days_after_start")
-    if category == "viruses":
-        data=sort_query(AVirus.query.all(), "days_after_start")
     return render_template(
         "definitions.html", 
         user_email=current_user.email, 
         user_name=current_user.name,
         category=category,
-        data=data
+        viruses=sort_query(AVirus.query.all(), "days_after_start"),
+        procedures=sort_query(AProcedure.query.all(), "days_after_start"),
+        medications=AMedication.query.all()
     )
 
 @app.route("/settings/protocols", methods=["GET"])
@@ -361,6 +358,10 @@ def update_animal_subprotocol():
     try:
         txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
         return txt, status
+    except AttributeError as err: 
+        _, _ = dmanager.set_subprotocol(animal_id, "---", force)
+        return ("Could not set protocol. Maybe your protocol is missing some entries" 
+             " (also check General and Watercontrol)"), 400
     except Exception as err: 
         _, _ = dmanager.set_subprotocol(animal_id, "---", force)
         print(traceback.format_exc())
@@ -480,14 +481,14 @@ def update_experiment_data(animal_id: str, category: str):
     return redirect(request.referrer)
 
 @app.route(
-    "/animal_data/<animal_id>/delete/<category>/<name>", defaults={"date": ""}, methods=["POST"]
+    "/animal_data/<animal_id>/delete/<category>/<name>", defaults={"procedure": ""}, methods=["POST"]
 )
-@app.route("/animal_data/<animal_id>/delete/<category>/<name>/<date>", methods=["POST"])
+@app.route("/animal_data/<animal_id>/delete/<category>/<name>/<procedure>", methods=["POST"])
 @login_required
-def delete_experiment_data(animal_id: str, category: str, name: str, date: str): 
+def delete_experiment_data(animal_id: str, category: str, name: str, procedure: str): 
     """! Updates an entry in an animals experiment data. """
     name = html.unescape(name).replace("_", "/")
-    dmanager.delete_experiment_data_entry(animal_id, category, name, date)
+    dmanager.delete_experiment_data_entry(animal_id, category, name, procedure)
     return redirect(f"/animal_data/{animal_id}/{category}")
 
 @app.route("/clear/<animal_id>", methods=["POST"])
@@ -511,7 +512,7 @@ def generate_surgery_sheet(animal_id: str):
         return "Animal is not yet sacrificed", 401
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
-        experiment_data=dmanager.get_experiment_data(animal_id),
+        experiment_data=dmanager.get_surgery_sheet_data(animal_id),
         animal_data=table_to_json(animal_data),
         user_email=current_user.email
     )
@@ -607,6 +608,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             category=category,
             data=data,
             definitions=definitions,
+            procedures=PProcedure.query.filter(PProcedure.protocol == full_protocol),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             msg=""
         )

@@ -5,31 +5,34 @@
       <td><input type="text" name="name" id="name" placeholder="name"></td>
     </tr>
     <tr>
+      <td><label for="kind">Kind:</label></td>
+      <td><input type="text" name="kind" id="kind" placeholder="kind"></td>
+    </tr>
+    <tr>
+      <td><label for="procedure">Procedure:</label></td>
+      <td>
+        <select type="text" name="procedure" id="procedure" autocomplete="off">
+        {% for procedure in procedures %}
+          <option value="{{procedure.name}}">{{procedure.name}}</option>
+        {% endfor %}
+      </td>
+    </tr>
+
+    <tr>
       <td><label for="weight_independant">Weight Independant?:</label></td>
       <td><input type="checkbox" name="weight_independant" id="weight_independant"></td>
     </tr>
     <tr>
-      <td><label for="amount">Amount:</label></td>
+      <td><label for="amount">Amount [μl]:</label></td>
       <td><input type="text" name="amount" id="amount" placeholder="amount"></td>
     </tr>
     <tr>
-      <td><label for="concentration">Concentration:</label></td>
+      <td><label for="concentration">Concentration [mg/ml (1% = 10mg/ml)]:</label></td>
       <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
     </tr>
     <tr>
-      <td><label for="dosis">Dosis:</label></td>
+      <td><label for="dosis">Dosis [mg/kg]:</label></td>
       <td><input type="text" name="dosis" id="dosis" placeholder="dosis"></td>
-    </tr>
-    <tr>
-      <td><label for="days_after_surgery">Days after surgery:</label></td>
-      <td>
-        <input 
-          type="text" 
-          name="days_after_surgery" 
-          id="days_after_surgery" 
-          placeholder="days_after_surgery"
-        />
-      </td>
     </tr>
   </table>
   <br><br>

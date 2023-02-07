@@ -1,5 +1,4 @@
 function Add(entry) { 
-  // Fill entries with current entries:
   console.log(entry);
   if (entry !== undefined) {
     for (var i=0; i<entry.children.length; i++) {
@@ -57,7 +56,7 @@ async function DelProtocolEntry(category, uuid) {
 }
 
 
-async function Del(category, name, type, identifier, date) {
+async function Del(category, name, type, identifier, protocol) {
   const escaped_name = escape(name).replace("/", "_");
   let base_url = "";
   if (type === "protocol") 
@@ -67,11 +66,11 @@ async function Del(category, name, type, identifier, date) {
   else 
     base_url = "/definitions";
   // Add date if set.
-  date = (date !== undefined) ? "/"+date : "";
+  protocol = (protocol !== undefined) ? "/"+protocol: "";
   console.log(category, escaped_name);
   try {
     // Send request:
-    let r = await fetch(base_url+"/delete/"+category+"/"+escaped_name+date, {
+    let r = await fetch(base_url+"/delete/"+category+"/"+escaped_name+protocol, {
       method: "POST", body: new FormData}); 
     // Handle response:
     if (r.status === 200)

@@ -1,6 +1,7 @@
 <form action="{{category}}" method="POST">
   <input type="text" style="display: none" name="uuid" id="uuid" style="display:none" value=""/>
   <table class="center">
+
     <tr>
       <td><label for="name">Name:</label></td>
       <td><select 
@@ -13,6 +14,23 @@
         {% endfor %}
       </select></td>
     </tr>
+
+    <tr>
+      <td><label for="kind">Kind:</label></td>
+      <td><input type="text" name="kind" id="kind" placeholder="kind"></td>
+    </tr>
+
+    <tr>
+      <td><label for="procedure">Procedure:</label></td>
+      <td>
+        <select type="text" name="procedure" id="procedure" autocomplete="off">
+        {% for procedure in procedures %}
+          <option value="{{procedure.name}}">{{procedure.name}}</option>
+        {% endfor %}
+      </td>
+    </tr>
+
+
     <tr>
       <td><label for="weight_independant">Weight Independant?:</label></td>
       <td><input type="checkbox" name="weight_independant" id="weight_independant"></td>
@@ -28,12 +46,6 @@
     <tr>
       <td><label for="dosis">Dosis:</label></td>
       <td><input type="text" name="dosis" id="dosis" placeholder="dosis"></td>
-    </tr>
-    <tr>
-      <td><label for="days_after_surgery">Days after surgery:</label></td>
-      <td><input 
-        type="text" name="days_after_surgery" id="days_after_surgery" placeholder="days_after_surgery"
-      ></td>
     </tr>
   </table>
   <br><br>

@@ -180,6 +180,7 @@
       \setlength{\fboxsep}{0.4cm}
       \parbox[t]{1.5cm}{ {{a.animal_data.supplier}} }&
 
+        \textbf{\emph{\small{ {{a.animal_data.mla_num}}} }}
       {% for p in a.procedures %} 
         {% if loop.index0 > 0 %}
            & & & & &
@@ -193,8 +194,7 @@
             {% else %}
               \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
             {% endif %}
-            {%- if p.anesthesia|length > 0 -%}Anesthesia: {{p.anesthesia}}\\{%- endif -%}
-            {%- if p.analgesia|length > 1 -%}Analgesia: {{p.analgesia}}\\{%- endif -%}
+            {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
             {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
           }
         }&

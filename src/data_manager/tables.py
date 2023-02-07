@@ -148,48 +148,52 @@ class AMedication(db.Model):
     __tablename__ = "availible_medication"
 
     name = db.Column(db.String, primary_key=True) 
+    kind = db.Column(db.String, primary_key=False) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     dosis = db.Column(db.String, primary_key=False)
-    days_after_surgery = db.Column(db.String, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     weight_independant = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
         self, 
         name: str, 
+        kind: str, 
         amount: str, 
         concentration: str, 
         dosis: str, 
-        days_after_surgery: str,
+        procedure: str,
         weight_independant: bool
     ):
         self.name = name 
+        self.kind = kind
         self.amount = amount 
         self.concentration = concentration 
         self.dosis = dosis
-        self.days_after_surgery = days_after_surgery
+        self.procedure = procedure
         self.weight_independant = weight_independant
         self.update_amount(30)
 
     @classmethod 
     def from_json(cls, medication: Dict[str, any]): 
-        print("Received: ", medication)
         return cls(
             medication["name"], 
+            medication["kind"], 
             medication["amount"], 
             medication["concentration"], 
             medication["dosis"], 
-            medication["days_after_surgery"],
+            medication["procedure"],
             "weight_independant" in medication,
         )
 
     def to_json(self): 
         data = {
             "name": self.name, 
+            "kind": self.kind, 
             "amount": self.amount, 
             "concentration": self.concentration,
             "dosis": self.dosis,
-            "days_after_surgery": self.days_after_surgery,
+            "procedure": self.procedure,
         }
         if self.weight_independant: 
             data["weight_independant"] = self.weight_independant
@@ -197,18 +201,20 @@ class AMedication(db.Model):
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
+        self.kind = medication["kind"] 
         self.amount = medication["amount"]
         self.concentration = medication["concentration"]
         self.dosis = medication["dosis"]
-        self.days_after_surgery = medication["days_after_surgery"]
+        self.procedure = medication["procedure"]
         self.weight_independant = "weight_independant" in medication
         self.update_amount(30)
 
     def update_amount(self, weight): 
         if not self.weight_independant: 
-            float_d = float(self.dosis.split("/")[0])  # works for both: '12/14'->12.0 and '14'->12.0
-            float_c = float(self.concentration.split("/")[0])  # see above
-            self.amount = str(roundup((float_d*weight)/float_c))
+            float_dosis = get_float(self.dosis)
+            float_concentration = get_float(self.concentration) 
+            self.amount = str(roundup((float_dosis*weight)/float_concentration))
+            print(f"Updated amount: ({float_dosis}*{weight})/{float_concentration} = {self.amount}")
 
 
 class AProcedure(db.Model): 
@@ -322,16 +328,17 @@ class PGeneral(db.Model):
         self.allowed_users = general["allowed_users"]
         self.suffering = general["suffering"]
 
-class PAnesthesia(db.Model): 
-    __tablename__ = "protocol_anesthesia"
+class PMedication(db.Model): 
+    __tablename__ = "protocol_medication"
 
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
     name = db.Column(db.String, primary_key=False) 
+    kind = db.Column(db.String, primary_key=False) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     dosis = db.Column(db.String, primary_key=False)
-    days_after_surgery = db.Column(db.String, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     weight_independant = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
@@ -339,19 +346,21 @@ class PAnesthesia(db.Model):
         uuid: str, 
         protocol: str, 
         name: str, 
+        kind: str, 
+        procedure: str,
         amount: str, 
         concentration: str, 
         dosis: str, 
-        days_after_surgery: str,
         weight_independant: bool
     ):
         self.uuid = uuid
         self.protocol = protocol 
         self.name = name 
+        self.kind= kind
+        self.procedure = procedure 
         self.amount = amount
         self.concentration = concentration
         self.dosis = dosis
-        self.days_after_surgery = days_after_surgery 
         self.weight_independant = weight_independant
         self.update_amount(30)
 
@@ -361,10 +370,11 @@ class PAnesthesia(db.Model):
             uuid, 
             protocol, 
             medication["name"], 
+            medication["kind"], 
+            medication["procedure"],
             medication["amount"], 
             medication["concentration"], 
             medication["dosis"], 
-            medication["days_after_surgery"],
             "weight_independant" in medication
         )
 
@@ -377,9 +387,11 @@ class PAnesthesia(db.Model):
             "uuid": self.uuid, 
             "protocol": self.protocol,
             "name": self.name, 
+            "kind": self.kind, 
+            "procedure": self.procedure,
             "amount": self.amount,
             "concentration": self.dosis,
-            "days_after_surgery": self.days_after_surgery,
+            "dosis": self.dosis,
         }        
         if self.weight_independant: 
             data["weight_independant"] = self.weight_independant
@@ -388,106 +400,19 @@ class PAnesthesia(db.Model):
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
+        self.kind = medication["kind"] 
         self.amount = medication["amount"] 
         self.concentration = medication["concentration"] 
         self.dosis = medication["dosis"] 
-        self.days_after_surgery = medication["days_after_surgery"]
+        self.procedure = medication["procedure"]
         self.weight_independant = "weight_independant" in medication
         self.update_amount(30)
 
-    def x_days_after(self): 
-        return int(self.days_after_surgery)
-
     def update_amount(self, weight): 
         if not self.weight_independant: 
-            float_d = float(self.dosis.split("/")[0])  # works for both: '12/14'->12.0 and '14'->12.0
-            float_c = float(self.concentration.split("/")[0])  # see above
-            self.amount = str(roundup((float_d*weight)/float_c))
-
-
-class PAnalgesia(db.Model): 
-    __tablename__ = "protocol_analgesia"
-
-    uuid = db.Column(db.String, primary_key=True)
-    protocol = db.Column(db.String, primary_key=False) 
-    name = db.Column(db.String, primary_key=False) 
-    amount = db.Column(db.String, primary_key=False)
-    concentration = db.Column(db.String, primary_key=False)
-    dosis = db.Column(db.String, primary_key=False)
-    days_after_surgery = db.Column(db.String, primary_key=False)
-    weight_independant = db.Column(db.Boolean, primary_key=False)
-
-    def __init__(
-        self, 
-        uuid: str, 
-        protocol: str, 
-        name: str, 
-        amount: str, 
-        concentration: str, 
-        dosis: str, 
-        days_after_surgery: str,
-        weight_independant: bool
-    ):
-        self.uuid = uuid
-        self.protocol = protocol 
-        self.name = name 
-        self.amount = amount
-        self.concentration = concentration
-        self.dosis = dosis
-        self.days_after_surgery = days_after_surgery 
-        self.weight_independant = weight_independant
-        self.update_amount(30)
-
-
-    @classmethod
-    def from_form(cls, uuid: str, protocol: str, medication: Dict[str, any]): 
-        return cls(
-            uuid, 
-            protocol, 
-            medication["name"], 
-            medication["amount"], 
-            medication["concentration"], 
-            medication["dosis"], 
-            medication["days_after_surgery"],
-            "weight_independant" in medication
-        )
-
-
-    @classmethod 
-    def from_json(cls, medication: Dict[str, any]): 
-        return cls.from_form(medication["uuid"], medication["protocol"], medication)
-
-    def to_json(self): 
-        data = {
-            "uuid": self.uuid, 
-            "protocol": self.protocol,
-            "name": self.name, 
-            "amount": self.amount,
-            "concentration": self.dosis,
-            "days_after_surgery": self.days_after_surgery,
-        }        
-        if self.weight_independant: 
-            data["weight_independant"] = self.weight_independant
-        return data
-
-
-    def update(self, medication: Dict[str, any]): 
-        self.name = medication["name"] 
-        self.amount = medication["amount"] 
-        self.concentration = medication["concentration"] 
-        self.dosis = medication["dosis"] 
-        self.days_after_surgery = medication["days_after_surgery"]
-        self.weight_independant = "weight_independant" in medication
-        self.update_amount(30)
-
-    def x_days_after(self): 
-        return int(self.days_after_surgery)
-
-    def update_amount(self, weight): 
-        if not self.weight_independant: 
-            float_d = float(self.dosis.split("/")[0])  # works for both: '12/14'->12.0 and '14'->12.0
-            float_c = float(self.concentration.split("/")[0])  # see above
-            self.amount = str(roundup((float_d*weight)/float_c))
+            float_dosis = get_float(self.dosis) 
+            float_concentration = get_float(self.concentration)
+            self.amount = str(roundup((float_dosis*weight)/float_concentration))
 
 
 class PProcedure(db.Model): 
@@ -537,9 +462,6 @@ class PProcedure(db.Model):
         self.duration = procedure["duration"] 
         self.surgery = AProcedure.query.get(procedure["name"]).surgery
 
-    def x_days_after(self): 
-        return int(self.days_after_start)
-
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
 
@@ -579,9 +501,6 @@ class PVirus(db.Model):
         self.name = p["name"] 
         self.days_after_start = p["days_after_start"] 
         self.amount = p["amount"] 
-
-    def x_days_after(self): 
-        return int(self.days_after_start)
 
 class PWatercontrol(db.Model): 
     __tablename__ = "protocol_watercontrol"
@@ -723,63 +642,63 @@ class General(db.Model):
         }
 
 
-class Anesthesia(db.Model): 
-    __tablename__ = "anesthesia"
+class Medication(db.Model): 
+    __tablename__ = "medication"
 
     animal_id = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
-    date = db.Column(db.String, primary_key=True) 
+    kind = db.Column(db.String, primary_key=False) 
     amount = db.Column(db.String, primary_key=False)
     concentration = db.Column(db.String, primary_key=False)
     dosis = db.Column(db.String, primary_key=False)
     weight_independant = db.Column(db.Boolean, primary_key=False)
     toe_pinch = db.Column(db.Boolean, primary_key=False)
-    days_after_surgery = db.Column(db.Integer, primary_key=False)
+    procedure = db.Column(db.Integer, primary_key=True)
     protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
     def __init__(
         self, 
         animal_id: str, 
         name: str, 
-        date: str, 
+        kind: str, 
+        procedure: str,
         amount: str, 
         concentration: str, 
         dosis: str, 
         weight_independant: bool,
         toe_pinch: bool = True,
-        days_after_surgery: int = -1,
         protocol_entry_uuid: str = ""
     ):
-        """! Initializes Anesthesia. 
+        """! Initializes Medication. 
 
-        Uses `days_after_surgery` as a placeholder for date, to ensure uniqueness (since
-        anesthesia might be added multiple days. Later the dates will be
+        Uses `procedure` as a placeholder for date, to ensure uniqueness (since
+        medication might be added multiple days. Later the dates will be
         succesive dates. 
         """
         self.animal_id = animal_id 
         self.name = name 
-        self.date = date
+        self.kind = kind
+        self.procedure = procedure
         self.amount = amount 
         self.concentration = concentration 
         self.dosis = dosis
         self.weight_independant = weight_independant
         self.toe_pinch = toe_pinch
-        self.days_after_surgery = days_after_surgery
         self.protocol_entry_uuid = protocol_entry_uuid
         self.update_amount(30)
 
     @classmethod
-    def from_default(cls, animal_id: str, anesthesia: PAnesthesia, days_after_surgery: int):
+    def from_default(cls, animal_id: str, medication: PMedication):
         return cls(
             animal_id, 
-            anesthesia.name, 
-            str(days_after_surgery), 
-            anesthesia.amount,
-            anesthesia.concentration, 
-            anesthesia.dosis, 
-            anesthesia.weight_independant, 
-            days_after_surgery=days_after_surgery,
-            protocol_entry_uuid=anesthesia.uuid
+            medication.name, 
+            medication.kind, 
+            medication.procedure,
+            medication.amount,
+            medication.concentration, 
+            medication.dosis, 
+            medication.weight_independant, 
+            protocol_entry_uuid=medication.uuid
         )
 
     @classmethod
@@ -788,12 +707,13 @@ class Anesthesia(db.Model):
         return cls(
             animal_id, 
             medication["name"], 
-            medication["date"], 
+            medication["kind"], 
+            medication["procedure"], 
             medication["amount"], 
             medication["concentration"], 
             medication["dosis"], 
             "weight_independant" in medication,
-            toe_pinch
+            toe_pinch=toe_pinch
         )
 
     @classmethod 
@@ -804,12 +724,11 @@ class Anesthesia(db.Model):
         data = {
             "animal_id": self.animal_id,
             "name": self.name, 
-            "date": self.date, 
-            "days_after_surgery": self.days_after_surgery, 
+            "kind": self.kind, 
+            "procedure": self.procedure,
             "amount": self.amount, 
             "concentration": self.concentration, 
             "dosis": self.dosis, 
-            "days_after_surgery": self.days_after_surgery,
             "toe_pinch": self.toe_pinch,
             "protocol_entry_uuid": self.protocol_entry_uuid
         }
@@ -818,7 +737,8 @@ class Anesthesia(db.Model):
         return data
 
     def update(self, medication: Dict[str, any]):
-        self.date = medication["date"] 
+        self.kind = medication["kind"] 
+        self.procedure = medication["procedure"]
         self.amount = medication["amount"]
         self.concentration = medication["concentration"] 
         self.dosis = medication["dosis"] 
@@ -827,125 +747,16 @@ class Anesthesia(db.Model):
         self.update_amount(30)
 
     def string(self): 
-        return f"{self.name} ({self.concentration})"
+        return f"{self.name} ({self.concentration} mg/ml)"
 
     def set_date(self, date): 
         self.date = date
 
     def update_amount(self, weight): 
         if not self.weight_independant: 
-            float_d = float(self.dosis.split("/")[0])  # works for both: '12/14'->12.0 and '14'->12.0
-            float_c = float(self.concentration.split("/")[0])  # see above
-            self.amount = str(roundup((float_d*weight)/float_c))
-
-class Analgesia(db.Model): 
-    __tablename__ = "analgesia"
-
-    animal_id = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
-    date = db.Column(db.String, primary_key=True) 
-    amount = db.Column(db.String, primary_key=False)
-    concentration = db.Column(db.String, primary_key=False)
-    dosis = db.Column(db.String, primary_key=False)
-    weight_independant = db.Column(db.Boolean, primary_key=False)
-    days_after_surgery = db.Column(db.Integer, primary_key=False)
-    protocol_entry_uuid = db.Column(db.String, primary_key=False)
-
-    def __init__(
-        self, 
-        animal_id: str, 
-        name: str, 
-        date: str, 
-        amount: str, 
-        concentration: str, 
-        dosis: str, 
-        weight_independant: str, 
-        days_after_surgery: int = -1,
-        protocol_entry_uuid: str = ""
-    ):
-        """! Initializes Analgesia. 
-
-        Uses `days_after_surgery` as a placeholder for date, to ensure uniqueness (since
-        analgesia might be added multiple days. Later the dates will be
-        succesive dates. 
-        """
-        self.animal_id = animal_id 
-        self.name = name 
-        self.date = date
-        self.amount = amount 
-        self.concentration = concentration 
-        self.dosis = dosis
-        self.weight_independant = weight_independant
-        self.days_after_surgery = days_after_surgery
-        self.protocol_entry_uuid = protocol_entry_uuid
-        self.update_amount(30)
-
-    @classmethod
-    def from_default(cls, animal_id: str, analgesia: PAnalgesia, days_after_surgery: int):
-        return cls(
-            animal_id, 
-            analgesia.name, 
-            str(days_after_surgery), 
-            analgesia.amount, 
-            analgesia.concentration, 
-            analgesia.dosis, 
-            analgesia.weight_independant, 
-            days_after_surgery,
-            protocol_entry_uuid=analgesia.uuid
-        )
-
-    @classmethod
-    def from_form(cls, animal_id: str, medication: Dict[str, any]):
-        return cls(
-            animal_id, 
-            medication["name"], 
-            medication["date"], 
-            medication["amount"], 
-            medication["concentration"], 
-            medication["dosis"], 
-            "weight_independant" in medication
-        )
-
-    @classmethod 
-    def from_json(cls, medication: Dict[str, any]): 
-        return cls.from_form(medication["animal_id"], medication)
-
-    def to_json(self): 
-        data = {
-            "animal_id": self.animal_id,
-            "name": self.name, 
-            "date": self.date, 
-            "days_after_surgery": self.days_after_surgery, 
-            "amount": self.amount, 
-            "concentration": self.concentration, 
-            "dosis": self.dosis, 
-            "days_after_surgery": self.days_after_surgery,
-            "protocol_entry_uuid": self.protocol_entry_uuid
-        }
-        if self.weight_independant: 
-            data["weight_independant"] = self.weight_independant
-        return data
-
-    def update(self, medication: Dict[str, any]):
-        self.date = medication["date"] 
-        self.amount = medication["amount"]
-        self.concentration = medication["concentration"] 
-        self.dosis = medication["dosis"] 
-        self.weight_independant = "weight_independant" in medication
-        self.update_amount(30)
-
-    def string(self): 
-        return f"{self.name} ({self.concentration})"
-
-    def set_date(self, date): 
-        self.date = date
-
-    def update_amount(self, weight): 
-        if not self.weight_independant: 
-            float_d = float(self.dosis.split("/")[0])  # works for both: '12/14'->12.0 and '14'->12.0
-            float_c = float(self.concentration.split("/")[0])  # see above
-            self.amount = str(roundup((float_d*weight)/float_c))
-
+            float_dosis = get_float(self.dosis)
+            float_concentration = get_float(self.concentration)
+            self.amount = str(roundup((float_dosis*weight)/float_concentration))
 
 class Procedure(db.Model): 
     __tablename__ = "procedures"
@@ -1117,16 +928,20 @@ def table_to_json(table):
 
 
 EXPERIMENT_TABLES = {
-    "anesthesia": Anesthesia, 
-    "analgesia": Analgesia, 
+    "medication": Medication, 
+    "procedures": Procedure,
+    "post_procedures": PostProcedure,
+    "viruses": Virus 
+}
+EXPERIMENT_TABLES_REDUCED = {
+    "medication": Medication, 
     "procedures": Procedure,
     "post_procedures": PostProcedure,
     "viruses": Virus 
 }
 
 PROTOCOL_TABLES = {
-    "anesthesia": PAnesthesia, 
-    "analgesia": PAnalgesia, 
+    "medication": PMedication, 
     "procedures": PProcedure, 
     "viruses": PVirus
 }
@@ -1145,15 +960,13 @@ ALL_TABLES = {
   "aprocedure": AProcedure, 
   "avirus": AVirus, 
   "pgeneral": PGeneral,
-  "panesthesia": PAnesthesia, 
-  "panalgesia": PAnalgesia, 
+  "pmedication": PMedication, 
   "pprocedure": PProcedure, 
   "pvirus": PVirus, 
   "pwatercontrol": PWatercontrol, 
   "protocol": Protocol, 
   "pgeneral": PGeneral, 
-  "anesthesia": Anesthesia, 
-  "analgesia": Analgesia, 
+  "medication": Medication, 
   "procedure": Procedure, 
   "post_procedure": PostProcedure, 
   "virus": Virus
@@ -1186,10 +999,32 @@ def load_backup(path):
         backup = json.load(f)
     for name, data in backup.items(): 
         for row in data:
-            table = ALL_TABLES[name].from_json(row)
+            try: 
+                table = ALL_TABLES[name].from_json(row)
+            except Exception as err: 
+                print("While adding row: ", row)
+                print(repr(err))
+                exit()
             db.session.add(table) 
-    db.session.commit()
+        try: 
+            db.session.commit()
+        except Exception as err:
+            print("While commiting table: ", name)
+            print(repr(err))
+            exit()
+
 
 def roundup(x): 
     x = int(math.ceil(x / 10.0)) * 10
     return x
+
+def get_float(text: str) -> float: 
+    for delimiter in ["-", "/"]:
+        if delimiter in text:
+            # works for both: '12/14'->12.0 and '14'->12.0
+            float_text = float(text.split(delimiter)[0])  
+            return float_text
+    try: 
+        return float(text)
+    except:
+        return -1

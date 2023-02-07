@@ -3,32 +3,31 @@
     <tr>
       <td><label for="name">Name:</label></td>
       <td>
-      {% if category == "anesthesia" %}
-        <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_anesthetic|safe}})'>
-          <option value="---" selected>---</option>
-          {% for medication in availible_anesthetic %}
-            <option value="{{medication.name}}">{{medication.name}}</option>
-          {% endfor %}
-        </select>
-      {% else %} 
-        <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_analgestic|safe}})'>
-          <option value="---" selected>---</option>
-          {% for medication in availible_analgesic %}
-            <option value="{{medication.name}}">{{medication.name}}</option>
-          {% endfor %}
-        </select>
-      {% endif %}
+      <select name="name" id="name" autocomplete="off" onchange='Set(this, {{json_medication|safe}})'>
+        <option value="---" selected>---</option>
+        {% for medication in availible_medication %}
+          <option value="{{medication.name}}">{{medication.name}}</option>
+        {% endfor %}
+      </select>
       </td>
     </tr>
 
     <tr>
-      <td><label for="date">Date:</label></td>
-      <td><input 
-        type="date" name="date" id="date" placeholder="date" min="{{dob}}" 
-        {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-        onchange="RemoveDateSuggest(this);"
-        required
-      /></td>
+      <td><label for="kind">Kind:</label></td>
+      <td><input type="text" name="kind" id="kind" placeholder="kind"></td>
+    </tr>
+
+    <tr>
+      <td><label for="procedure">Procedure:</label></td>
+      <td>
+        <select type="text" name="procedure" id="procedure" autocomplete="off">
+        {% for procedure in procedures %}
+          <option value="{{procedure.name}}">{{procedure.name}}</option>
+        {% endfor %}
+        {% for procedure in post_procedures %}
+          <option value="{{procedure.name}}">{{procedure.name}}</option>
+        {% endfor %}
+      </td>
     </tr>
 
     <tr>
@@ -51,12 +50,10 @@
       <td><input type="text" name="dosis" id="dosis" placeholder="dosis"></td>
     </tr>
 
-    {% if category == "anesthesia" %}
-      <tr>
-        <td><label for="toe_pinch">Toe pinch?</label></td>
-        <td><input type="checkbox" name="toe_pinch" id="toe_pinch"></td>
-      </tr>
-    {% endif %}
+    <tr>
+      <td><label for="toe_pinch">Toe pinch?</label></td>
+      <td><input type="checkbox" name="toe_pinch" id="toe_pinch"></td>
+    </tr>
   </table>
   <br><br>
 
