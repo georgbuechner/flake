@@ -23,7 +23,7 @@ window.onload = function() {
     copiedDate.setDate(i+parseInt(day));
     // Set color according to watercontrol and exeeded bounds (+/- 10%)
     var color = "#053769";
-    if (Math.abs(initial_weight-weights[i])/initial_weight > 0.2)
+    if ((initial_weight-weights[i])/initial_weight > 0.2)
       color = "Red";
     else if (watercontrol[i])
       color = "#992e32";
@@ -54,7 +54,6 @@ window.onload = function() {
       suffix: "g",
       margin: 10,
       stripLines: [
-        { value: initial_weight+0.2*initial_weight, label: "upper"},
         { value: initial_weight, label: "initial weight"},
         { value: initial_weight-0.2*initial_weight, label: "lower"}
       ]
@@ -277,7 +276,7 @@ function EditWeightList(category, note) {
     inp.setAttribute("type", "number");
     inp.step = 0.1;
     inp.value = weights[i].toFixed(2);
-    if (Math.abs(weights[0]-weights[i])/weights[0]> 0.2)
+    if ((weights[0]-weights[i])/weights[0]> 0.2)
       inp.style.borderColor = "red";
     inp.onchange = CheckWeightLimit;
     inp.setAttribute("initial", weights[0]);
