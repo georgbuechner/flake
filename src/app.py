@@ -33,6 +33,7 @@ db.init_app(app)
 with app.app_context():
     # Example to remove tables
     # Create tables
+    drop("allowed_animals", PAllowedMice)
     db.create_all()
     # drop_all(ALL_TABLES, False)
     # safe_all("backup")

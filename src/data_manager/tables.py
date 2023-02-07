@@ -327,7 +327,7 @@ class PGeneral(db.Model):
     @classmethod 
     def from_form(cls, uuid: str, protocol: str, g: Dict[str, any]): 
         return cls(
-            uuid, protocol, g["num_availible_animals"], g["allowed_users"], g["suffering"]
+            uuid, protocol, 0, g["allowed_users"], g["suffering"]
         )
 
     @classmethod 
@@ -338,15 +338,56 @@ class PGeneral(db.Model):
         return {
             "uuid": self.uuid, 
             "protocol": self.protocol,
-            "num_availible_animals": self.num_availible_animals,
+            "num_availible_animals": 0,
             "allowed_users": self.allowed_users,
             "suffering": self.suffering
         }
 
     def update(self, general: Dict[str, any]): 
-        self.num_availible_animals = general["num_availible_animals"]
+        self.num_availible_animals = 0
         self.allowed_users = general["allowed_users"]
         self.suffering = general["suffering"]
+
+class PAllowedMice(db.Model):
+    __tablename__ = "protocol_allowed_mice"
+
+    uuid = db.Column(db.String, primary_key=True)
+    protocol = db.Column(db.String, primary_key=False) 
+    name = db.Column(db.Integer, primary_key=False) 
+    num_availible_animals = db.Column(db.Integer, primary_key=False) 
+
+    def __init__(
+        self, 
+        uuid: str,
+        protocol: str, 
+        name: str,
+        num_availible_animals: int, 
+    ):
+        self.uuid = uuid
+        self.protocol = protocol 
+        self.name = name
+        self.num_availible_animals = num_availible_animals 
+
+    @classmethod 
+    def from_form(cls, uuid: str, protocol: str, g: Dict[str, any]): 
+        return cls(uuid, protocol, g["name"], g["num_availible_animals"])
+
+    @classmethod 
+    def from_json(cls, data: Dict[str, any]): 
+        return cls.from_form(data["uuid"], data["protocol"], data)
+
+    def to_json(self): 
+        return {
+            "uuid": self.uuid, 
+            "protocol": self.protocol,
+            "name": self.name,
+            "num_availible_animals": self.num_availible_animals,
+        }
+
+    def update(self, general: Dict[str, any]): 
+        self.name = general["name"]
+        self.num_availible_animals = general["num_availible_animals"]
+
 
 class PMedication(db.Model): 
     __tablename__ = "protocol_medication"
@@ -944,7 +985,9 @@ class Virus(db.Model):
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
-    return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}
+    if not isinstance(table, str):
+        return {k:v for (k,v) in table.__dict__.items() if k[0] != "_"}
+    return table
 
 
 EXPERIMENT_TABLES = {
@@ -962,6 +1005,7 @@ EXPERIMENT_TABLES_REDUCED = {
 
 PROTOCOL_TABLES = {
     "medication": PMedication, 
+    "allowed_animals": PAllowedMice, 
     "procedures": PProcedure, 
     "viruses": PVirus
 }

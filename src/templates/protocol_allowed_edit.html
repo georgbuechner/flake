@@ -1,0 +1,29 @@
+<form action="allowed_animals" method="POST">
+  <input type="text" style="display: none" name="uuid" id="uuid" style="display:none" value=""/>
+  <table class="center">
+    <tr>
+      <td><label for="name">Name:</label></td>
+      <td>
+        <select type="text" name="name" id="name" autocomplete="off">
+          <option value="---" selected>---</option>
+          {% for definition in definitions %}
+            <option value="{{definition}}">{{definition}}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td><label for="num_availible_animals">Number:</label></td>
+      <td>
+        <input 
+          type="text" 
+          name="num_availible_animals" 
+          id="num_availible_animals" 
+          placeholder="number of availible animals"
+        />
+      </td>
+    </tr>
+  </table>
+  <br><br>
+  <input type='submit' name='submit'/>
+</form>
