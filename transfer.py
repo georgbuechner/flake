@@ -11,7 +11,7 @@ def get_key(name, row):
     elif name[0] == "p":
         return row["name"] + row["protocol"]
     else:
-        return row["name"] + row["animal_id"]
+        return row["name"] + row["animal_id"] + row["procedure"]
 
 amedication = []
 pmedication = []
