@@ -158,7 +158,7 @@ async function GenerateMainSheet(animal_id, type) {
       document.body.appendChild(link);
       link.style = "display: none";
       link.href = url;
-      link.download = type + ".docx";
+      link.download = animal_id + "_" + type + ".docx";
       link.click();
 
       setTimeout(() => {
@@ -172,8 +172,6 @@ async function GenerateMainSheet(animal_id, type) {
         alert(reader.result);
       }
       reader.readAsText(blob);
-      // var text = reader.readAsText(blob);
-      // alert(blob.stream() + ": " + this.status);
     }
   };
   req.send();
@@ -193,75 +191,6 @@ function AddOrEdit(elem) {
   }
 
   var dialog = document.getElementById("edit_modal"); 
-}
-async function Store(animal_id) {
-  // Create new form:
-  let formData = new FormData();
-
-  // Create data with all elements to extract from html.
-  let data = {"anesthetic":[], "analgesic":[], "procedures":[], "post_procedures":[], "viruses":[]};
-  let general_entry = new Object();
-  for (const id of ["start", "end", "experiment", "start_weight", "watercontrol", "weights"]) {
-    console.log("ID: ", id);
-    general_entry[id] = document.getElementById(id).value;
-  }
-  data["general"] = [general_entry];
-  for (const key in data) {
-    // Get table from html DOM
-    const table = document.getElementById(key);
-    // Check if table was found
-    if (table !== undefined && table != null) {
-      // Iterate over all rows
-      for (var i = 0, row; row = table.rows[i]; i++) {
-        // Iterate over all colums and add to new entry
-        let entry = new Object();
-        for (var j = 0, col; col = row.cells[j]; j++) {
-          // If has children (not th), add new entry:
-          if (col.children.length > 0) {
-            const input = col.children[0];
-            if (input.value === "") {
-              input.style.borderColor = "red";
-              return;
-            }
-            if (input.hasAttribute("type") && input.getAttribute("type") === "date") {
-              const date = new Date(input.value);
-              entry[input.id] = date.toISOString().substring(0, 10);
-            }
-            else if (input.hasAttribute("convert") && input.getAttribute("convert") === "int")
-              entry[input.id] = parseInt(input.value);
-            else if (input.hasAttribute("convert") && input.getAttribute("convert") === "bool")
-              entry[input.id] = (input.value === "yes") ? true : false;
-            else 
-              entry[input.id] = input.value;
-          }
-        }  
-        // If avoid empty lines, check if data was added to entry, then add:
-        if (Object.keys(entry).length > 0) {
-          data[key].push(entry);
-        }
-      }
-    }
-  }
-  // Add extracted data to form.
-  formData.append("data", JSON.stringify(data));
-  // Send request to server:
-  try {
-    // Send request:
-    let r = await fetch('/store/'+animal_id, {method: "POST", body: formData}); 
-    // Handle response:
-    console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200)
-      window.location=window.location;
-    else if (r.status >=400 && r.status < 500) {
-      let response_text = await r.text()
-      alert(r.status + ": " + response_text);
-    }
-    else {
-      alert("Something went wrong: Error code: " + r.status);
-    }
-  } catch(e) {
-    alert("Something went wrong: " + e);
-  }
 }
 
 async function Clear(animal_id) {

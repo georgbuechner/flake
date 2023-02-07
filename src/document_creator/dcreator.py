@@ -28,8 +28,6 @@ class DCreator:
             self.doc = Document(os.path.join(template_path, "default.docx"))
         # Data
         self.fields = experiment_data
-        print("Got death drugs: ", self.fields["death_drugs"])
-        print("Got medication: ", self.fields["medication"])
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
         print("GENERAL: ", self.fields["general"])

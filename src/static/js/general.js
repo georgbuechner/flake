@@ -47,7 +47,7 @@ function GenerateP9(protocol) {
       document.body.appendChild(link);
       link.style = "display: none";
       link.href = url;
-      link.download = "paragraph9.pdf";
+      link.download = protocol + "_paragraph-9.pdf";
       link.click();
 
       setTimeout(() => {
