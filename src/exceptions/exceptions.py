@@ -16,3 +16,7 @@ class EntryNotFound(ParserException):
 class QueryEmpty(ParserException):
     def __init__(self, msg: str, status: int):
         super(ParserException, self).__init__(msg, status)
+
+class DublicateEntry(ParserException):
+    def __init__(self, msg: str):
+        super(ParserException, self).__init__(msg, 409)

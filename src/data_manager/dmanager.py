@@ -9,7 +9,7 @@ import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
-from exceptions.exceptions import ParserException, EntryNotFound, QueryEmpty
+from exceptions.exceptions import *
 from utils.parser_weights_and_water import (
     get_water_control_mask, 
     get_estimated_weight_list,
@@ -409,6 +409,15 @@ class DManager:
         if protocol_entry:
             protocol_entry.update(data)
         else: 
+            # Make sure element does not already exist.
+            if category == "medication":
+                query = Table.query.filter(
+                    Table.protocol==protocol, Table.name==data["name"], Table.procedure==data["procedure"]
+                )
+            else:
+                query = Table.query.filter(Table.protocol==protocol, Table.name==data["name"])
+            if query.first():
+                raise DublicateEntry("A entry with the same name already exists!")
             protocol_entry = Table.from_form(str(uuid.uuid4()), protocol, data)
             db.session.add(protocol_entry)
         db.session.commit()
