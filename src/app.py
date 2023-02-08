@@ -195,7 +195,7 @@ def input(animal_id: str, category: str):
     """
     animal_data = AnimalData.query.get(animal_id)
     # Redirect 
-    if animal_data.user != current_user.name:
+    if animal_data.user != current_user.name and not current_user.admin:
         return redirect("/")
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = General.query.get(animal_id)
