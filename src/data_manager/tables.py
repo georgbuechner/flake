@@ -1057,42 +1057,6 @@ def drop_all(tables, confirm=False):
     for name, Table in tables.items(): 
         drop(name, Table, confirm)
 
-def safe(path, name, Table): 
-    backup = {name: []} 
-    for row in Table.query.all(): 
-        backup[name].append(row.to_json())
-    with open(f"{path}.json", "w") as f:
-        json.dump(backup, f)
-
-def safe_all(path): 
-    backup = {} 
-    for table, Table in ALL_TABLES.items(): 
-        backup[table] = []
-        for row in Table.query.all(): 
-            backup[table].append(row.to_json())
-    with open(f"{path}.json", "w") as f:
-        json.dump(backup, f)
-
-def load_backup(path): 
-    with open(f"{path}.json", "r") as f:
-        backup = json.load(f)
-    for name, data in backup.items(): 
-        for row in data:
-            try: 
-                table = ALL_TABLES[name].from_json(row)
-            except Exception as err: 
-                print("While adding row: ", row)
-                print(repr(err))
-                exit()
-            db.session.add(table) 
-        try: 
-            db.session.commit()
-        except Exception as err:
-            print("While commiting table: ", name)
-            print(repr(err))
-            exit()
-
-
 def roundup(x): 
     x = int(math.ceil(x / 10.0)) * 10
     return x
