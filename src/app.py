@@ -7,9 +7,6 @@ from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator
 from exceptions.exceptions import ParserException
-from utils.utils import (
-    hash_pw, sort_query, escape, has_signature, get_signature_path, get_keys_from_config
-)
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import os
@@ -17,9 +14,11 @@ import subprocess
 import tempfile
 import shutil
 from cryptography.fernet import Fernet
+from utils.utils import *
 from utils.dt_utils import * 
 
-SECRET, LAB_PASSWORD = get_keys_from_config("server.config")
+SERVER_CONFIG_PATH = "server.config"
+SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
 
 # Create global instance of sql-connector, data-manager and flask-app.
 dmanager = DManager()
@@ -30,6 +29,24 @@ login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 
+def create_root_user_if_not_exists():
+    root_email = get_root_user(SERVER_CONFIG_PATH)
+    root = User.query.get(root_email)
+    if not root: 
+        root_password = getpass.getpass("Create admin user password: ")
+        hashed_password, salt = hash_pw(root_password)
+        print(f"root_email: '{root_email}'")
+        user = User( 
+            email=root_email,
+            name="guest",
+            admin=True,
+            password=str(hashed_password),
+            salt=salt
+        )
+        db.session.add(user)
+        db.session.commit()
+
+
 with app.app_context():
     # Example to remove tables
     # Create tables
@@ -37,6 +54,8 @@ with app.app_context():
     # drop_all(ALL_TABLES, False)
     # safe_all("backup")
     # load_backup("backup_2")
+    create_root_user_if_not_exists()
+       
 
 @login_manager.user_loader 
 def user_loader(user_id): 
@@ -62,8 +81,6 @@ def main():
         "index.html", 
         users=dmanager.users(), 
         protocols=dmanager.protocols(),
-        user_email=current_user.email,
-        user_name=current_user.name
     )
 
 @app.route("/login", methods=["GET", "POST"])
@@ -106,6 +123,7 @@ def register():
     user = User( 
         email=request.form["email"],
         name=request.form["name"],
+        admin=False,
         password=str(hashed_password),
         salt=salt
     )
@@ -131,8 +149,6 @@ def overview():
         "overview.html", 
         animal_data=AnimalData.query.all(),
         protocols=dmanager.protocols_and_subprotocols(),
-        user_email=current_user.email,
-        user_name=current_user.name
     )
 
 @app.route("/users/<user>")
@@ -149,8 +165,6 @@ def user_overview(user: str):
         user=user, 
         animal_data=AnimalData.query.filter(AnimalData.user == user),
         protocols=dmanager.protocols_and_subprotocols(),
-        user_email=current_user.email,
-        user_name=current_user.name
     )
 
 @app.route("/protocols/<protocol>")
@@ -167,8 +181,6 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=AnimalData.query.filter(AnimalData.protocol_escaped == protocol),
         protocols=dmanager.protocols_and_subprotocols(),
-        user_email=current_user.email,
-        user_name=current_user.name
     )
 
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
@@ -191,6 +203,7 @@ def input(animal_id: str, category: str):
     availible_medication=PMedication.query.filter(PMedication.protocol == general.experiment)
     availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment)
 
+    # Create ref to previous page
     ref = False
     if "/users/" in request.referrer or "/protocols/" in request.referrer: 
         ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
@@ -224,8 +237,6 @@ def input(animal_id: str, category: str):
         last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
         category=category,
         ref=ref, 
-        user_email=current_user.email,
-        user_name=current_user.name
     )
 
 @app.route("/settings")
@@ -249,8 +260,6 @@ def account():
         users=users, 
         escaped_user=escape(current_user.name),
         has_signature=has_signature(current_user.name),
-        user_email=current_user.email, 
-        user_name=current_user.name
     )
 
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
@@ -308,8 +317,6 @@ def upload_signature(escaped_user: str):
 def availible(category: str):
     return render_template(
         "definitions.html", 
-        user_email=current_user.email, 
-        user_name=current_user.name,
         category=category,
         viruses=sort_query(AVirus.query.all(), "days_after_start"),
         procedures=sort_query(AProcedure.query.all(), "days_after_start"),
@@ -322,8 +329,6 @@ def availible(category: str):
 def protocols():
     return render_template(
         "protocols.html", 
-        user_email=current_user.email, 
-        user_name=current_user.name,
         protocols=Protocol.query.all(),
         msg=""
     )
@@ -335,16 +340,12 @@ def protocol(escaped_protocol: str):
     if protocol:
         return render_template(
             "protocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocol=protocol,
             subprotocols=protocol.get_subprotocols(),
             msg=""
         )
     return render_template(
         "protocols.html", 
-        user_email=current_user.email, 
-        user_name=current_user.name,
         protocols=Protocol.query.all(),
         msg="Protocol not found"
     )
@@ -607,8 +608,6 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     if protocol:
         return render_template(
             "subprotocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocol=protocol,
             subprotocol=subprotocol,
             category=category,
@@ -628,8 +627,6 @@ def add_protocal():
     if protocol:
         return render_template(
             "protocols.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocols=Protocol.query.all(),
             msg="A protocol with this name already exists!"
         )
@@ -651,16 +648,12 @@ def add_subprotocal(escaped_protocol):
     if not protocol:
         return render_template(
             "protocols.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocols=Protocol.query.all(),
             msg="Matching protocol does not exist!"
         )
     if subprotocol in protocol.get_subprotocols(): 
         return render_template(
             "protocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocol=protocol,
             msg="Subprotocol already exists!"
         )
@@ -695,16 +688,12 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     if not protocol:
         return render_template(
             "protocols.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocols=Protocol.query.all(),
             msg="Matching protocol does not exist!"
         )
     if subprotocol not in protocol.get_subprotocols(): 
         return render_template(
             "protocol.html", 
-            user_email=current_user.email, 
-            user_name=current_user.name,
             protocol=protocol,
             msg="Subprotocol does not exists!"
         )

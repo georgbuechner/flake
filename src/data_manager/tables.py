@@ -21,25 +21,31 @@ class User(db.Model):
 
     email = db.Column(db.String, primary_key=True)
     name = db.Column(db.String, primary_key=False)
+    admin = db.Column(db.Boolean, primary_key=False)
     password = db.Column(db.String, primary_key=False)
     salt = db.Column(db.String, primary_key=False)
     authenticated = db.Column(db.Boolean, default=False)
 
-    def __init__(email: str, name: str, password: str, salt: str):
+    def __init__(self, email: str, name: str, admin: bool, password: str, salt: str):
         self.email = email 
         self.name = name 
+        self.admin = admin
         self.password = password 
         self.salt = salt
 
     @classmethod 
     def from_json(cls, user: Dict[str, any]): 
         return cls(
-            user["email"], user["name"], user["password"], user["salt"]
+            user["email"], user["name"], user["admin"], user["password"], user["salt"]
         )
 
     def to_json(self):
         return {
-            "email": self.email, "name":self.name, "password": self.password, "salt": self.salt,
+            "email": self.email, 
+            "name":self.name, 
+            "admin":self.admin, 
+            "password": self.password, 
+            "salt": self.salt,
         }
 
     def is_active(self):
@@ -1050,6 +1056,13 @@ def drop(name, Table, confirm=False):
 def drop_all(tables, confirm=False): 
     for name, Table in tables.items(): 
         drop(name, Table, confirm)
+
+def safe(path, name, Table): 
+    backup = {name: []} 
+    for row in Table.query.all(): 
+        backup[name].append(row.to_json())
+    with open(f"{path}.json", "w") as f:
+        json.dump(backup, f)
 
 def safe_all(path): 
     backup = {} 

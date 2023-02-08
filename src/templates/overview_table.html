@@ -58,7 +58,7 @@
             </select>
           {% endif %}
         </td>
-        {% if entry.subprotocol != "---" and entry.user == user_name %}
+        {% if entry.subprotocol != "---" and (entry.user == user_name or current_user.admin == True) %}
           <td><a href="/animal_data/{{entry.mla_num}}" >edit experiment</a></td>
         {% elif entry.subprotocol != "---" and entry.user != user_name %}
           <td>

@@ -120,3 +120,17 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
         with open(path, "w") as f:
             json.dump(config, f)
         return secret, lab_password
+
+def get_root_user(path):
+    # Load config
+    with open(path) as f:
+        config = json.load(f)
+    # Check if root already exists
+    if "root-mail" in config: 
+        return config["root-mail"]
+    # Get name from input, store to config and return
+    root_email = input("Root email: ")
+    config["root-mail"] = root_email
+    with open(path, "w") as f:
+        json.dump(config, f)
+    return root_email
