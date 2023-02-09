@@ -18,6 +18,7 @@ from utils.parser_weights_and_water import (
 from data_manager.tables import * 
 from utils.utils import sort_query, escape
 from utils.dt_utils import * 
+from flask import render_template
 
 SACRIFICE_DATE = -1
 
@@ -83,19 +84,31 @@ class DManager:
         # temporarily store file
         file.save(tmp_path)
         # Load file and delete tmp-file afterwards
-        updated, total = self.__load_animal_data_from_csv(tmp_path)
+        updated, total, mlas_with_date = self.__load_animal_data_from_csv(tmp_path)
         os.remove(tmp_path)
         # If none, send user information on which fields where missing.
+        response = {"text":"", "animal_data": ""}
         if updated is None: 
-            return (f"CSV has missing keys, required: "
+            response["text"] = (f"CSV has missing keys, required: "
                 + f"{' '.join(x for x in self.keys['en'])}"
                 + f"or {' '.join(x for x in self.keys['en'])}")
+            return response, 400
         # If success, update protocols (since new protocols might have been added)
-        inserted_msg =f"{total-len(updated)} inserted."
-        if len(updated) == 0:
-            return inserted_msg, 200
-        updated_msg = f"{len(updated)} updated ({' '.join(x for x in updated)})"
-        return inserted_msg + " " + updated_msg, 206 
+        response["text"] = f"{total-len(updated)} inserted."
+        if len(updated) > 0:
+            response["text"] += f" {len(updated)} updated ({' '.join(x for x in updated)})"
+        if len(mlas_with_date) > 0: 
+            animal_data = []
+            for mla, data in mlas_with_date.items(): 
+                start, end = data
+                animal_data.append(AnimalData.query.get(mla))
+            response["animal_data"] = render_template(
+                "overview_table_reduced.html", 
+                animal_data=animal_data,
+                mlas_with_date=mlas_with_date,
+                protocols=self.protocols_and_subprotocols(),
+            )
+        return response, 200
 
     def set_protocol(
         self, animal_id: str, protocol: str, force: bool
@@ -551,6 +564,7 @@ class DManager:
             return None, None
         # Iterate over keys and add to data using mapping.
         updated = []
+        mlas_with_date = {}
         for _, row in df.iterrows():
             data = {}
             for key in df.keys():
@@ -562,6 +576,10 @@ class DManager:
                             if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
+                    # if self.mapping[key] == "comment":
+                    start, end = self.__get_start_end_from_comment(value)
+                    if start is not None: 
+                        mlas_with_date[data["id"]] = {"start":start, "end":end}
             # Create or update animal-data
             animal_id = data["id"]
             animal_data = AnimalData.query.get(animal_id)
@@ -574,7 +592,7 @@ class DManager:
             db.session.commit()
             fill_sacrifice_date(animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}")
             self.__update_stored(animal_id)
-        return updated, len(df)
+        return updated, len(df), mlas_with_date
 
 
     def __is_stored(self, animal_id: str, ignore_death_date: bool = False) -> bool:
@@ -617,6 +635,8 @@ class DManager:
             animal_data.stored = False
         db.session.commit()
 
+    def __get_start_end_from_comment(self, value): 
+        return convert_source_2_to_1("20/07/2022"), convert_source_2_to_1("22/08/2022")
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
@@ -653,10 +673,9 @@ def fill_sacrifice_date(animal_id: str, protocol: str):
         if entries.first():
             for entry in entries: 
                 template = Template.query.get(entry.protocol_entry_uuid)
-                print("checking filling: ", table_to_json(template))
-                print("checking filling: ", template.days_after_start,
-                      SACRIFICE_DATE, template.days_after_start == str(SACRIFICE_DATE), 
-                      template and template.days_after_start == str(SACRIFICE_DATE))
+                if not template: 
+                    print(f"for {table_to_json(entry)} could not get template")
+                    continue
                 if template and template.days_after_start == str(SACRIFICE_DATE):
                     print("Updated date: ", animal_data.death_date)
                     entry.set_date(animal_data.death_date)

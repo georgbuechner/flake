@@ -1,0 +1,45 @@
+<table class="center">
+    <tr>
+      <th>ID</th>
+      <th>Start</th>
+      <th>End</th>
+      <th>Protocol (pyrat)</th>
+      <th>Protocol (flake)</th>
+      <th>Sub Protocol</th>
+    </tr>
+    {% for entry in animal_data %}
+      <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
+        <td>{{entry.mla_num}}</td>
+        <td>{{mlas_with_date[entry.mla_num].start}}</td>
+        <td>{{mlas_with_date[entry.mla_num].end}}</td>
+        <td>{{entry.protocol_pyrat}}</td>
+        <td>
+          <select id="protocol_flake" autocomplete="off">
+            <option value="---">---</option>
+            {% for protocol in protocols.keys() %}
+            <option 
+                value="{{protocol}}" {%- if protocol==entry.protocol -%}selected{%- endif -%}
+            >{{protocol}}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          {% if animal_id %}
+            {{entry.subprotocol}}
+          {% else %}
+            <select 
+              id="subprotocol" autocomplete="off" 
+              onchange="UpdateAll(this.value, this.parentNode.parentNode, false)"
+            >
+              <option value="---" selected>---</option>
+              {% for sub in protocols[entry.protocol] %}
+                <option 
+                  value="{{sub}}" {%- if sub == entry.subprotocol -%}selected{%- endif -%}
+                >{{sub}}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>

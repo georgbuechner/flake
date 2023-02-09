@@ -21,11 +21,18 @@ async function UploadPyratData() {
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (r.ok) {
-      if (r.status === 206) {
-        let response_text = await r.text()
-        alert(response_text);
+      let json = await r.json()
+      if (r.status != 200) {
+        document.getElementById("animal_modal_text").classList.add("err");
       }
-      window.location=window.location;
+      document.getElementById("animal_modal_text").innerHTML = json["text"];
+      if (json["animal_data"].length > 2) {
+        document.getElementById("animal_modal_text_2").style.display = "block";
+        document.getElementById("animal_modal").style.height = "400px";
+        document.getElementById("animal_modal").style.width = "70%";
+        document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+      }
+      OpenModel("animal_modal")
     }
     else
       alert("Something went wrong: Error code: " + r.status);
@@ -102,6 +109,33 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
   }
 }
 
+async function UpdateAll(subprotocol, td, force) {
+  console.log(td);
+  let entries = td.children;
+  console.log(subprotocol, entries[0].innerHTML, entries[1].innerHTML, entries[2].innerHTML, entries[4].children);
+
+  let formData = new FormData();
+  // Add extracted data to form.
+  formData.append("start", entries[1].innerHTML);
+  formData.append("end", entries[2].innerHTML);
+  formData.append("protocol", entries[4].children[0].value);
+  formData.append("subprotocol", subprotocol);
+  formData.append("animal_id", entries[0].innerHTML);
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
+    // Handle response:
+    let response_text = await r.text();
+    document.getElementById("animal_modal_text_3").innerHTML = response_text + " " + r.status;
+    if (r.status == 200) {
+      td.classList.remove("not_stored");
+      document.getElementById("animal_modal_text_3").innerHTML = "success";
+    }
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
 async function UpdateProtocol(protocol, animal_id, force) {
   console.log(subprotocol, animal_id, force);
   let formData = new FormData();

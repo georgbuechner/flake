@@ -1,6 +1,6 @@
 import json
 import html
-from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask import Flask, render_template, make_response, jsonify, request, send_file, redirect
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, date_filled
@@ -350,6 +350,26 @@ def protocol(escaped_protocol: str):
         msg="Protocol not found"
     )
 
+@app.route("/update/animal_data/all", methods=["POST"])
+@login_required
+def update_animal_all(): 
+    print("UPDATE ALL: ", request.form)
+    txt = "failed"
+    status = 400
+    try:
+        animal_id = request.form.get("animal_id")
+        txt, status = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
+        print("set protocol: ", AnimalData.query.get(animal_id).protocol_escaped)
+        txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
+        print("set subprotocol: ", AnimalData.query.get(animal_id).subprotocol)
+        txt, status = dmanager.update_dates(animal_id, request.form.get("start"), True)
+        if date_filled(request.form.get("end")):
+            txt, status = dmanager.set_death_date(animal_id, request.form.get("end"))
+        return txt, status
+    except Exception as err: 
+        return txt + repr(err), status
+
+
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 def update_animal_subprotocol(): 
@@ -384,10 +404,10 @@ def update_animal_protocol():
 
     @return error-/ success-message and status code.
     """
-    subprotocol = request.form.get("protocol")
+    protocol = request.form.get("protocol")
     animal_id = request.form.get("animal_id")
     force = request.form.get("force") == "true"
-    txt, status = dmanager.set_protocol(animal_id, subprotocol, force) 
+    txt, status = dmanager.set_protocol(animal_id, protocol, force) 
     return txt, status
 
 @app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
@@ -458,8 +478,8 @@ def store_animal_data():
     """
     content = request.files
     # upload via data-manager
-    txt, status = dmanager.extract_animal_data(content.get("csv"))
-    return txt, status
+    response, status = dmanager.extract_animal_data(content.get("csv"))
+    return make_response(jsonify(response), status)
 
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required

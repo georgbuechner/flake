@@ -2,14 +2,22 @@ from datetime import datetime, timedelta
 from typing import List
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
+SOURCE_DATE_FORMAT_2 = "%d/%m/%Y"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
 OUTPUT_DATE_FORMAT_2  = "%b %Y"
 
 def strtodate(date_str: str) -> datetime: 
-    return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
+    try:
+        return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
+    except: 
+        return datetime.strptime(date_str, SOURCE_DATE_FORMAT_2)
 
 def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
     return datetime.strftime(date, date_format)
+
+def convert_source_2_to_1(date_str) -> str: 
+    date = strtodate(date_str) 
+    return datetostr(date, SOURCE_DATE_FORMAT)
 
 def datetostr_month(date: datetime) -> str: 
     return datetime.strftime(date, OUTPUT_DATE_FORMAT_2)
