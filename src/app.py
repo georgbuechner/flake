@@ -565,14 +565,8 @@ def generate_score_sheet(animal_id: str):
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
 @login_required
 def generate_paragraph_9(escaped_protocol: str):
-
-    env = Environment(
-        loader=PackageLoader("app"),
-        autoescape=select_autoescape()
-    )
-    template = env.get_template("main.tex")
     subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
-    txt = template.render(subprotocols=subprotocols, protocol=protocol)
+    txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
     tmp_path = tempfile.mkdtemp() 
     full_path = f"{tmp_path}/main.tex"
     f = open(full_path, "w") 
