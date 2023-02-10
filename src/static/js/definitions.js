@@ -12,7 +12,7 @@ function Add(entry) {
             document.getElementById("dosis").setAttribute("readonly", "readonly");
             document.getElementById("dosis").title = "Dosis cannot be set if weight-independant.";
           }
-          else {
+          else if (cur_name == "weight_independant") {
             document.getElementById("dosis").removeAttribute("readonly");
             document.getElementById("amount").setAttribute("readonly", "readonly");
             document.getElementById("amount").title = "Amount is calculated based on a default of 30g oder the animals weight.";
