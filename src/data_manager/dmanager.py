@@ -118,13 +118,14 @@ class DManager:
         x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
+        escaped_protocol = escape(protocol)
         animal_data = AnimalData.query.get(animal_id)
         animal_data.protocol = protocol
-        animal_data.protocol_escaped = escape(protocol)
+        animal_data.protocol_escaped = escaped_protocol
         animal_data.subprotocol = "---"
         self.__clear_experiment_data(animal_id)
         db.session.commit()
-        return "", 200
+        return "", 200, escaped_protocol
 
 
     def set_subprotocol(
@@ -568,6 +569,8 @@ class DManager:
         mlas_with_date = {}
         for _, row in df.iterrows():
             data = {}
+            start = ""
+            end = ""
             for key in df.keys():
                 value = row[key]
                 if key in self.mapping:
@@ -579,9 +582,9 @@ class DManager:
                                 data["protocol_escaped"] = escape(str(protocol.name))
                     if self.mapping[key] == "comment":
                         start, end = self.__get_start_end_from_comment(value)
-                        mlas_with_date[data["id"]] = {"start":start, "end":end}
             # Create or update animal-data
             animal_id = data["id"]
+            mlas_with_date[animal_id] = {"start":start, "end":end}
             animal_data = AnimalData.query.get(animal_id)
             if animal_data:
                 animal_data.update(data)

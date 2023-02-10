@@ -10,11 +10,22 @@
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
         <td>{{entry.mla_num}}</td>
-        <td>{{mlas_with_date[entry.mla_num].start}}</td>
-        <td>{{mlas_with_date[entry.mla_num].end}}</td>
+        <td>
+          <input 
+            type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].start}}"
+          ></input>
+        </td>
+        <td>
+          <input 
+            type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].end}}"
+          ></input>
+        </td>
         <td>{{entry.protocol_pyrat}}</td>
         <td>
-          <select id="protocol_flake" autocomplete="off">
+          <select 
+            id="protocol_flake" autocomplete="off" 
+            onchange="UpdateProtocolLive(this.parentNode.parentNode.children, this.value);"
+          >
             <option value="---">---</option>
             {% for protocol in protocols.keys() %}
             <option 
