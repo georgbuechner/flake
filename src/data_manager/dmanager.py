@@ -245,12 +245,20 @@ class DManager:
         medication = []
         for x in data["medication"]: 
             print(f"Searching procedure {x['procedure']} for {x['name']}")
-            procedure = Procedure.query.get((animal_id, x["procedure"])) 
-            if not procedure: 
-                procedure = PostProcedure.query.get((animal_id, x["procedure"])) 
-            for date in daterange_str(procedure.start_date, procedure.end_date):
-                x["date"] = date
-                medication.append(deepcopy(x))
+            # Try Procedures
+            procedures = Procedure.query.filter(
+                Procedure.animal_id == animal_id, Procedure.name == x["procedure"]
+            ) 
+            # Try PostProcedures
+            if not procedures.first(): 
+                procedures = PostProcedure.query.filter(
+                    PostProcedure.animal_id == animal_id, PostProcedure.name == x["procedure"]
+                )
+            # Add medication for each found procedure
+            for procedure in procedures:
+                for date in daterange_str(procedure.start_date, procedure.end_date):
+                    x["date"] = date
+                    medication.append(deepcopy(x))
         data["medication"] = medication
         return data
             
@@ -372,14 +380,14 @@ class DManager:
         # Update procedures: 
         def update_procedure(table): 
             for x in table.query.filter(table.animal_id == animal_id): 
-                default = get_protocol_entry_by_name(PProcedure, general.experiment, x.name)
+                default = PProcedure.query.get(x.protocol_entry_uuid)
                 x.start_date = get_date(int(default.days_after_start))
                 x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
         update_procedure(Procedure) 
         update_procedure(PostProcedure) 
         # Update viruses:
         for x in Virus.query.filter(Virus.animal_id == animal_id): 
-            default_entry = get_protocol_entry_by_name(PVirus, general.experiment, x.name)
+            default_entry = PVirus.query.get(x.protocol_entry_uuid)
             x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
         fill_sacrifice_date(animal_id, general.experiment)
@@ -432,6 +440,12 @@ class DManager:
                 if category == "medication":
                     query = Table.query.filter(
                         Table.protocol==protocol, Table.name==data["name"], Table.procedure==data["procedure"]
+                    )
+                elif category == "procedures":
+                    query = Table.query.filter(
+                        Table.protocol==protocol, 
+                        Table.name==data["name"], 
+                        Table.days_after_start==data["days_after_start"]
                     )
                 else:
                     query = Table.query.filter(Table.protocol==protocol, Table.name==data["name"])

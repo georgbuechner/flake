@@ -51,7 +51,11 @@ with app.app_context():
     # Example to remove tables
     # Create tables
     db.create_all()
-    # drop_all(ALL_TABLES, False)
+
+    # DROP all experiment and animal data:
+    # drop("animal_data", AnimalData)
+    # drop("general", General)
+    # drop_all(EXPERIMENT_TABLES)
     # safe_all("backup")
     # load_backup("backup_2")
     create_root_user_if_not_exists()

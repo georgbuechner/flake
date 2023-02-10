@@ -31,9 +31,9 @@
       <tr>
         <td>Username</th>
         <td>
-          {% if user_name == "guest" %}
-            <select id="username" onchange="ChangeUsername('{{user_email}}', this.value)">
-              <option value="{{user_name}}">{{user_name}}</option>
+          {% if current_user.name == "guest" %}
+            <select id="username" onchange="ChangeUsername('{{current_user.email}}', this.value)">
+              <option value="{{current_user.name}}">{{current_user.name}}</option>
               {% for (user, used) in users %}
                 <option 
                   value="{{user}}" 
@@ -45,19 +45,19 @@
               {% endfor %}
             </select>
           {% else %}
-            {{user_name}}
+            {{current_user.name}}
           {% endif %}
         </th>
       </tr>
       <tr>
         <td>E-Mail</th>
-        <td>{{user_email}}</th>
+        <td>{{current_user.email}}</th>
       </tr>
     </table>
 
     <br>
     <input 
-      type="submit" id="submit" value="Delete Account" onclick="DeleteAccount('{{user_email}}')"
+      type="submit" id="submit" value="Delete Account" onclick="DeleteAccount('{{current_user.email}}')"
     >
 
     <br><br>

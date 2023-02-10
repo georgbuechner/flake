@@ -830,7 +830,7 @@ class Procedure(db.Model):
 
     animal_id = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
-    start_date = db.Column(db.String, primary_key=False) 
+    start_date = db.Column(db.String, primary_key=True) 
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
     protocol_entry_uuid = db.Column(db.String, primary_key=False)
@@ -850,10 +850,18 @@ class Procedure(db.Model):
         self.end_date = end
         self.experimenter = experimenter
         self.protocol_entry_uuid = protocol_entry_uuid
+        print(f"Added PostProcedure: {self.name}, {self.start_date}")
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
-        return cls(animal_id, procedure.name, "", "", experimenter, procedure.uuid)
+        return cls(
+            animal_id, 
+            procedure.name, 
+            procedure.days_after_start, 
+            "", 
+            experimenter, 
+            procedure.uuid
+        )
 
     @classmethod 
     def from_form(cls, animal_id: str, p: Dict[str, any]): 
@@ -888,7 +896,7 @@ class PostProcedure(db.Model):
 
     animal_id = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
-    start_date = db.Column(db.String, primary_key=False) 
+    start_date = db.Column(db.String, primary_key=True) 
     end_date = db.Column(db.String, primary_key=False) 
     experimenter = db.Column(db.String, primary_key=False) 
     protocol_entry_uuid = db.Column(db.String, primary_key=False)
@@ -908,10 +916,18 @@ class PostProcedure(db.Model):
         self.end_date = end
         self.experimenter = experimenter
         self.protocol_entry_uuid = protocol_entry_uuid
+        print(f"Added PostProcedure: {self.name}, {self.start_date}")
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
-        return cls(animal_id, procedure.name, "", "", experimenter, procedure.uuid)
+        return cls(
+            animal_id, 
+            procedure.name, 
+            procedure.days_after_start, 
+            "", 
+            experimenter, 
+            procedure.uuid
+        )
         
 
     @classmethod 

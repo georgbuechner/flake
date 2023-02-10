@@ -22,7 +22,11 @@ def sort_query(obj_list, key: str):
     def sort_by_key(e):
         if "date" in key:
             return table_to_json(e)[key]
-        return int(table_to_json(e)[key])
+        try:
+            return int(table_to_json(e)[key])
+        except Exception as err:
+            print(f"sort_query: key: {key}, value: {table_to_json(e)[key]} failed: {repr(err)}") 
+            return 0
     if not isinstance(obj_list, list):
         if obj_list.first():
             obj_list = [x for x in obj_list]
