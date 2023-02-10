@@ -20,7 +20,6 @@ async function UploadPyratData() {
      {method: "POST", body: formData, signal: ctrl.signal}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
-    if (r.ok) {
       let json = await r.json()
       if (r.status != 200) {
         document.getElementById("animal_modal_text").classList.add("err");
@@ -33,9 +32,6 @@ async function UploadPyratData() {
         document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
       }
       OpenModel("animal_modal")
-    }
-    else
-      alert("Something went wrong: Error code: " + r.status);
   } catch(e) {
     alert("Something went wrong: " + e);
   }

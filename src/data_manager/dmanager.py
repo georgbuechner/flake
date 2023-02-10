@@ -44,6 +44,8 @@ class DManager:
             for language, fields in mapping.items():
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
+        with open("resources/lines.json") as f:
+            self.lines = json.load(f)
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
@@ -90,8 +92,8 @@ class DManager:
         response = {"text":"", "animal_data": ""}
         if updated is None: 
             response["text"] = (f"CSV has missing keys, required: "
-                + f"{' '.join(x for x in self.keys['en'])}"
-                + f"or {' '.join(x for x in self.keys['en'])}")
+                + f"{' '.join(x for x in self.keys_per_language['en'])}"
+                + f"or {' '.join(x for x in self.keys_per_language['en'])}")
             return response, 400
         # If success, update protocols (since new protocols might have been added)
         response["text"] = f"{total-len(updated)} inserted."
@@ -269,8 +271,7 @@ class DManager:
             protocol_data = sort_query(protocol_data, "days_after_start")
         # Get definitions:
         if category == "allowed_animals":
-            animal_data = AnimalData.query.all()
-            definitions = [*set([data.line for data in animal_data])]  
+            definitions = self.lines
         else:
             definitions = DEFINITION_TABLES[category].query.all()
         return protocol_data, definitions
@@ -561,7 +562,7 @@ class DManager:
         # Load csv
         df = clevercsv.read_dataframe(path)
         if check_all_keys(df) == False: 
-            return None, None
+            return None, None, None
         # Iterate over keys and add to data using mapping.
         updated = []
         mlas_with_date = {}
@@ -576,9 +577,8 @@ class DManager:
                             if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
-                    # if self.mapping[key] == "comment":
-                    start, end = self.__get_start_end_from_comment(value)
-                    if start is not None: 
+                    if self.mapping[key] == "comment":
+                        start, end = self.__get_start_end_from_comment(value)
                         mlas_with_date[data["id"]] = {"start":start, "end":end}
             # Create or update animal-data
             animal_id = data["id"]
@@ -590,7 +590,9 @@ class DManager:
                 animal_data = AnimalData(data)
                 db.session.add(animal_data)
             db.session.commit()
-            fill_sacrifice_date(animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}")
+            fill_sacrifice_date(
+                animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
+            )
             self.__update_stored(animal_id)
         return updated, len(df), mlas_with_date
 
@@ -636,7 +638,14 @@ class DManager:
         db.session.commit()
 
     def __get_start_end_from_comment(self, value): 
-        return convert_source_2_to_1("20/07/2022"), convert_source_2_to_1("22/08/2022")
+        def extract(name: str, parts: List[str]):
+            for part in parts: 
+                if name in part: 
+                    date = part[part.find(":")+1:].strip()
+                    return convert_source_2_to_1(date)
+            return None
+        parts = value.split(";")
+        return extract("start", parts), extract("end", parts)
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
