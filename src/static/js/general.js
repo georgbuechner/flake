@@ -105,15 +105,18 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
   }
 }
 
+
+
 async function UpdateAll(subprotocol, td, force) {
   console.log(td);
   let entries = td.children;
-  console.log(subprotocol, entries[0].innerHTML, entries[1].innerHTML, entries[2].innerHTML, entries[4].children);
+  console.log(subprotocol, entries[0].innerHTML, entries[1].children[0].value, 
+    entries[2].children[0].value, entries[4].children);
 
   let formData = new FormData();
   // Add extracted data to form.
-  formData.append("start", entries[1].innerHTML);
-  formData.append("end", entries[2].innerHTML);
+  formData.append("start", entries[1].children[0].value);
+  formData.append("end", entries[2].children[0].value);
   formData.append("protocol", entries[4].children[0].value);
   formData.append("subprotocol", subprotocol);
   formData.append("animal_id", entries[0].innerHTML);
@@ -132,6 +135,7 @@ async function UpdateAll(subprotocol, td, force) {
     alert("Something went wrong: " + e);
   }
 }
+
 async function UpdateProtocol(protocol, animal_id, force) {
   console.log(subprotocol, animal_id, force);
   let formData = new FormData();
@@ -157,6 +161,38 @@ async function UpdateProtocol(protocol, animal_id, force) {
     }
     else
       alert("Something went wrong: Error code: " + r.status);
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
+
+async function UpdateProtocolLive(entries, protocol) {
+  console.log("ENTRIES: ", entries);
+  const animal_id = entries[0].innerHTML;
+  let formData = new FormData();
+  // Add extracted data to form.
+  formData.append("protocol", protocol);
+  formData.append("animal_id", animal_id);
+  formData.append("force", false);
+  // Send request to server:
+  try {
+    // Send request:
+    let r = await fetch('/update/animal_data/protocol/live', {method: "POST", body: formData}); 
+    // Handle response:
+    if (r.status === 200) {
+      var selectElement = entries[5].children[0];
+      var response = await r.json();
+      console.log("RESPONSE: ", response);
+      var subprotocols = response["subprotocols"]
+      for (var i=0; i<=subprotocols.length; i++) {
+        console.log("Adding ", subprotocols[i]);
+        selectElement.add(new Option(subprotocols[i])); 
+      }
+    }
+    else {
+      let response_text = await r.text()
+      document.getElementById("animal_modal_text_3").innerHTML = response_text; 
+    }
   } catch(e) {
     alert("Something went wrong: " + e);
   }

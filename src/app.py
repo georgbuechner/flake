@@ -362,7 +362,7 @@ def update_animal_all():
     status = 400
     try:
         animal_id = request.form.get("animal_id")
-        txt, status = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
+        txt, status, _ = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
         print("set protocol: ", AnimalData.query.get(animal_id).protocol_escaped)
         txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
         print("set subprotocol: ", AnimalData.query.get(animal_id).subprotocol)
@@ -411,8 +411,30 @@ def update_animal_protocol():
     protocol = request.form.get("protocol")
     animal_id = request.form.get("animal_id")
     force = request.form.get("force") == "true"
-    txt, status = dmanager.set_protocol(animal_id, protocol, force) 
+    txt, status, _ = dmanager.set_protocol(animal_id, protocol, force) 
     return txt, status
+
+@app.route("/update/animal_data/protocol/live", methods=["POST"])
+@login_required
+def update_animal_protocol_live(): 
+    """! Updates the subprotocol of an animal and initializes experiment-data.
+    Live in the sence, that it responds with the now availible subprotocols,
+    which can be added to the sub-protocol dropdown "live".
+
+    @param subprotocol  the new subprotocol
+
+    @return error-/ success-message and status code.
+    """
+    protocol = request.form.get("protocol")
+    animal_id = request.form.get("animal_id")
+    txt, status, escaped_protocol = dmanager.set_protocol(animal_id, protocol, False) 
+    if status == 200:
+        protocol = Protocol.query.get(escaped_protocol)
+        if protocol:
+            response = {"subprotocols": protocol.get_subprotocols()}
+            return make_response(jsonify(response), status)
+    return txt, status
+
 
 @app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
 @login_required
