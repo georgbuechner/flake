@@ -52,12 +52,6 @@
         </th> 
         <th>
           <a 
-            href="/animal_data/{{animal_id}}/post_procedures"
-            {%- if category=="post_procedures" %} class="active" {%- endif -%} 
-          >Post Procedures</a>
-        </th> 
-        <th>
-          <a 
             href="/animal_data/{{animal_id}}/viruses"
             {%- if category=="viruses" %} class="active" {%- endif -%} 
           >Viruses</a>
@@ -172,42 +166,9 @@
         {% for entry in procedures %}
         <tr>
           <td name="name">{{entry.name}}</td>
-          <td name="start_date">{{entry.start_date if entry.start_date|length > 1 else "---"}}</td>
-          <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
+          <td name="start_date">{{entry.start_date if entry.start_date|length > 2 else "---"}}</td>
+          <td name="end_date">{{entry.end_date if entry.end_date|length > 2 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}}</td>
-          <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
-            <a class="mod thick" title="Remove entry.">-</a>
-          </td>
-          <td onclick="Add(this.parentNode);">
-            <i class="mod u" title="Edit this entry.">edit</i>
-          </td>
-        <tr>
-        {% endfor %}
-      </table>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
-
-    {% elif category=="post_procedures" %}
-
-      <h3>Post-operative Procedures
-        <button 
-          class="pure_btn" onclick="OpenModalNotes('post_procedures', '{{notes.post_procedures}}')"
-        >
-          <i class="fas fa-file-alt"></i>
-        </button>
-      </h3>
-      <table class="center" id="post_procedures">
-        <tr>
-          <th>Procedure name</th>
-          <th>Start date</th>
-          <th>End date</th>
-          <th>Experimenter</th>
-        </tr>
-        {% for entry in post_procedures %}
-        <tr>
-          <td name="name">{{entry.name}}</td>
-          <td name="start_date">{{entry.start_date if entry.start_date|length > 1 else "---"}}</td>
-          <td name="end_date">{{entry.end_date if entry.end_date|length > 1 else "---"}}</td>
-          <td name="experimenter">{{entry.experimenter}} </td>
           <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
             <a class="mod thick" title="Remove entry.">-</a>
           </td>
@@ -340,7 +301,7 @@
     {% if category == "medication" %}
       {% include "medication_edit.html" %}
 
-    {% elif category == "procedures" or category == "post_procedures" %}
+    {% elif category == "procedures" %}
       {% include "procedures_edit.html" %}
 
     {% elif category == "viruses" %}

@@ -117,7 +117,11 @@ class DManager:
     ) -> Tuple[str, int]:
         x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
-            return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
+            return (
+                f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 
+                409, 
+                None
+            )
         escaped_protocol = escape(protocol)
         animal_data = AnimalData.query.get(animal_id)
         animal_data.protocol = protocol
@@ -161,11 +165,7 @@ class DManager:
         # Initialize procedures:
         surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
-            days_after_start = int(protocol_procedure.days_after_start)
-            if  days_after_start > surgery_start or days_after_start == SACRIFICE_DATE: 
-                procedure = PostProcedure.from_default(animal_id, animal_data.user, protocol_procedure)
-            else: 
-                procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
+            procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
             db.session.add(procedure)
         # Initialize medication and virus:
         def create_entry_from_template(Template, Table):
@@ -266,11 +266,6 @@ class DManager:
             procedures = Procedure.query.filter(
                 Procedure.animal_id == animal_id, Procedure.name == x["procedure"]
             ) 
-            # Try PostProcedures
-            if not procedures.first(): 
-                procedures = PostProcedure.query.filter(
-                    PostProcedure.animal_id == animal_id, PostProcedure.name == x["procedure"]
-                )
             # Add medication for each found procedure
             for procedure in procedures:
                 for date in daterange_str(procedure.start_date, procedure.end_date):
@@ -307,10 +302,9 @@ class DManager:
         def to_string(elems, procedure): 
             return ", ".join([e.string() for e in elems if e.date in dates])
 
-        def procedures(procedures, post_procedures, medication, viruses):
+        def procedures(procedures, medication, viruses):
             viruses = sort_query(viruses, "date")
             procedures = sort_query(procedures, "start_date")
-            procedures.extend(sort_query(post_procedures, "start_date"))
             data = {}
             for p in procedures: 
                 # Skip if date not yet filled.
@@ -347,7 +341,6 @@ class DManager:
                     # Get all procedures with matching medication:
                     all_procedures = procedures(
                         Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
-                        PostProcedure.query.filter(PostProcedure.animal_id == animal_data.mla_num),
                         Medication.query.filter(Medication.animal_id == animal_data.mla_num),
                         Virus.query.filter(Virus.animal_id == animal_data.mla_num),
                     )
@@ -395,13 +388,10 @@ class DManager:
         def get_date(inc):
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
         # Update procedures: 
-        def update_procedure(table): 
-            for x in table.query.filter(table.animal_id == animal_id): 
-                default = PProcedure.query.get(x.protocol_entry_uuid)
-                x.start_date = get_date(int(default.days_after_start))
-                x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
-        update_procedure(Procedure) 
-        update_procedure(PostProcedure) 
+        for x in Procedure.query.filter(Procedure.animal_id == animal_id): 
+            default = PProcedure.query.get(x.protocol_entry_uuid)
+            x.start_date = get_date(int(default.days_after_start))
+            x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
         # Update viruses:
         for x in Virus.query.filter(Virus.animal_id == animal_id): 
             default_entry = PVirus.query.get(x.protocol_entry_uuid)
@@ -571,7 +561,7 @@ class DManager:
         def delete(table):
             for x in table.query.filter(table.animal_id == animal_id):
                 db.session.delete(x)
-        for x in [General, Medication, Procedure, PostProcedure, Virus]:
+        for x in [General, Medication, Procedure, Virus]:
             delete(x)
         db.session.commit()
         self.__update_stored(animal_id)
@@ -654,11 +644,10 @@ class DManager:
             dates_counter[0] += 1 if date_filled(entry.date) else 0
             dates_counter[1] += 1
         # Check procedures for dates
-        for Table in [Procedure, PostProcedure]: 
-            for entry in Table.query.filter(Table.animal_id == animal_id):
-                dates_counter[0] += 1 if date_filled(entry.start_date) else 0
-                dates_counter[0] += 1 if date_filled(entry.end_date) else 0
-                dates_counter[1] += 2 
+        for entry in Procedure.query.filter(Procedure.animal_id == animal_id):
+            dates_counter[0] += 1 if date_filled(entry.start_date) else 0
+            dates_counter[0] += 1 if date_filled(entry.end_date) else 0
+            dates_counter[1] += 2 
         return dates_counter[0], dates_counter[1]
 
     def __update_stored(self, animal_id): 
@@ -710,20 +699,15 @@ def fill_sacrifice_date(animal_id: str, protocol: str):
     animal_data = AnimalData.query.get(animal_id)
     if not date_filled(animal_data.death_date):
         return
-    def fill(Table, Template):
-        entries = Table.query.filter(Table.animal_id == animal_id) 
-        if entries.first():
-            for entry in entries: 
-                template = Template.query.get(entry.protocol_entry_uuid)
-                if not template: 
-                    print(f"for {table_to_json(entry)} could not get template")
-                    continue
-                if template and template.days_after_start == str(SACRIFICE_DATE):
-                    print("Updated date: ", animal_data.death_date)
-                    entry.set_date(animal_data.death_date)
-        db.session.commit()
-    fill(PostProcedure, PProcedure)
-    fill(Procedure, PProcedure)
+    entries = Procedure.query.filter(Procedure.animal_id == animal_id) 
+    if entries.first():
+        for entry in entries: 
+            template = PProcedure.query.get(entry.protocol_entry_uuid)
+            if not template: 
+                continue
+            if template and template.days_after_start == str(SACRIFICE_DATE):
+                entry.set_date(animal_data.death_date)
+    db.session.commit()
 
 
 def get_protocol_entry_by_uuid(Table, uuid: str):

@@ -850,7 +850,6 @@ class Procedure(db.Model):
         self.end_date = end
         self.experimenter = experimenter
         self.protocol_entry_uuid = protocol_entry_uuid
-        print(f"Added PostProcedure: {self.name}, {self.start_date}")
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
@@ -890,74 +889,6 @@ class Procedure(db.Model):
         self.start_date = date
         self.end_date = date
 
- 
-class PostProcedure(db.Model): 
-    __tablename__ = "post_procedures"
-
-    animal_id = db.Column(db.String, primary_key=True) 
-    name = db.Column(db.String, primary_key=True) 
-    start_date = db.Column(db.String, primary_key=True) 
-    end_date = db.Column(db.String, primary_key=False) 
-    experimenter = db.Column(db.String, primary_key=False) 
-    protocol_entry_uuid = db.Column(db.String, primary_key=False)
-
-    def __init__(
-        self, 
-        animal_id: str, 
-        name: str, 
-        start: str, 
-        end: str, 
-        experimenter: str, 
-        protocol_entry_uuid: str = ""
-    ): 
-        self.animal_id = animal_id 
-        self.name = name 
-        self.start_date = start
-        self.end_date = end
-        self.experimenter = experimenter
-        self.protocol_entry_uuid = protocol_entry_uuid
-        print(f"Added PostProcedure: {self.name}, {self.start_date}")
-
-    @classmethod 
-    def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure):
-        return cls(
-            animal_id, 
-            procedure.name, 
-            procedure.days_after_start, 
-            "", 
-            experimenter, 
-            procedure.uuid
-        )
-        
-
-    @classmethod 
-    def from_form(cls, animal_id: str, p: Dict[str, any]): 
-        return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
-
-    @classmethod 
-    def from_json(cls, procedure: Dict[str, any]): 
-        return cls.from_form(procedure["animal_id"], procedure)
-
-    def to_json(self): 
-        return {
-            "animal_id": self.animal_id,
-            "name": self.name, 
-            "start_date": self.start_date, 
-            "end_date": self.end_date, 
-            "experimenter": self.experimenter, 
-            "protocol_entry_uuid": self.protocol_entry_uuid
-        }
-
-    def update(self, p: Dict[str, any]):
-        self.start_date = p["start_date"]
-        self.end_date = p["end_date"]
-        self.experimenter = p["experimenter"]
-
-    def set_date(self, date): 
-        self.start_date = date
-        self.end_date = date
-
-    
 class Virus(db.Model): 
     __tablename__ = "virus"
 
@@ -1015,13 +946,11 @@ def table_to_json(table):
 EXPERIMENT_TABLES = {
     "medication": Medication, 
     "procedures": Procedure,
-    "post_procedures": PostProcedure,
     "viruses": Virus 
 }
 EXPERIMENT_TABLES_REDUCED = {
     "medication": Medication, 
     "procedures": Procedure,
-    "post_procedures": PostProcedure,
     "viruses": Virus 
 }
 
@@ -1056,7 +985,6 @@ ALL_TABLES = {
   "pgeneral": PGeneral, 
   "medication": Medication, 
   "procedure": Procedure, 
-  "post_procedure": PostProcedure, 
   "virus": Virus
 }
 

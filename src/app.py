@@ -228,9 +228,6 @@ def input(animal_id: str, category: str):
         medication=Medication.query.filter(Medication.animal_id == animal_id),
         viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "date"),
         procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
-        post_procedures=sort_query(
-            PostProcedure.query.filter(PostProcedure.animal_id == animal_id), "start_date"
-        ),
         availible_medication=availible_medication,
         availible_procedures=availible_procedures,
         availible_viruses=availible_viruses,
