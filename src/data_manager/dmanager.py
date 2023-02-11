@@ -407,7 +407,7 @@ class DManager:
         general = General.query.get(animal_id)
         general.watercontrol_mask = water_control_mask
         general.weights = weights
-        general.start_weight = json.loads(weights)[0]
+        general.set_start_weight(json.loads(weights)[0])
         db.session.commit()
         self.__update_stored(animal_id)
         return "success", 200
@@ -493,7 +493,7 @@ class DManager:
     def generate_weight_list(self, animal_id: str, start_weight: int) -> Tuple[str, int]:
         # Update start weight:
         general = General.query.get(animal_id)
-        general.start_weight = start_weight
+        general.set_start_weight(start_weight)
         db.session.commit()
         general = General.query.get(animal_id)
 
@@ -544,7 +544,7 @@ class DManager:
         # Update general data:
         general.watercontrol_mask = json.dumps(water_control_mask)
         general.weights = json.dumps(weights)
-        general.start_weight = round(estimated_weights[0], 2)
+        general.set_start_weight(round(estimated_weights[0], 2))
         db.session.commit()
         return "success", 200
 
