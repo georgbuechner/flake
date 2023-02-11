@@ -2,18 +2,18 @@
 
 body {
   font-family: Optima;
-  font-size: 12px;
+  font-size: 14px;
   background-color: #f0f0e8;
 }
 
 input {
-  font-size: 10px;
+  font-size: 12px;
 }
 button {
-  font-size: 10px;
+  font-size: 12px;
 }
 select{
-  font-size: 10px;
+  font-size: 12px;
 }
 
 a {
@@ -87,11 +87,11 @@ li {
   padding: 0.5rem;
 }
 .thick {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
 }
 .small {
-  font-size: 10px;
+  font-size: 12px;
   padding: 0.3rem;
 }
 
