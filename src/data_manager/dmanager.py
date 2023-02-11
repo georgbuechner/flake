@@ -272,6 +272,7 @@ class DManager:
                     x["date"] = date
                     medication.append(deepcopy(x))
         data["medication"] = medication
+        print(medication)
         return data
             
 

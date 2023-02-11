@@ -765,6 +765,7 @@ class Medication(db.Model):
             medication.concentration, 
             medication.dosis, 
             medication.weight_independant, 
+            toe_pinch=medication.kind == "Anesthetic",
             protocol_entry_uuid=medication.uuid
         )
 
