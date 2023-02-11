@@ -4,17 +4,18 @@
       <td><label for="name">Name:</label></td>
       <td><input type="text" name="name" id="name" placeholder="name"></td>
     </tr>
+
     <tr>
-      <td><label for="days_after_start">Days after start:</label></td>
+      <td><label for="procedure">Procedure:</label></td>
       <td>
-        <input 
-          type="text" 
-          name="days_after_start" 
-          id="days_after_start" 
-          placeholder="days after start"
-        />
+        <select type="text" name="procedure" id="procedure" autocomplete="off">
+        {% for procedure in procedures %}
+          <option value="{{procedure.name}}">{{procedure.name}}</option>
+        {% endfor %}
+        </select>
       </td>
     </tr>
+
     <tr>
       <td><label for="amount">Amount:</label></td>
       <td><input type="text" name="amount" id="amount" placeholder="amount"></td>

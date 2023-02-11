@@ -210,9 +210,13 @@ def input(animal_id: str, category: str):
         return redirect("/")
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = General.query.get(animal_id)
-    availible_viruses = PVirus.query.filter(PVirus.protocol == general.experiment)
-    availible_medication=PMedication.query.filter(PMedication.protocol == general.experiment)
-    availible_procedures=PProcedure.query.filter(PProcedure.protocol == general.experiment)
+    availible_viruses = sort_query(PVirus.query.filter(PVirus.protocol == general.experiment), "name")
+    availible_medication= sort_query(
+        PMedication.query.filter(PMedication.protocol == general.experiment), "name"
+    )
+    availible_procedures=sort_query(
+        PProcedure.query.filter(PProcedure.protocol == general.experiment), "name"
+    )
 
     # Create ref to previous page
     ref = False
@@ -225,13 +229,13 @@ def input(animal_id: str, category: str):
         "input.html", 
         stored=True,
         general=general,
-        medication=Medication.query.filter(Medication.animal_id == animal_id),
-        viruses=Virus.query.filter(Virus.animal_id == animal_id),
+        medication=sort_query(Medication.query.filter(Medication.animal_id == animal_id), "name"),
+        viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "name"),
         procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
         availible_medication=availible_medication,
         availible_procedures=availible_procedures,
         availible_viruses=availible_viruses,
-        availible_kinds=AKind.query.all(),
+        availible_kinds=sort_query(AKind.query.all(), "name"),
         json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
@@ -326,10 +330,10 @@ def availible(category: str):
     return render_template(
         "definitions.html", 
         category=category,
-        viruses=AVirus.query.all(),
-        procedures=sort_query(AProcedure.query.all(), "days_after_start"),
-        kinds=AKind.query.all(),
-        medications=AMedication.query.all()
+        viruses=sort_query(AVirus.query.all(), "name"),
+        procedures=sort_query(AProcedure.query.all(), "name"),
+        kinds=sort_query(AKind.query.all(), "name"),
+        medications=sort_query(AMedication.query.all(), "name")
     )
 
 @app.route("/settings/protocols", methods=["GET"])
@@ -649,6 +653,11 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     protocol = Protocol.query.get(escaped_protocol)
     full_protocol = f"{escaped_protocol}/{subprotocol}"
     data, definitions = dmanager.get_protocol_data(category, full_protocol)
+    procedures = PProcedure.query.filter(PProcedure.protocol == full_protocol)
+    if procedures.first(): 
+        print("Sorting procedures...")
+        procedures = sort_query(procedures, "name")
+        print("Done: ", procedures)
     if protocol:
         return render_template(
             "subprotocol.html", 
@@ -657,7 +666,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             category=category,
             data=data,
             definitions=definitions,
-            procedures=PProcedure.query.filter(PProcedure.protocol == full_protocol),
+            procedures=procedures,
             kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             msg=""

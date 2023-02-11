@@ -27,7 +27,7 @@
       <td><label for="procedure">Procedure:</label></td>
       <td>
         <select type="text" name="procedure" id="procedure" autocomplete="off">
-        {% for procedure in procedures %}
+        {% for procedure in availible_procedures %}
           <option value="{{procedure.name}}">{{procedure.name}}</option>
         {% endfor %}
       </td>
