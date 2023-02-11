@@ -30,7 +30,6 @@ class DCreator:
         self.fields = experiment_data
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
-        print("GENERAL: ", self.fields["general"])
 
     def create_from_template(self):
         # Create document:
@@ -57,7 +56,6 @@ class DCreator:
         for i, w in enumerate(weights):
             data["data"]["weights"].append((last_date.day+1, f"{w:.1f}")) 
             data["data"]["watercontrol"].append((last_date.day+1, "W" if watercontrols[i] else "")) 
-            print("start, cur, %: ", start_weight, weights[i], (start_weight-weights[i])/start_weight)
             data["data"][">20"].append(
                 (last_date.day+1, "C" if (start_weight-weights[i])/start_weight > 0.2 else "")
             ) 
@@ -97,7 +95,6 @@ class DCreator:
             table = self.doc.tables[i]
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
             for x, data in month["data"].items():
-                print(f"Month {i}, data: {x}")
                 if x not in remember_i:
                     for r, row in enumerate(table.rows):
                         for c in range(2):

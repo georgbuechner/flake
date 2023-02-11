@@ -189,13 +189,13 @@
       <table class="center" id="viruses">
         <tr>
           <th>Virus</th>
-          <th>Date</th>
+          <th>Procedure</th>
           <th>Amount</th>
         </tr>
         {% for entry in viruses %}
           <tr>
             <td name="name">{{entry.name}}</td>
-            <td name="date">{{entry.date if entry.date|length > 1 else "---"}}</td>
+            <td name="procedure">{{entry.procedure}}</td>
             <td name="amount">{{entry.amount}}</td>
             <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
               <a class="mod thick" title="Remove entry.">-</a>

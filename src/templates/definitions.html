@@ -107,7 +107,7 @@
       <table class="center">
         <tr>
           <th>Name</td> 
-          <th>Days After Start</td> 
+          <th>Procedure</td> 
           <th>Duration </td> 
           <th>Surgery?</td> 
         </tr>
@@ -141,7 +141,7 @@
         {% for virus in viruses %}
            <tr>
              <td name="name">{{virus.name}}</td> 
-             <td name="days_after_start">{{virus.days_after_start}}</td> 
+             <td name="procedure">{{virus.procedure}}</td> 
              <td name="amount">{{virus.amount}}</td> 
              <td onclick="Del('viruses', '{{virus.name}}');">
                <a class="mod thick" title="Remove entry.">-</a>

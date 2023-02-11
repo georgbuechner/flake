@@ -226,7 +226,7 @@ def input(animal_id: str, category: str):
         stored=True,
         general=general,
         medication=Medication.query.filter(Medication.animal_id == animal_id),
-        viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "date"),
+        viruses=Virus.query.filter(Virus.animal_id == animal_id),
         procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
         availible_medication=availible_medication,
         availible_procedures=availible_procedures,
@@ -326,7 +326,7 @@ def availible(category: str):
     return render_template(
         "definitions.html", 
         category=category,
-        viruses=sort_query(AVirus.query.all(), "days_after_start"),
+        viruses=AVirus.query.all(),
         procedures=sort_query(AProcedure.query.all(), "days_after_start"),
         kinds=AKind.query.all(),
         medications=AMedication.query.all()

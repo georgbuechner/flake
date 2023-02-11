@@ -287,7 +287,7 @@ class DManager:
         Table = PROTOCOL_TABLES[category]
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
         # Sort tables by days_after_start:
-        if category != "medication" and category != "allowed_animals":
+        if category == "procedure":
             protocol_data = sort_query(protocol_data, "days_after_start")
         # Get definitions:
         if category == "allowed_animals":
@@ -303,7 +303,6 @@ class DManager:
             return ", ".join([e.string() for e in elems if e.date in dates])
 
         def procedures(procedures, medication, viruses):
-            viruses = sort_query(viruses, "date")
             procedures = sort_query(procedures, "start_date")
             data = {}
             for p in procedures: 
@@ -323,11 +322,9 @@ class DManager:
                     data[(p.start_date, p.end_date)]["names"] += f", {p.name}"
 
                 meds = ", ".join([m.string() for m in medication if m.procedure == p.name])
-                dates = daterange_str(p.start_date, p.end_date)
-                virs = ", ".join([v.string() for v in viruses if v.date in dates])
+                virs = ", ".join([v.string() for v in viruses if v.procedure == p.name])
                 data[(p.start_date, p.end_date)]["medication"] += meds
-                if data[(p.start_date, p.end_date)]["viruses"] != virs:
-                    data[(p.start_date, p.end_date)]["viruses"] += virs
+                data[(p.start_date, p.end_date)]["viruses"] += virs
             return list(data.values())
 
         for sub in protocol.get_subprotocols():
@@ -392,10 +389,6 @@ class DManager:
             default = PProcedure.query.get(x.protocol_entry_uuid)
             x.start_date = get_date(int(default.days_after_start))
             x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
-        # Update viruses:
-        for x in Virus.query.filter(Virus.animal_id == animal_id): 
-            default_entry = PVirus.query.get(x.protocol_entry_uuid)
-            x.date = get_date(int(default_entry.days_after_start))
         db.session.commit()
         fill_sacrifice_date(animal_id, general.experiment)
         self.__update_stored(animal_id)
@@ -639,10 +632,6 @@ class DManager:
         animal_data = AnimalData.query.get(animal_id)
         if not ignore_death_date:
             dates_counter[0] += 1 if date_filled(animal_data.death_date) else 0
-        # Check viruses for dates
-        for entry in Virus.query.filter(Virus.animal_id == animal_id):
-            dates_counter[0] += 1 if date_filled(entry.date) else 0
-            dates_counter[1] += 1
         # Check procedures for dates
         for entry in Procedure.query.filter(Procedure.animal_id == animal_id):
             dates_counter[0] += 1 if date_filled(entry.start_date) else 0

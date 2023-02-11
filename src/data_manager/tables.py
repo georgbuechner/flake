@@ -283,28 +283,28 @@ class AVirus(db.Model):
     __tablename__ = "availible_viruses"
 
     name = db.Column(db.String, primary_key=True) 
-    days_after_start = db.Column(db.String, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
-    def __init__(self, name: str, days_after_start: str, amount: str):
+    def __init__(self, name: str, procedure: str, amount: str):
         self.name = name 
-        self.days_after_start = days_after_start 
+        self.procedure = procedure 
         self.amount = amount
 
     @classmethod 
     def from_json(cls, virus: Dict[str, any]): 
-        return cls(virus["name"], virus["days_after_start"], virus["amount"])
+        return cls(virus["name"], virus["procedure"], virus["amount"])
 
     def to_json(self): 
         return { 
             "name": self.name, 
-            "days_after_start": self.days_after_start,
+            "procedure": self.procedure,
             "amount": self.amount
         }
     
     def update(self, virus: Dict[str, any]): 
         self.name = virus["name"] 
-        self.days_after_start = virus["days_after_start"]
+        self.procedure = virus["procedure"]
         self.amount = virus["amount"]
 
 class PGeneral(db.Model):
@@ -535,21 +535,21 @@ class PVirus(db.Model):
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
     name = db.Column(db.String, primary_key=False) 
-    days_after_start = db.Column(db.String, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, uuid: str, protocol: str, name: str, days_after_start: str, amount: str
+        self, uuid: str, protocol: str, name: str, procedure: str, amount: str
     ):
         self.uuid = uuid
         self.protocol = protocol
         self.name = name 
-        self.days_after_start = days_after_start 
+        self.procedure = procedure 
         self.amount = amount
 
     @classmethod
     def from_form(cls, uuid: str, protocol: str, v: Dict[str, any]): 
-        return cls(uuid, protocol, v["name"], v["days_after_start"], v["amount"])
+        return cls(uuid, protocol, v["name"], v["procedure"], v["amount"])
 
     @classmethod 
     def from_json(cls, virus: Dict[str, any]): 
@@ -560,13 +560,13 @@ class PVirus(db.Model):
             "uuid": self.uuid, 
             "protocol": self.protocol,
             "name": self.name, 
-            "days_after_start": self.days_after_start,
+            "procedure": self.procedure,
             "amount": self.amount
         }
 
     def update(self, p: Dict[str, any]): 
         self.name = p["name"] 
-        self.days_after_start = p["days_after_start"] 
+        self.procedure = p["procedure"] 
         self.amount = p["amount"] 
 
 class PWatercontrol(db.Model): 
@@ -816,9 +816,6 @@ class Medication(db.Model):
     def string(self): 
         return f"{self.name} ({self.concentration} mg/ml)"
 
-    def set_date(self, date): 
-        self.date = date
-
     def update_amount(self, weight): 
         if not self.weight_independant: 
             float_dosis = get_float(self.dosis)
@@ -894,24 +891,24 @@ class Virus(db.Model):
 
     animal_id = db.Column(db.String, primary_key=True) 
     name = db.Column(db.String, primary_key=True) 
-    date = db.Column(db.String, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
     protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
-    def __init__(self, animal_id, name: str, date: str, amount: str, protocol_entry_uuid: str = ""): 
+    def __init__(self, animal_id, name: str, procedure: str, amount: str, protocol_entry_uuid: str = ""): 
         self.animal_id = animal_id 
         self.name = name
-        self.date = date 
+        self.procedure = procedure 
         self.amount = amount
         self.protocol_entry_uuid = protocol_entry_uuid
 
     @classmethod 
     def from_default(cls, animal_id: str, virus: PVirus): 
-        return cls(animal_id, virus.name, "", virus.amount, virus.uuid)
+        return cls(animal_id, virus.name, virus.procedure, virus.amount, virus.uuid)
 
     @classmethod 
     def from_form(cls, animal_id: str, virus: Dict[str, any]): 
-        return cls(animal_id, virus["name"], virus["date"], virus["amount"])
+        return cls(animal_id, virus["name"], virus["procedure"], virus["amount"])
 
     @classmethod 
     def from_json(cls, virus: Dict[str, any]): 
@@ -921,20 +918,17 @@ class Virus(db.Model):
         return {
             "animal_id": self.animal_id,
             "name": self.name, 
-            "date": self.date, 
+            "procedure": self.procedure, 
             "amount": self.amount,
             "protocol_entry_uuid": self.protocol_entry_uuid,
         }
 
     def update(self, virus: Dict[str, any]):
-        self.date = virus["date"]
+        self.procedure = virus["procedure"]
         self.amount = virus["amount"]
 
     def string(self): 
         return f"{self.name}"
-
-    def set_date(self, date): 
-        self.date = date
 
 def table_to_json(table): 
     """! Removes fields added by sql-alchamy. """
