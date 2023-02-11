@@ -67,7 +67,9 @@
     <p>Upload a csv-file which you have exported from pyrat. Make sure that the
     following fields are included: 
     <i>ID, Sex, Line / Strain (Name), DOB, Sacrifice date, Responsible, License
-      number, and Origin</i>. (It is also possible to use the german names)
+      number, and Origin</i> (It is also possible to use the german names).
+      You may also include the <i>Comments</i> field. When doing so, we will try to 
+      parse the start- and end-date to make it easier for you to import your data.
     </p>
     <br>
     <label>Upload pyrat csv: <label>
@@ -80,8 +82,9 @@
     <br><br>
     <p id="animal_modal_text"></p>
     <p id="animal_modal_text_2" style="display: none;">
-      For the following animals we found start- and (and
-      end-) date(s). Select protocol and subprotocol to directly apply start-date.
+	Select protocol and subprotocol to directly apply data. If the start- or 
+	end-date is already filled, then it was parsed from the pyrat comment. 
+	Otherwise you may select the dates now, or later.
     </p>
     <p id="animal_modal_table"></p>
     <p id="animal_modal_text_3"></p>

@@ -19,7 +19,14 @@
         </td>
         <td>
           <input 
-            type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].end}}"
+            type="date" min="{{entry.dob}}" 
+	    {% if mlas_with_date[entry.mla_num].end|length > 0 %}
+	    	value="{{mlas_with_date[entry.mla_num].end}}"
+	    {% elif entry.death_date|length > 0 %}
+	    	value="{{entry.death_date}}"
+	    {% else %} 
+	    	value=""
+	    {% endif %}
           ></input>
         </td>
         <td>{{entry.protocol_pyrat}}</td>
