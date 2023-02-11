@@ -64,13 +64,31 @@ async function ChangeUsername(email, user) {
   }
 }
 
-async function DeleteAccount(email) {
+async function DeleteAccount(email, logout) {
+  var query = (logout) ? "?logout=True" : ""
   try {
     // Send request:
-    let r = await fetch("/account/"+email+"/delete/", {method: "POST", body: new FormData}); 
+    let r = await fetch("/account/"+email+"/delete"+query, {method: "POST", body: new FormData}); 
     // Handle response:
     if (r.status === 200)
       window.location=window.location;
+    else 
+      alert("Unkown error. Sorry " + r.status);
+  } catch(e) {
+    console.log(e);
+    alert("Unkown error. Sorry", e);
+  }
+}
+
+async function SetAdmin(email, checked) {
+  console.log(email + " now " + checked);
+  var query = (checked) ? "?admin=True" : ""
+  try {
+    // Send request:
+    let r = await fetch("/account/"+email+"/set_admin"+query, {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (r.status === 200)
+      alert(email + " changed to " + ((checked) ? " admin " : "no-admin"));
     else 
       alert("Unkown error. Sorry " + r.status);
   } catch(e) {

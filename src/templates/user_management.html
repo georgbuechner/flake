@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>FLAKE - Overview</title>
+
+  <link href="/static/css/general.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="/static/js/general.js"></script>
+  <script src="/static/js/account.js"></script>
+</head>
+
+<body>
+  <div>
+    <a href="/">FLAKE</a>
+    <a class="active" href="/overview">Overview</a>
+  </div>
+  {% include "userinfos_header.html" %}
+
+  <div class="center_in_box">
+    {% include "in_box_header.html" %}
+
+    <h1><i>FLAKE</i> USER MANAGEMENT:</h1>
+
+    <table class="center">
+      <tr>
+        <th>E-Mail</th>
+        <th>Name</th>
+        <th>Admin</th>
+      </tr>
+      {% for user in users %}
+      <tr>
+        <td>{{user.email}}</td>
+        <td>{{user.name}}</td>
+        <td>
+          <input 
+             type="checkbox" 
+             name="surgery" 
+             id="surgery" 
+             onchange="SetAdmin('{{user.email}}', this.checked);"
+             {%- if user.admin -%}checked>{%- endif -%}
+        </td>
+        <td>
+            <i 
+              class="material-icons mini_icon"
+              title="Delete account of this user!"
+              onclick="DeleteAccount('{{user.email}}', false);"
+            >delete</i>
+        </td>
+
+      </tr>
+      {% endfor %}
+
+    <br><br>
+    <input type="submit" id="submit" value="Upload pyrat data" onclick="OpenModel('upload_modal')">
+
+  </div>
+
+
+</body>
+
+</html>

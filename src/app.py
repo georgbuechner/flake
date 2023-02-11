@@ -80,7 +80,6 @@ def main():
 
     @return Rendered html main-page from jinja2-template.
     """
-    print("PROTOCOLS: ", dmanager.protocols())
     return render_template(
         "index.html", 
         users=dmanager.users(), 
@@ -254,19 +253,21 @@ def input(animal_id: str, category: str):
 @app.route("/settings")
 @login_required
 def settings():
-    return render_template(
-        "settings.html", user_email=current_user.email, user_name=current_user.name
-    )
+    return render_template("settings.html")
+
+@app.route("/settings/user-management")
+@login_required
+def user_management():
+    if not current_user.admin:
+        return redirect("/") 
+    return render_template("user_management.html", users=User.query.all())
 
 @app.route("/account")
 @login_required
 def account():
     has_sig = has_signature(current_user.name)
     registered_users = [ x.name for x in User.query.all()]
-    print("registered_users: ", registered_users)
-    print("pyrat users: ", dmanager.users())
     users = [(x, x in registered_users) for x in dmanager.users()]
-    print("availible users: ", users)
     return render_template(
         "account.html", 
         users=users, 
@@ -284,15 +285,33 @@ def update_username(email, username):
         return "", 200
     return "User not found", 404
 
-@app.route("/account/<email>/delete/", methods=["POST"])
+@app.route("/account/<email>/delete", methods=["POST"])
 @login_required 
 def delete_username(email):
+    if not current_user.admin and email != current_user.email:
+        return "Only admins can delete accounts of other users", 403
     user = User.query.get(email)
     if user:
         db.session.delete(user)
-        logout_user()
+        db.session.commit()
+        if request.args.get("logout"):
+            logout_user()
         return redirect("/login")
     return "User not found", 404
+
+@app.route("/account/<email>/set_admin", methods=["POST"])
+@login_required 
+def change_admin_status(email):
+    if not current_user.admin:
+        return "Only admins can change admin status of other users", 403
+    user = User.query.get(email)
+    if user:
+        is_admin = request.args.get("admin")
+        user.admin = request.args.get("admin") == "True"
+        db.session.commit()
+        return redirect("/login")
+    return "User not found", 404
+
 
 @app.route("/signature/<user>")
 @login_required 
@@ -365,15 +384,12 @@ def protocol(escaped_protocol: str):
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
 def update_animal_all(): 
-    print("UPDATE ALL: ", request.form)
     txt = "failed"
     status = 400
     try:
         animal_id = request.form.get("animal_id")
         txt, status, _ = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
-        print("set protocol: ", AnimalData.query.get(animal_id).protocol_escaped)
         txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
-        print("set subprotocol: ", AnimalData.query.get(animal_id).subprotocol)
         txt, status = dmanager.update_dates(animal_id, request.form.get("start"), True)
         if date_filled(request.form.get("end")):
             txt, status = dmanager.set_death_date(animal_id, request.form.get("end"))
@@ -467,7 +483,6 @@ def update_dates(animal_id: str, autofill: bool):
 
     @return error-/ success-message and status code.
     """
-    print(f"Updateing dates: {animal_id}, {request.form['date']}")
     return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
@@ -479,7 +494,6 @@ def update_suffering(animal_id: str, suffering: str):
 
     @return error-/ success-message and status code.
     """
-    print(f"Updateing suffering: {animal_id}, {suffering}")
     general = General.query.get(animal_id)
     general.suffering = suffering 
     db.session.commit()
@@ -655,9 +669,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     data, definitions = dmanager.get_protocol_data(category, full_protocol)
     procedures = PProcedure.query.filter(PProcedure.protocol == full_protocol)
     if procedures.first(): 
-        print("Sorting procedures...")
         procedures = sort_query(procedures, "name")
-        print("Done: ", procedures)
     if protocol:
         return render_template(
             "subprotocol.html", 
