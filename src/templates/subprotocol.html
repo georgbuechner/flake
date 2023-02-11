@@ -134,14 +134,10 @@
       <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="medication" %}
-    <p>Concerning <i>days-after-surgery</i>-field:<br>
-      If <b>0</b>, then the drug is applied <i>once</i> at the day of the surgery.<br>
-      If <b>1</b>, then the drug is applied at the day of the surgery and the following day<br>
-      If <b>2</b>, then the drug is applied at the day of the surgery and the two
-      following days and so one with values 3, 4, 5, ... <br>
-      If <b><i>-1</i></b>, then the drug is applied at the date at which the animal was
-      sacrificed. 
-      <p>
+      <p>For weight-dependant amounts the (default) amount defined here is 
+      calculated from a hypothetical weight of 30g. 
+      Later the amount will be calculated from the actual weight of the
+      animal.</p>
       <table class="center">
         <tr>
           <th>Name</td> 
@@ -179,6 +175,9 @@
     {% elif category=="procedures" %}
       <p>Every protocol should add a post-operation-medication procedure and a sacrifice
       procedure! If they do not exist yet, please create in the definitions.</p>
+      <p>Also you can use <i>-1</i> to refer to the sacrifice-date of the
+      animal (usually applied to sacrifice-procedures).</p>
+
       <br>
       <table class="center">
         <tr>

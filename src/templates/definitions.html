@@ -63,47 +63,52 @@
     <br>
 
     {% if category=="" %}
-    <p>
-      Select one of the categories above, to add, view, edit or edit the
-      available medication, procedures, viruses, ... when adding protocols.
-    </P>
-    {% elif category=="medication" %}
-    <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
-    values (f.e. a hight or lower concentration, or a different sacrifice-type), 
-    you can change these values in your protocol.</p>
-      <table class="center">
-        <tr>
-          <th>Name</td> 
-          <th>Kind</td> 
-          <th>Procedure</td> 
-          <th>Amount (μl)</td> 
-          <th>Concentration (mg/ml)</td> 
-          <th>Doses (mg/kg)</td> 
-          <th>Weight Independent</td> 
-        </tr>
-        {% for medication in medications %}
-           <tr>
-             <td name="name">{{medication.name}}</td> 
-             <td name="kind">{{medication.kind}}</td> 
-             <td name="procedure">{{medication.procedure}}</td> 
-             <td name="amount">{{medication.amount}}</td> 
-             <td name="concentration">{{medication.concentration}}</td> 
-             <td name="dosis">{{medication.dosis}}</td> 
-             <td name="weight_independant">{{medication.weight_independant }}</td> 
-             <td onclick="Del('medication', '{{medication.name}}');">
-               <a class="mod thick" title="Remove entry.">-</a>
-             </td>
-             <td onclick="Add(this.parentNode);">
-               <i class="mod u" title="Edit this entry.">edit</i>
-             </td>
+      <p>
+        Select one of the categories above, to add, view, edit or edit the
+        available medication, procedures, viruses, ... when adding protocols.
+      </P>
 
+        {% elif category=="medication" %}
+        <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
+        values (f.e. a hight or lower concentration, or a different sacrifice-type), 
+        you can change these values in your protocol.</p>
+        <p>For weight-dependant amounts the (default) amount defined here is 
+        calculated from a hypothetical weight of 30g. 
+        Later the amount will be calculated from the actual weight of the
+        animal.</p>
+        <table class="center">
+          <tr>
+            <th>Name</td> 
+            <th>Kind</td> 
+            <th>Procedure</td> 
+            <th>Amount (μl)</td> 
+            <th>Concentration (mg/ml)</td> 
+            <th>Doses (mg/kg)</td> 
+            <th>Weight Independent</td> 
           </tr>
-        {% endfor %}
-      </table>
-      </table>
-      <br>
-      <br>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
+          {% for medication in medications %}
+             <tr>
+               <td name="name">{{medication.name}}</td> 
+               <td name="kind">{{medication.kind}}</td> 
+               <td name="procedure">{{medication.procedure}}</td> 
+               <td name="amount">{{medication.amount}}</td> 
+               <td name="concentration">{{medication.concentration}}</td> 
+               <td name="dosis">{{medication.dosis}}</td> 
+               <td name="weight_independant">{{medication.weight_independant }}</td> 
+               <td onclick="Del('medication', '{{medication.name}}');">
+                 <a class="mod thick" title="Remove entry.">-</a>
+               </td>
+               <td onclick="Add(this.parentNode);">
+                 <i class="mod u" title="Edit this entry.">edit</i>
+               </td>
+
+            </tr>
+          {% endfor %}
+        </table>
+        </table>
+        <br>
+        <br>
+        <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
 
     {% elif category=="procedures" %}
