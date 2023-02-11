@@ -83,6 +83,10 @@ async function Del(category, name, type, identifier, protocol) {
   }
 }
 
+function Restricted() {
+    alert("This action is restricted to admin-users!")
+}
+
 function CloseModal() { 
   var dialog = document.getElementById("edit_modal"); 
   dialog.close(); 

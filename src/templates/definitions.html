@@ -95,10 +95,22 @@
                <td name="concentration">{{medication.concentration}}</td> 
                <td name="dosis">{{medication.dosis}}</td> 
                <td name="weight_independant">{{medication.weight_independant }}</td> 
-               <td onclick="Del('medication', '{{medication.name}}');">
+               <td 
+                  {% if not current_user.admin %}
+                    onclick="Restricted();"
+                  {% else %}
+                    onclick="Del('medication', '{{medication.name}}');"
+                  {% endif %}
+                >
                  <a class="mod thick" title="Remove entry.">-</a>
                </td>
-               <td onclick="Add(this.parentNode);">
+               <td 
+                  {% if not current_user.admin %}
+                    onclick="Restricted();"
+                  {% else %}
+                    onclick="Add(this.parentNode);"
+                  {% endif %}
+                >
                  <i class="mod u" title="Edit this entry.">edit</i>
                </td>
 
@@ -108,7 +120,15 @@
         </table>
         <br>
         <br>
-        <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
+        <a 
+          class="mod thick" 
+          title="Add new entry." 
+          {% if not current_user.admin %}
+            onclick="Restricted();"
+          {% else %}
+            onclick="Add(undefined, '{{not current_user.admin}}');"
+          {% endif %}
+        >+</a>
 
 
     {% elif category=="procedures" %}
