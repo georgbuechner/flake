@@ -65,9 +65,12 @@
     {% if category=="" %}
     <p>
       Select one of the categories above, to add, view, edit or edit the
-      availible medication, procedures, viruses, ... when adding protocols.
+      available medication, procedures, viruses, ... when adding protocols.
     </P>
     {% elif category=="medication" %}
+    <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
+    values (f.e. a hight or lower concentration, or a different sacrifice-type), 
+    you can change these values in your protocol.</p>
       <table class="center">
         <tr>
           <th>Name</td> 
@@ -75,8 +78,8 @@
           <th>Procedure</td> 
           <th>Amount (μl)</td> 
           <th>Concentration (mg/ml)</td> 
-          <th>Dosis (mg/kg)</td> 
-          <th>Weight Independant</td> 
+          <th>Doses (mg/kg)</td> 
+          <th>Weight Independent</td> 
         </tr>
         {% for medication in medications %}
            <tr>
@@ -104,10 +107,16 @@
 
 
     {% elif category=="procedures" %}
+      <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
+      values (f.e. a longer duration or different 'days-after-start'), 
+      you can change these values in your protocol.</p>
+      <p>Also you can use <i>-1</i> to refer to the sacrifice-date of the
+      animal (usually applied to sacrifice-procedures).</p>
+
       <table class="center">
         <tr>
           <th>Name</td> 
-          <th>Procedure</td> 
+          <th>Days after start</td> 
           <th>Duration </td> 
           <th>Surgery?</td> 
         </tr>
@@ -132,10 +141,14 @@
       <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="viruses" %}
+      <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
+      values (f.e. a larger amount or a different procedure), 
+      you can change these values in your protocol.</p>
+
       <table class="center">
         <tr>
           <th>Name</td> 
-          <th>Days After Start</td> 
+          <th>Procedure</td> 
           <th>Amount</td> 
         </tr>
         {% for virus in viruses %}
