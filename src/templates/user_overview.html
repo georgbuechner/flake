@@ -6,7 +6,7 @@
   <title>FLAKE - {{user}}</title>
 
   <link href="/static/css/general.css" rel="stylesheet">
-  <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="/static/js/general.js"></script>
 </head>
 
@@ -19,7 +19,8 @@
   {% include "userinfos_header.html" %}
 
   <div class="center_in_box">
-    <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
+    {% include "in_box_header.html" %}
+
     <h1><i>FLAKE</i>DATABASE: <i>{{user|upper}}</i></h1>
 
     {% include "overview_table.html" %}

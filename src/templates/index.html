@@ -8,7 +8,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
-  <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
   <link href="static/css/general.css" rel="stylesheet">
 </head>
@@ -20,13 +21,7 @@
   {% include "userinfos_header.html" %}
 
   <div class="center_in_box">
-    <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
-    <div style="float: right; margin: -30px;"> 
-      <a href="/settings">SETTINGS</a> 
-      <a href="/account" style="margin: 5px;">
-          account<i style="margin-left: 2px;" class="fas fa-user-circle"></i>
-      </a> 
-    </div>
+    {% include "in_box_header.html" %}
     <h1><i>FLAKE</i> DATABASE</h1>
 
     <p style="font-size: 8px">This is a <b>beta-version</b>. If you experience any errors, please file an issue

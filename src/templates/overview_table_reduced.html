@@ -1,6 +1,7 @@
 <table class="center">
     <tr>
       <th>ID</th>
+      <th>DOB</th>
       <th>Start</th>
       <th>End</th>
       <th>Protocol (pyrat)</th>
@@ -10,6 +11,7 @@
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
         <td>{{entry.mla_num}}</td>
+        <td>{{entry.dob}}</td>
         <td>
           <input 
             type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].start}}"

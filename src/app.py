@@ -187,6 +187,13 @@ def protocol_overview(protocol: str):
         protocols=dmanager.protocols_and_subprotocols(),
     )
 
+@app.route("/animal_data/delete/<animal_id>", methods=["POST"])
+@login_required
+def delete_animal_data(animal_id: str): 
+    """! Updates an entry in an animals experiment data. """
+    text, status = dmanager.delete_animal_data(animal_id)
+    return text, status
+
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
 @app.route("/animal_data/<animal_id>/<category>")
 @login_required

@@ -1,5 +1,6 @@
   <table class="center">
     <tr>
+      {%- if not animal_id -%}<th></th>{%- endif -%}
       <th>ID</th>
       <th>Responsible</th>
       <th>Sex</th>
@@ -13,6 +14,16 @@
     </tr>
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
+        {% if not animal_id %}
+          <td>
+            {% if entry.user == current_user.name or current_user.admin == True %}
+              <i 
+                class="material-icons mini_icon"
+                onclick="DeleteAnimalData('{{entry.mla_num}}');"
+                >delete</i>
+            {% endif %}
+          </td>
+        {% endif %}
         <td>{{entry.mla_num}}</td>
         <td>{{entry.user}}</td>
         <td>{{entry.sex}}</td>
@@ -21,25 +32,29 @@
         <td>
           {{entry.death_date}} 
           <i 
-              style="margin-left: 2px;" 
-              class="fas fa-pen mod small" 
-              onclick="OpenEditDeathModel('{{entry.mla_num}}');"
-          ></i>
+            style="margin-left: 2px;" 
+            class="material-icons mini_icon"
+            onclick="OpenEditDeathModel('{{entry.mla_num}}');"
+          >mode_edit</i>
         </td>
         <td>{{entry.supplier}}</td>
         <td>{{entry.protocol_pyrat}}</td>
         <td>
-          <select 
-            id="protocol_flake" autocomplete="off" 
-            onchange="UpdateProtocol(this.value, this.parentNode.parentNode.children[0].innerHTML, false)"
-          >
-            <option value="---">---</option>
-            {% for protocol in protocols.keys() %}
-            <option 
-                value="{{protocol}}" {%- if protocol==entry.protocol -%}selected{%- endif -%}
-            >{{protocol}}</option>
-            {% endfor %}
-          </select>
+          {% if animal_id %}
+            {{entry.protocol}}
+          {% else %}
+            <select 
+              id="protocol_flake" autocomplete="off" 
+              onchange="UpdateProtocol(this.value, this.parentNode.parentNode.children[1].innerHTML, false)"
+            >
+              <option value="---">---</option>
+              {% for protocol in protocols.keys() %}
+              <option 
+                  value="{{protocol}}" {%- if protocol==entry.protocol -%}selected{%- endif -%}
+              >{{protocol}}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
         </td>
         <td>
           {% if animal_id %}
@@ -47,7 +62,7 @@
           {% else %}
             <select 
               id="subprotocol" autocomplete="off" 
-              onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[0].innerHTML, false)"
+              onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[1].innerHTML, false)"
             >
               <option value="---" selected>---</option>
               {% for sub in protocols[entry.protocol] %}
@@ -58,14 +73,16 @@
             </select>
           {% endif %}
         </td>
-        {% if entry.subprotocol != "---" and (entry.user == current_user.name or current_user.admin == True) %}
-          <td><a href="/animal_data/{{entry.mla_num}}" >edit experiment</a></td>
-        {% elif entry.subprotocol != "---" and entry.user != current_user.name %}
-          <td>
-            <a href="/animal_data/{{entry.mla_num}}" onclick="return NotResponsible();">
-              edit experiment
-            </a>
-          </td>
+        {% if not animal_id %}
+          {% if entry.subprotocol != "---" and (entry.user == current_user.name or current_user.admin == True) %}
+            <td><a href="/animal_data/{{entry.mla_num}}" >edit experiment</a></td>
+          {% elif entry.subprotocol != "---" and entry.user != current_user.name %}
+            <td>
+              <a href="/animal_data/{{entry.mla_num}}" onclick="return NotResponsible();">
+                edit experiment
+              </a>
+            </td>
+          {% endif %}
         {% endif %}
       </tr>
     {% endfor %}

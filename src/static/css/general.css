@@ -129,3 +129,9 @@ dialog {
 .notes_txt {
   margin-bottom: 10px;
 }
+
+.mini_icon {
+  padding: 5px;
+  font-size: 17px !important;
+  cursor: pointer;
+}

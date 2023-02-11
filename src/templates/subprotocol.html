@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <title>FLAKE - {{protocol.name}} {{subprotocol}}</title>
 
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link href="/static/css/general.css" rel="stylesheet">
   <script src="/static/js/protocols.js"></script>
   <script src="/static/js/definitions.js"></script>
@@ -22,7 +23,8 @@
   {% include "userinfos_header.html" %}
 
   <div class="center_in_box">
-    <div style="float: left; margin: -30px;"><i>LARKUM LAB</i></div>
+    {% include "in_box_header_settings.html" %}
+
     <h1><i>FLAKE</i> DATABASE</h1>
 
     <h2>{{protocol.name}} {{subprotocol}}</i></h2>

@@ -144,6 +144,7 @@ class DManager:
         x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
+        print("Accessing animal_data: ", animal_id)
         animal_data = AnimalData.query.get(animal_id)
         animal_data.subprotocol = subprotocol
         if subprotocol == "---":
@@ -210,6 +211,21 @@ class DManager:
         db.session.commit()
         # Update stored? of animal-data
         self.__update_stored(animal_id)
+
+    def delete_animal_data(self, animal_id): 
+        tables_to_delete = list(EXPERIMENT_TABLES.values())
+        tables_to_delete.append(General)
+        animal_data = AnimalData.query.get(animal_id)
+        if animal_data:
+            for Table in tables_to_delete: 
+                rows = Table.query.filter(Table.animal_id == animal_id)
+                if rows.first():
+                    for row in rows:
+                        db.session.delete(row)
+            db.session.delete(animal_data)
+            db.session.commit()
+            return "", 200
+        return "Animal not found", 404
 
     def delete_experiment_data_entry(
         self, animal_id: str, category: str, name: str, procedure: str = ""
