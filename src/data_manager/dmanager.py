@@ -259,20 +259,23 @@ class DManager:
         data["death_drugs"] = [
             x for x in data["medication"] if "sacrifice" in x["procedure"].lower()
         ]
-        medication = []
-        for x in data["medication"]: 
-            print(f"Searching procedure {x['procedure']} for {x['name']}")
-            # Try Procedures
-            procedures = Procedure.query.filter(
-                Procedure.animal_id == animal_id, Procedure.name == x["procedure"]
-            ) 
-            # Add medication for each found procedure
-            for procedure in procedures:
-                for date in daterange_str(procedure.start_date, procedure.end_date):
-                    x["date"] = date
-                    medication.append(deepcopy(x))
-        data["medication"] = medication
-        print(medication)
+        def get_entries_with_dates(table_name: str) -> List[Dict[str, any]]:
+            entries_with_date = []
+            for x in data[table_name]: 
+                print(f"Searching procedure {x['procedure']} for {x['name']}")
+                # Try Procedures
+                procedures = Procedure.query.filter(
+                    Procedure.animal_id == animal_id, Procedure.name == x["procedure"]
+                ) 
+                # Add entry for each found procedure
+                for procedure in procedures:
+                    for date in daterange_str(procedure.start_date, procedure.end_date):
+                        x["date"] = date
+                        entries_with_date.append(deepcopy(x))
+            return entries_with_date
+        data["medication"] = get_entries_with_dates("medication")
+        data["viruses"] = get_entries_with_dates("viruses")
+        print(data)
         return data
             
 
