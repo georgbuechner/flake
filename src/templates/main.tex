@@ -196,8 +196,8 @@
         {% else %}
       \setlength{\fboxsep}{0.4cm}
         {% endif %}
-      % \parbox[t]{7cm}{
-        \begin{minipage}{\linewidth}
+      \parbox[t]{7cm}{
+        %\begin{minipage}{\linewidth}
           \small{
             {% if p.start == p.end %}
               \ul{ {{p.start}}: {{p.names}}}\\
@@ -207,7 +207,8 @@
             {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
             {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
           }
-        \end{minipage} &
+        % \end{minipage} &
+    } &
       {% if loop.index0 == 0 %}
           \begin{minipage}{0.5\linewidth}
             \vspace{2pt}
