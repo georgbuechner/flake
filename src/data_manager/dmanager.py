@@ -16,7 +16,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import sort_query, escape
+from utils.utils import sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
 
@@ -339,6 +339,10 @@ class DManager:
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
                     animal_data = AnimalData.query.get(general.animal_id)
+                    path, _ = get_signature_path(animal_data.user)
+                    signature = "default.png"
+                    if path: 
+                        signature = path[path.index("/")+1:] # remove `signatures/` from path
                     # Get all procedures with matching medication:
                     all_procedures = procedures(
                         Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
@@ -355,6 +359,7 @@ class DManager:
                         end_date = "???"
                     data["animals"].append({
                         "general": general, 
+                        "signature": signature, 
                         "animal_data": animal_data, 
                         "procedures": all_procedures,
                         "start": convert(general.start),

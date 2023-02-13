@@ -17,6 +17,7 @@ from cryptography.fernet import Fernet
 from utils.utils import *
 from utils.dt_utils import * 
 
+SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
 SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
 
@@ -28,6 +29,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
+
 
 def create_root_user_if_not_exists():
     root_email = get_root_user(SERVER_CONFIG_PATH)
@@ -621,14 +623,20 @@ def generate_paragraph_9(escaped_protocol: str):
     f.write(txt) 
     f.close()
 
+    # Copy images to temp location
     shutil.copy("logo.jpg", f"{tmp_path}")
+    for filename in os.listdir(SIGNATURE_PATH):
+        f = os.path.join(SIGNATURE_PATH, filename)
+        # checking if it is a file
+        if os.path.isfile(f):
+            shutil.copy(f, f"{tmp_path}")
 
     # proc=subprocess.Popen(["pdflatex", full_path]) 
     proc=subprocess.Popen(
         ["pdflatex", full_path], 
         cwd=tmp_path, 
-        # stdout=subprocess.DEVNULL,
-        # stderr=subprocess.STDOUT
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)

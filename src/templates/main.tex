@@ -19,8 +19,6 @@
 \usepackage{longtable}
 \usepackage{multirow}
 
-% \graphicspath{ {../images/} }
-
 \usepackage{hyperref}
 
 \usepackage[autostyle]{csquotes}
@@ -230,7 +228,10 @@
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{1.2cm}{Entfällt} &
         \setlength{\fboxsep}{0.4cm}
-        \parbox[t]{2cm}{ {{a.animal_data.user}} }&
+        \parbox[t]{2cm}{ 
+            {{a.animal_data.user}},
+            \includegraphics[width=1.9cm]{ {{a.signature}}}
+        }&
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{1.7cm}{ ML }\\
       {% else %}
