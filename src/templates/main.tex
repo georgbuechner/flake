@@ -11,6 +11,7 @@
 \usepackage{fancyhdr}
 \usepackage{soul} % underline with linebreak (\uline, \ul)
 \usepackage{hyperref}
+\usepackage{enumitem}
 
 % tables
 \usepackage{array}
@@ -115,29 +116,33 @@
   \hline 
   \multirow{2}{*}{
     \parbox[t]{1.9cm}{
+    \vspace{-7mm}
     \begin{center}
       Beginn und Abschluss
     \end{center}
   }} &
   \multicolumn{3}{c|}{Verwendete Tiere} &
   \multirow{2}{*}{\parbox{1.5cm}{
+    \vspace{-5mm}
     \begin{center}
-    \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
+      \small{Herkunft der Tiere (Anschrift)}\\ \scriptsize{bei Primaten, Hund, Katze: Kennzeichnung} 
     \end{center}
   }}&
   \multirow{2}{*}{\parbox[c]{7cm}{
+    \vspace{-5mm}
     \begin{center}
       Art und Auführung \textbf{\underline{jedes}} Einzelversuchs (inkl.~Betäubungsverfahren, Tötungsmethode), sowie besondere Vorkommnisse.
     \end{center}
   }} &
   \multirow{2}{*}{\begin{turn}{-90}\small{Sub-}\end{turn} \begin{turn}{-90}\small{protocol}\end{turn}} &
   \multirow{2}{*}{\parbox[c]{2cm}{
+    \vspace{-5mm}
     \begin{center}
       \textbf{\underline{tatsächlicher}} Schweregrad (Belasung) 
       \footnotesize{nach § 35 Abs.~2 Nr.~4 TierSchVersV}
     \end{center}
   }} &
-  \multirow{2}{*}{\begin{turn}{-90}\small{Wieder-}\end{turn} \begin{turn}{-90}\small{verwendung (j/n)}\end{turn}} &
+  \multirow{2}{*}{\begin{turn}{-90}\small{Wieder-}\end{turn}\begin{turn}{-90}\small{verwendung (j/n)} \end{turn} } &
   \multicolumn{2}{c|}{
     \parbox[c]{2.4cm}{
       \begin{center}
@@ -148,13 +153,19 @@
     }%
   } &
   \multirow{2}{*}{\parbox[c]{2cm}{
-    Name \textbf{\underline{und}} Unterschrift \\
-    \small{Versuchs-durchführender}
+    \vspace{-5mm}
+    \begin{center}
+      Name \textbf{\underline{und}} Unterschrift \\
+      \small{Versuchs-durchführender}
+    \end{center}
   }} &
   \multirow{2}{*}{\parbox[c]{1.7cm}{
-    Unterschrift \\
-    \smallskip 
-    \small{Leiter / Stellvertreter }
+    \vspace{-6mm}
+    \begin{center}
+      Unterschrift \\
+      \smallskip 
+      \small{Leiter / Stellvertreter }
+    \end{center}
   }} \\
       \cline{2-4}
       \cline{10-11}
@@ -187,7 +198,8 @@
         {% else %}
       \setlength{\fboxsep}{0.4cm}
         {% endif %}
-      \parbox[t]{7cm}{
+      % \parbox[t]{7cm}{
+        \begin{minipage}{\linewidth}
           \small{
             {% if p.start == p.end %}
               \ul{ {{p.start}}: {{p.names}}}\\
@@ -197,12 +209,18 @@
             {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
             {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
           }
-        }&
+        \end{minipage} &
       {% if loop.index0 == 0 %}
-        \setlength{\fboxsep}{0.4cm}
-        \parbox[t]{2cm}{ 
-          \begin{turn}{-90}\small{ {{d.experiment}}}\end{turn}  
-        } &
+          \begin{minipage}{0.5\linewidth}
+            \vspace{2pt}
+            {% if d.experiment|length > 1 %}
+              \begin{turn}{-90}\small{ {{d.experiment}}}\end{turn}  
+            {% else %} 
+              \small{ {{d.experiment}}}
+            {% endif %}
+            \vspace{2pt}
+          \end{minipage}
+          &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{2cm}{ {{a.general.suffering}}} &
         \setlength{\fboxsep}{0.4cm}
