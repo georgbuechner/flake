@@ -85,6 +85,7 @@
               id="allowed_users" 
               placeholder="allowed users"
               value="{{data['allowed_users'] if 'allowed_users' in data}}"
+              onclick="OpenAllowedUsers('allowed_users_modal');"
             ></td>
           </tr>
           <tr> 
@@ -281,6 +282,26 @@
     {% endif %}
     <br>
   </dialog>
+
+  {% if "allowed_users" in data %}
+    <dialog id="allowed_users_modal" style="height: 350px; width: 80%;" category="">
+      <button onclick="CloseAllowedUsers()" style="float: right;">Close</button>
+      <h2>Allowed Users</h2>
+
+      <table id="allowed_users_table" class="center">
+        <tr>
+          <select onchange="AddAllowedUser(this.value)";>
+            <option selected>---</option>
+            {% for user in users %}
+              <option>{{user}}</option>
+            {% endfor %}
+          </select>
+        </tr>
+      </table>
+
+      <br>
+    </dialog>
+  {% endif %}
 
 
  </body>

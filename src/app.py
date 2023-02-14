@@ -685,6 +685,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             procedures=procedures,
             kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
+            users=dmanager.users(), 
             msg=""
         )
 

@@ -46,7 +46,6 @@ class DManager:
                 self.keys_per_language[language] = fields.keys()
         with open("resources/lines.json") as f:
             self.lines = json.load(f)
-        print(self.mapping)
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently

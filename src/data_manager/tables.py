@@ -398,9 +398,9 @@ class PProcedure(db.Model):
     surgery = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
-        self, uuid: str, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
+        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol
         self.name = name 
         self.days_after_start = days_after_start 
@@ -408,15 +408,15 @@ class PProcedure(db.Model):
         self.surgery = surgery
 
     @classmethod
-    def from_form(cls, uuid :str, protocol: str, p: Dict[str, any]): 
+    def from_form(cls, protocol: str, p: Dict[str, any]): 
         surgery = AProcedure.query.get(p["name"]).surgery
         return cls(
-            uuid, protocol, p["name"], p["days_after_start"], p["duration"], surgery
+            protocol, p["name"], p["days_after_start"], p["duration"], surgery
         )
 
     @classmethod 
     def from_json(cls, procedure: Dict[str, any]): 
-        return cls.from_form(procedure["uuid"], procedure["protocol"], procedure)
+        return cls.from_form(procedure["protocol"], procedure)
 
     def update(self, procedure: Dict[str, any]): 
         self.name = procedure["name"] 

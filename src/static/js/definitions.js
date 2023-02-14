@@ -136,3 +136,47 @@ function Set(elem, availible) {
     }
   }
 }
+
+function OpenAllowedUsers() {
+  var users = document.getElementById("allowed_users").value;
+  users.split(", ").forEach(function(user) {
+    AddAllowedUser(user); 
+  });
+  var dialog = document.getElementById("allowed_users_modal"); 
+  dialog.showModal(); 
+}
+
+function CloseAllowedUsers() {
+  var table = document.getElementById("allowed_users_table");
+  var users = "";
+  while(table.rows.length > 1) {
+    users += table.rows[1].cells[0].innerHTML + ", ";
+    table.deleteRow(1);
+  }
+  if (users.length >=2) 
+    users = users.substring(0, users.length-2);
+  document.getElementById("allowed_users").value = users;
+  var dialog = document.getElementById("allowed_users_modal"); 
+  dialog.close(); 
+}
+
+function AddAllowedUser(user) {
+  if (user == "---")
+    return;
+  var table = document.getElementById("allowed_users_table");
+  var row = table.insertRow();
+  var cell = row.insertCell();
+  var text = document.createTextNode(user);
+  cell.appendChild(text);
+  var cell_2 = row.insertCell();
+  var button = document.createElement("input");
+  button.type = "button";
+  button.value = "remove";
+  button.setAttribute("onclick", "RemoveAllowedUser(this.parentNode.parentNode);");
+  cell_2.appendChild(button);
+}
+
+function RemoveAllowedUser(elem) {
+  var table = document.getElementById("allowed_users_table");
+  elem.parentNode.removeChild(elem);
+}
