@@ -218,6 +218,11 @@ def input(animal_id: str, category: str):
     availible_procedures=sort_query(
         PProcedure.query.filter(PProcedure.protocol == general.experiment), "name"
     )
+    allowed_users = [] 
+    protocol_general = PGeneral.query.filter(PGeneral.protocol == general.experiment)
+    if protocol_general.first(): 
+        allowed_users = protocol_general.first().allowed_users.split(", ")
+    print(f"str: {protocol_general.first().allowed_users}, list: {allowed_users}")
 
     # Create ref to previous page
     ref = False
@@ -240,6 +245,7 @@ def input(animal_id: str, category: str):
         json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
+        allowed_users=allowed_users,
         animal_id=animal_id,
         animal_data=[animal_data],
         death_date=death_date,

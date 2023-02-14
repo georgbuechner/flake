@@ -32,15 +32,14 @@
     <tr>
       <td><label for="experimenter">Experimenter:</label></td>
       <td>
-        <input 
-          type="text" 
-          name="experimenter" 
-          id="experimenter"
-          placeholder="experimenter"
-        />
+        <select name="experimenter" id="experimenter" autocomplete="off">
+          <option>---</option>
+          {% for user in allowed_users %} 
+            <option>{{user}}</option>
+          {% endfor %}
+        </select>
       </td>
     </tr>
-
   </table>
   <br><br>
   <input type='submit' name='submit'/>
