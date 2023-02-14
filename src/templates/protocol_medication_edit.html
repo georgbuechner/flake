@@ -41,8 +41,14 @@
 
     <tr>
       <td><label for="weight_independant">Weight Independant?:</label></td>
-      <td><input type="checkbox" name="weight_independant" id="weight_independant"></td>
+      <td>
+        <input 
+          type="checkbox" name="weight_independant" id="weight_independant"
+          onchange="SwitchWeightDependant(this.checked);"
+        ></input>
+      </td>
     </tr>
+
     <tr>
       <td><label for="amount">Amount [μl]:</label></td>
       <td><input type="text" name="amount" id="amount" placeholder="amount"></td>

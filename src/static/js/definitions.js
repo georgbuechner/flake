@@ -7,16 +7,10 @@ function Add(entry) {
         var elem = document.getElementById(cur_name);
         if (elem.type == "checkbox") {
           elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
-          if (entry.children[i].innerHTML === "True" && cur_name === "weight_independant") {
-            document.getElementById("amount").removeAttribute("readonly");
-            document.getElementById("dosis").setAttribute("readonly", "readonly");
-            document.getElementById("dosis").title = "Dosis cannot be set if weight-independant.";
-          }
-          else if (cur_name == "weight_independant") {
-            document.getElementById("dosis").removeAttribute("readonly");
-            document.getElementById("amount").setAttribute("readonly", "readonly");
-            document.getElementById("amount").title = "Amount is calculated based on a default of 30g oder the animals weight.";
-          }
+          if (entry.children[i].innerHTML === "True" && cur_name === "weight_independant")
+            BlockDosis();
+          else if (cur_name == "weight_independant")
+            BlockAmount();
         }
         else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
           && entry.children[i].innerHTML == "---" 
@@ -33,6 +27,24 @@ function Add(entry) {
   var dialog = document.getElementById("edit_modal"); 
   dialog.showModal();
 } 
+
+function BlockAmount() {
+  document.getElementById("dosis").removeAttribute("readonly");
+  document.getElementById("amount").setAttribute("readonly", "readonly");
+  document.getElementById("amount").title = "Amount is calculated based on a default of 30g oder the animals weight.";
+}
+function BlockDosis() {
+  document.getElementById("amount").removeAttribute("readonly");
+  document.getElementById("dosis").setAttribute("readonly", "readonly");
+  document.getElementById("dosis").title = "Dosis cannot be set if weight-independant.";
+}
+
+function SwitchWeightDependant(checked) {
+  if (checked)
+    BlockDosis();
+  else
+    BlockAmount();
+}
 
 function RemoveDateSuggest(elem) {
     elem.classList.remove("date_suggest");
