@@ -152,7 +152,7 @@ def overview():
     """
     return render_template(
         "overview.html", 
-        animal_data=AnimalData.query.all(),
+        animal_data=sort_query(AnimalData.query.all(), "dob"),
         protocols=dmanager.protocols_and_subprotocols(),
     )
 
@@ -168,7 +168,7 @@ def user_overview(user: str):
     return render_template(
         "user_overview.html", 
         user=user, 
-        animal_data=AnimalData.query.filter(AnimalData.user == user),
+        animal_data=sort_query(AnimalData.query.filter(AnimalData.user == user), "dob"),
         protocols=dmanager.protocols_and_subprotocols(),
     )
 
@@ -184,7 +184,7 @@ def protocol_overview(protocol: str):
     return render_template(
         "protocol_overview.html", 
         protocol=protocol,
-        animal_data=AnimalData.query.filter(AnimalData.protocol_escaped == protocol),
+        animal_data=sort_query(AnimalData.query.filter(AnimalData.protocol_escaped == protocol), "dob"),
         protocols=dmanager.protocols_and_subprotocols(),
     )
 

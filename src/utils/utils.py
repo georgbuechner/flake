@@ -20,7 +20,7 @@ def sort_query(obj_list, key: str):
     @return Sorted list.
     """
     def sort_by_key(e):
-        if "date" in key or "name" in key:
+        if "date" in key or key == "name" or key == "dob":
             return table_to_json(e)[key]
         try:
             return int(table_to_json(e)[key])
