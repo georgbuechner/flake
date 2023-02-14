@@ -49,11 +49,17 @@
             {%- if category=="viruses" %} class="active" {%- endif -%} 
           >Viruses</a>
         </th> 
-      <th>
+        <th>
           <a 
             href="/settings/definitions/kinds"
             {%- if category=="kinds" %} class="active" {%- endif -%} 
           >Kinds</a>
+        </th> 
+        <th>
+          <a 
+            href="/settings/definitions/lines"
+            {%- if category=="lines" %} class="active" {%- endif -%} 
+          >Lines</a>
         </th> 
       </tr>
 
@@ -211,6 +217,25 @@
       <br>
       <br>
       <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
+
+    {% elif category=="lines" %}
+      <table class="center">
+        <tr>
+          <th>Name</td> 
+        </tr>
+        {% for line in lines %}
+          <tr>
+            <td name="name">{{line.name}}</td> 
+            <td onclick="Del('lines', '{{line.name}}');">
+              <a class="mod thick" title="Remove entry.">-</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      <br>
+      <br>
+      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
+
     {% endif %}
   </div>
 
@@ -226,6 +251,9 @@
       {% include "definitions_viruses_edit.html" %}
     {% elif category=="kinds" %}
       {% include "definitions_kinds_edit.html" %}
+    {% elif category=="lines" %}
+      {% include "definitions_lines_edit.html" %}
+
     {% endif %}
     <br>
   </dialog>

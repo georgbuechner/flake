@@ -203,7 +203,7 @@
             \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
           {% endif %}
           {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
-          {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}
+          {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
         }
       } &
       {% if loop.index0 == 0 %}

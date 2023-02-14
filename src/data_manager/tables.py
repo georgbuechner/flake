@@ -130,11 +130,25 @@ class AKind(db.Model):
 
     @classmethod 
     def from_json(cls, kind: Dict[str, any]): 
-        print("Adding kind from json: ", kind)
         return cls(kind["name"])
 
     def update(self, kind: Dict[str, any]): 
         self.name = kind["name"] 
+
+class ALine(db.Model): 
+    __tablename__ = "availible_lines" 
+
+    name = db.Column(db.String, primary_key=True) 
+
+    def __init__(self, name: str): 
+        self.name = name 
+
+    @classmethod 
+    def from_json(cls, line: Dict[str, any]): 
+        return cls(line["name"])
+
+    def update(self, line: Dict[str, any]): 
+        self.name = line["name"] 
 
 
 class AMedication(db.Model): 
@@ -255,28 +269,21 @@ class PGeneral(db.Model):
     suffering = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, 
-        uuid: str,
-        protocol: str, 
-        num_availible_animals: int, 
-        allowed_users: str,
-        suffering: str
+        self, protocol: str, num_availible_animals: int, allowed_users: str, suffering: str
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol 
         self.num_availible_animals = num_availible_animals 
         self.allowed_users = allowed_users 
         self.suffering = suffering
 
     @classmethod 
-    def from_form(cls, uuid: str, protocol: str, g: Dict[str, any]): 
-        return cls(
-            uuid, protocol, 0, g["allowed_users"], g["suffering"]
-        )
+    def from_form(cls, protocol: str, g: Dict[str, any]): 
+        return cls(protocol, 0, g["allowed_users"], g["suffering"])
 
     @classmethod 
     def from_json(cls, data: Dict[str, any]): 
-        return cls.from_form(data["uuid"], data["protocol"], data)
+        return cls.from_form(data["protocol"], data)
 
     def update(self, general: Dict[str, any]): 
         self.num_availible_animals = 0
@@ -292,24 +299,20 @@ class PAllowedMice(db.Model):
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
 
     def __init__(
-        self, 
-        uuid: str,
-        protocol: str, 
-        name: str,
-        num_availible_animals: int, 
+        self, protocol: str, name: str, num_availible_animals: int, 
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol 
         self.name = name
         self.num_availible_animals = num_availible_animals 
 
     @classmethod 
-    def from_form(cls, uuid: str, protocol: str, g: Dict[str, any]): 
-        return cls(uuid, protocol, g["name"], g["num_availible_animals"])
+    def from_form(cls, protocol: str, g: Dict[str, any]): 
+        return cls(protocol, g["name"], g["num_availible_animals"])
 
     @classmethod 
     def from_json(cls, data: Dict[str, any]): 
-        return cls.from_form(data["uuid"], data["protocol"], data)
+        return cls.from_form(data["protocol"], data)
 
     def update(self, general: Dict[str, any]): 
         self.name = general["name"]
@@ -331,7 +334,6 @@ class PMedication(db.Model):
 
     def __init__(
         self, 
-        uuid: str, 
         protocol: str, 
         name: str, 
         kind: str, 
@@ -341,7 +343,7 @@ class PMedication(db.Model):
         dosis: str, 
         weight_independant: bool
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol 
         self.name = name 
         self.kind= kind
@@ -353,9 +355,8 @@ class PMedication(db.Model):
         self.update_amount(30)
 
     @classmethod
-    def from_form(cls, uuid: str, protocol: str, medication: Dict[str, any]): 
+    def from_form(cls, protocol: str, medication: Dict[str, any]): 
         return cls(
-            uuid, 
             protocol, 
             medication["name"], 
             medication["kind"], 
@@ -368,7 +369,7 @@ class PMedication(db.Model):
 
     @classmethod 
     def from_json(cls, medication: Dict[str, any]): 
-        return cls.from_form(medication["uuid"], medication["protocol"], medication)
+        return cls.from_form(medication["protocol"], medication)
 
     def update(self, medication: Dict[str, any]): 
         self.name = medication["name"] 
@@ -434,21 +435,21 @@ class PVirus(db.Model):
     amount = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, uuid: str, protocol: str, name: str, procedure: str, amount: str
+        self, protocol: str, name: str, procedure: str, amount: str
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol
         self.name = name 
         self.procedure = procedure 
         self.amount = amount
 
     @classmethod
-    def from_form(cls, uuid: str, protocol: str, v: Dict[str, any]): 
-        return cls(uuid, protocol, v["name"], v["procedure"], v["amount"])
+    def from_form(cls, protocol: str, v: Dict[str, any]): 
+        return cls(protocol, v["name"], v["procedure"], v["amount"])
 
     @classmethod 
     def from_json(cls, virus: Dict[str, any]): 
-        return cls.from_form(virus["uuid"], virus["protocol"], virus)
+        return cls.from_form(virus["protocol"], virus)
 
     def update(self, p: Dict[str, any]): 
         self.name = p["name"] 
@@ -465,21 +466,21 @@ class PWatercontrol(db.Model):
     duration = db.Column(db.String, primary_key=False)
 
     def __init__(
-        self, uuid: str, protocol: str, allowed: bool, days_after_start: str, duration: str
+        self, protocol: str, allowed: bool, days_after_start: str, duration: str
     ):
-        self.uuid = uuid
+        self.uuid = str(uuid.uuid4())
         self.protocol = protocol
         self.allowed = allowed
         self.days_after_start = days_after_start 
         self.duration = duration
 
     @classmethod
-    def from_form(cls, uuid: str, protocol: str, w: Dict[str, any]): 
-        return cls(uuid, protocol, "allowed" in w, w["days_after_start"], w["duration"])
+    def from_form(cls, protocol: str, w: Dict[str, any]): 
+        return cls(protocol, "allowed" in w, w["days_after_start"], w["duration"])
 
     @classmethod 
     def from_json(cls, watercontrol: Dict[str, any]): 
-        return cls.from_form(watercontrol["uuid"], watercontrol["protocol"], watercontrol)
+        return cls.from_form(watercontrol["protocol"], watercontrol)
 
     def update(self, watercontrol: Dict[str, any]): 
         self.allowed = "allowed" in watercontrol
@@ -516,9 +517,9 @@ class Protocol(db.Model):
         
         # Add default general and watercontrol
         full_protocol = f"{self.escaped}/{subprotocol}"
-        watercontrol = PWatercontrol(str(uuid.uuid4()), full_protocol, False, 0, 0)
+        watercontrol = PWatercontrol(full_protocol, False, 0, 0)
         db.session.add(watercontrol)
-        general = PGeneral(str(uuid.uuid4()), full_protocol, 10, "", "Leicht")
+        general = PGeneral(full_protocol, 10, "", "Leicht")
         db.session.add(general)
         db.session.commit()
 
@@ -794,6 +795,7 @@ PROTOCOL_TABLES = {
 
 DEFINITION_TABLES = { 
     "kinds": AKind, 
+    "lines": ALine, 
     "medication": AMedication, 
     "procedures": AProcedure, 
     "viruses": AVirus

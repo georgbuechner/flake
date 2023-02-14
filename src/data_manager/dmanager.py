@@ -44,8 +44,6 @@ class DManager:
             for language, fields in mapping.items():
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
-        with open("resources/lines.json") as f:
-            self.lines = json.load(f)
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
@@ -291,7 +289,7 @@ class DManager:
             protocol_data = sort_query(protocol_data, "days_after_start")
         # Get definitions:
         if category == "allowed_animals":
-            definitions = self.lines
+            definitions = sort_query(ALine.query.all(), "name")
         else:
             definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
         return protocol_data, definitions

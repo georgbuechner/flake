@@ -48,6 +48,16 @@ def create_root_user_if_not_exists():
         db.session.add(user)
         db.session.commit()
 
+def update_lines():
+    # Update availible lines
+    with open("resources/lines.json") as f:
+        lines = json.load(f)
+        for line in lines: 
+            if not ALine.query.get(line): 
+                line = ALine(line)
+                db.session.add(line)
+        db.session.commit()
+
 
 with app.app_context():
     # Example to remove tables
@@ -61,6 +71,7 @@ with app.app_context():
     # safe_all("backup")
     # load_backup("backup_2")
     create_root_user_if_not_exists()
+    update_lines()
        
 
 @login_manager.user_loader 
@@ -360,6 +371,7 @@ def availible(category: str):
         viruses=sort_query(AVirus.query.all(), "name"),
         procedures=sort_query(AProcedure.query.all(), "name"),
         kinds=sort_query(AKind.query.all(), "name"),
+        lines=sort_query(ALine.query.all(), "name"),
         medications=sort_query(AMedication.query.all(), "name")
     )
 
