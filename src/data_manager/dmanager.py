@@ -46,6 +46,7 @@ class DManager:
                 self.keys_per_language[language] = fields.keys()
         with open("resources/lines.json") as f:
             self.lines = json.load(f)
+        print(self.mapping)
 
     def users(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
@@ -91,9 +92,9 @@ class DManager:
         # If none, send user information on which fields where missing.
         response = {"text":"", "animal_data": ""}
         if updated is None: 
-            response["text"] = (f"CSV has missing keys, required: "
-                + f"{' '.join(x for x in self.keys_per_language['en'])}"
-                + f"or {' '.join(x for x in self.keys_per_language['en'])}")
+            response["text"] = (f"CSV has missing keys, required: <br><i>"
+                + f"{', '.join(x for x in self.keys_per_language['en'])}</i><br>"
+                + f"or: <br><i>{', '.join(x for x in self.keys_per_language['de'])}</i>")
             return response, 400
         # If success, update protocols (since new protocols might have been added)
         response["text"] = f"{total-len(updated)} inserted."
@@ -202,7 +203,7 @@ class DManager:
         self, animal_id: str, category: str, data: Dict[str, any]
     ):
         Table = EXPERIMENT_TABLES[category] 
-        element = Table.query.get(get_primary_key(category, animal_id, data))
+        element = Table.query.get(data["uuid"])
         if element:
             element.update(data)
         else: 
@@ -227,13 +228,9 @@ class DManager:
             return "", 200
         return "Animal not found", 404
 
-    def delete_experiment_data_entry(
-        self, animal_id: str, category: str, name: str, procedure: str = ""
-    ):
+    def delete_experiment_data_entry(self, category: str, uuid: str):
         Table = EXPERIMENT_TABLES[category] 
-        element = Table.query.get(
-            get_primary_key(category, animal_id, {"name": name, "procedure": procedure})
-        )
+        element = Table.query.get(uuid)
         if element:
             db.session.delete(element)
         db.session.commit()
@@ -448,7 +445,9 @@ class DManager:
             if category != "general" and category != "watercontrol":
                 if category == "medication":
                     query = Table.query.filter(
-                        Table.protocol==protocol, Table.name==data["name"], Table.procedure==data["procedure"]
+                        Table.protocol==protocol, 
+                        Table.name==data["name"], 
+                        Table.procedure==data["procedure"]
                     )
                 elif category == "procedures":
                     query = Table.query.filter(
@@ -460,7 +459,7 @@ class DManager:
                     query = Table.query.filter(Table.protocol==protocol, Table.name==data["name"])
                 if query.first():
                     raise DublicateEntry("A entry with the same name already exists!")
-            protocol_entry = Table.from_form(str(uuid.uuid4()), protocol, data)
+            protocol_entry = Table.from_form(protocol, data)
             db.session.add(protocol_entry)
         db.session.commit()
 
@@ -602,7 +601,7 @@ class DManager:
                             if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
-                    if self.mapping[key] == "comment":
+                    if self.mapping[key] == "comments":
                         start, end = self.__get_start_end_from_comment(value)
             # Create or update animal-data
             animal_id = data["id"]
@@ -679,6 +678,8 @@ def get_surgery_start(protocol: str):
 def get_primary_key(category: str, animal_id: str, data: Dict[str, any]): 
     if category == "medication":
         return (animal_id, data["name"], data["procedure"]) 
+    if category == "procedures":
+        return (animal_id, data["name"], data["start_date"]) 
     return (animal_id, data["name"]) 
 
 

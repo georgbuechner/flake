@@ -54,6 +54,22 @@ async function DelProtocolEntry(category, uuid) {
     alert("Unkown error. Sorry", e);
   }
 }
+async function DelADEntry(animal_id, category, uuid) {
+  console.log(category, uuid);
+  try {
+    // Send request:
+    let r = await fetch("/animal_data/"+animal_id+"/delete/"+category+"/"+uuid, 
+      {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (r.status === 200)
+      window.location=window.location;
+    else 
+      alert("Unkown error. Sorry " + r.status);
+  } catch(e) {
+    console.log(e);
+    alert("Unkown error. Sorry", e);
+  }
+}
 
 
 async function Del(category, name, type, identifier, protocol) {

@@ -189,35 +189,32 @@
       \setlength{\fboxsep}{0.4cm}
       \parbox[t]{1.5cm}{ {{a.animal_data.supplier}} }&
 
-        \textbf{\emph{\small{ {{a.animal_data.mla_num}}} }}
       {% for p in a.procedures %} 
         {% if loop.index0 > 0 %}
            & & & & &
         {% else %}
-      \setlength{\fboxsep}{0.4cm}
+          \textbf{\emph{\small{ {{a.animal_data.mla_num}}} }}
         {% endif %}
       \parbox[t]{7cm}{
-        %\begin{minipage}{\linewidth}
-          \small{
-            {% if p.start == p.end %}
-              \ul{ {{p.start}}: {{p.names}}}\\
-            {% else %}
-              \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
-            {% endif %}
-            {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
-            {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
-          }
-        % \end{minipage} &
-    } &
+        \small{
+          {% if p.start == p.end %}
+            \ul{ {{p.start}}: {{p.names}}}\\
+          {% else %}
+            \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
+          {% endif %}
+          {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
+          {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}
+        }
+      } &
       {% if loop.index0 == 0 %}
           \begin{minipage}{0.5\linewidth}
-            \vspace{2pt}
             {% if d.experiment|length > 1 %}
+              \vspace{2pt}
               \begin{turn}{-90}\small{ {{d.experiment}}}\end{turn}  
+              \vspace{2pt}
             {% else %} 
               \small{ {{d.experiment}}}
             {% endif %}
-            \vspace{2pt}
           \end{minipage}
           &
         \setlength{\fboxsep}{0.4cm}

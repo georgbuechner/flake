@@ -557,15 +557,11 @@ def update_experiment_data(animal_id: str, category: str):
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
     return redirect(request.referrer)
 
-@app.route(
-    "/animal_data/<animal_id>/delete/<category>/<name>", defaults={"procedure": ""}, methods=["POST"]
-)
-@app.route("/animal_data/<animal_id>/delete/<category>/<name>/<procedure>", methods=["POST"])
+@app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
 @login_required
-def delete_experiment_data(animal_id: str, category: str, name: str, procedure: str): 
+def delete_experiment_data(animal_id: str, category: str, uuid: str): 
     """! Updates an entry in an animals experiment data. """
-    name = html.unescape(name).replace("_", "/")
-    dmanager.delete_experiment_data_entry(animal_id, category, name, procedure)
+    dmanager.delete_experiment_data_entry(category, uuid)
     return redirect(f"/animal_data/{animal_id}/{category}")
 
 @app.route("/clear/<animal_id>", methods=["POST"])

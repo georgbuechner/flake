@@ -18,5 +18,9 @@
     "Sterbedatum":"death_date",
     "Lizenznummer": "protocol_pyrat",
     "Herkunft": "supplier"
+  },
+  "others": {
+    "Kommentare": "comments",
+    "Comments": "comments"
   }
 }

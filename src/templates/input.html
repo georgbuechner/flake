@@ -165,11 +165,12 @@
         </tr>
         {% for entry in procedures %}
         <tr>
+          <td name="uuid" style="display:none">{{entry.uuid}}</td> 
           <td name="name">{{entry.name}}</td>
           <td name="start_date">{{entry.start_date if entry.start_date|length > 2 else "---"}}</td>
           <td name="end_date">{{entry.end_date if entry.end_date|length > 2 else "---"}}</td>
           <td name="experimenter">{{entry.experimenter}}</td>
-          <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
+          <td onclick="DelADEntry('{{animal_id}}', '{{category}}', '{{entry.uuid}}');">
             <a class="mod thick" title="Remove entry.">-</a>
           </td>
           <td onclick="Add(this.parentNode);">
@@ -194,10 +195,11 @@
         </tr>
         {% for entry in viruses %}
           <tr>
+            <td name="uuid" style="display:none">{{entry.uuid}}</td> 
             <td name="name">{{entry.name}}</td>
             <td name="procedure">{{entry.procedure}}</td>
             <td name="amount">{{entry.amount}}</td>
-            <td onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}');">
+            <td onclick="DelADEntry('{{animal_id}}', '{{category}}', '{{entry.uuid}}');">
               <a class="mod thick" title="Remove entry.">-</a>
             </td>
             <td onclick="Add(this.parentNode);">
@@ -229,6 +231,7 @@
         </tr>
         {% for entry in medication %}
           <tr>
+            <td name="uuid" style="display:none">{{entry.uuid}}</td> 
             <td name="name">{{entry.name}}</td>
             <td name="kind">{{entry.kind}}</td>
             <td name="procedure">{{entry.procedure}}</td>
@@ -240,7 +243,7 @@
                 {%- if entry.toe_pinch -%} yes {%- else -%} no {%- endif -%}
             </td>
             <td 
-              onclick="Del('{{category}}', '{{entry.name}}', 'experiment', '{{animal_id}}', '{{entry.procedure}}');"
+              onclick="DelADEntry('{{animal_id}}', '{{category}}', '{{entry.uuid}}');"
             >
               <a class="mod thick" title="Remove entry.">-</a>
             </td>
