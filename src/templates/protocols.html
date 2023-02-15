@@ -34,7 +34,7 @@
           <td>
             <a href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
           </td>
-           <td onclick="DelSub('{{protocol.escaped}}', '');">
+           <td onclick="DeleteProtocol('{{protocol.escaped}}');">
              <a class="mod thick" title="Remove entry.">-</a>
            </td>
         </tr>
@@ -53,6 +53,14 @@
       <input type='submit' name='submit'/>
     </form>
     <br>
+  </dialog>
+
+  <dialog id="confirm_modal" style="height: 150px; width: 50%;" category="">
+    <button onclick="Close('confirm_modal');" style="float: right;">Close</button>
+    <br><br>
+    <p>Are you sure you want to delete this protocol?</p>
+    <br>
+    <input type="submit" id="delete_protocol_btn" value="Yes" />
   </dialog>
 
 </body>

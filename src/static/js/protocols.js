@@ -3,6 +3,20 @@ function AddProtocol(entry) {
   dialog.showModal();
 } 
 
+function DeleteProtocol(protocol) { 
+  document.getElementById('delete_protocol_btn').setAttribute("onclick",
+    "DelSub('" + protocol +"', '')");
+  var dialog = document.getElementById("confirm_modal"); 
+  dialog.showModal();
+} 
+
+function DeleteSubprotocol(protocol, subprotocol) { 
+  document.getElementById('delete_protocol_btn').setAttribute("onclick",
+    "DelSub('" + protocol +"', '" + subprotocol + "')");
+  var dialog = document.getElementById("confirm_modal"); 
+  dialog.showModal();
+}
+
 function Close(modal_name) { 
   var dialog = document.getElementById(modal_name); 
   dialog.close();
