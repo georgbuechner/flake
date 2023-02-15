@@ -123,19 +123,6 @@
             </tr>
           {% endfor %}
         </table>
-        </table>
-        <br>
-        <br>
-        <a 
-          class="mod thick" 
-          title="Add new entry." 
-          {% if not current_user.admin %}
-            onclick="Restricted();"
-          {% else %}
-            onclick="Add(undefined, '{{not current_user.admin}}');"
-          {% endif %}
-        >+</a>
-
 
     {% elif category=="procedures" %}
       <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
@@ -157,19 +144,25 @@
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
              <td name="duration">{{procedure.duration}}</td> 
              <td name="surgery">{{procedure.surgery}}</td> 
-             <td onclick="Del('procedures', '{{procedure.name}}');">
+             <td 
+                {% if not current_user.admin %}
+                  onclick="Restricted();"
+                {% else %}
+                  onclick="Del('procedures', '{{procedure.name}}');">
+                {% endif %}
                <a class="mod thick" title="Remove entry.">-</a>
              </td>
-             <td onclick="Add(this.parentNode);">
+             <td 
+              {% if not current_user.admin %}
+                onclick="Restricted();"
+              {% else %}
+                onclick="Add(this.parentNode);">
+              {% endif %}
                <i class="mod u" title="Edit this entry.">edit</i>
              </td>
           </tr>
         {% endfor %}
       </table>
-      </table>
-      <br>
-      <br>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="viruses" %}
       <p>Remember, these are <b>only <i>defaults</i></b>! If you need different
@@ -187,18 +180,25 @@
              <td name="name">{{virus.name}}</td> 
              <td name="procedure">{{virus.procedure}}</td> 
              <td name="amount">{{virus.amount}}</td> 
-             <td onclick="Del('viruses', '{{virus.name}}');">
+             <td 
+               {% if not current_user.admin %}
+                 onclick="Restricted();"
+               {% else %}
+                 onclick="Del('viruses', '{{virus.name}}');">
+                {% endif %}
                <a class="mod thick" title="Remove entry.">-</a>
              </td>
-             <td onclick="Add(this.parentNode);">
+             <td 
+              {% if not current_user.admin %}
+                onclick="Restricted();"
+              {% else %}
+                onclick="Add(this.parentNode);">
+              {% endif %}
                <i class="mod u" title="Edit this entry.">edit</i>
              </td>
           </tr>
         {% endfor %}
       </table>
-      <br>
-      <br>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="kinds" %}
       <table class="center">
@@ -208,15 +208,17 @@
         {% for kind in kinds %}
           <tr>
             <td name="name">{{kind.name}}</td> 
-            <td onclick="Del('kinds', '{{kind.name}}');">
+            <td 
+              {% if not current_user.admin %}
+                onclick="Restricted();"
+              {% else %}
+                onclick="Del('kinds', '{{kind.name}}');">
+              {% endif %}
               <a class="mod thick" title="Remove entry.">-</a>
             </td>
           </tr>
         {% endfor %}
       </table>
-      <br>
-      <br>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="lines" %}
       <table class="center">
@@ -226,16 +228,31 @@
         {% for line in lines %}
           <tr>
             <td name="name">{{line.name}}</td> 
-            <td onclick="Del('lines', '{{line.name}}');">
+            <td 
+              {% if not current_user.admin %}
+                onclick="Restricted();"
+              {% else %}
+                onclick="Del('lines', '{{line.name}}');">
+              {% endif %}
               <a class="mod thick" title="Remove entry.">-</a>
             </td>
           </tr>
         {% endfor %}
       </table>
-      <br>
-      <br>
-      <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
+    {% endif %}
 
+    {% if category != "" %}
+        <br>
+        <br>
+        <a 
+          class="mod thick" 
+          title="Add new entry." 
+          {% if not current_user.admin %}
+            onclick="Restricted();"
+          {% else %}
+            onclick="Add();"
+          {% endif %}
+        >+</a>
     {% endif %}
   </div>
 
