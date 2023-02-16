@@ -16,8 +16,13 @@ def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str:
     return datetime.strftime(date, date_format)
 
 def convert_source_2_to_1(date_str) -> str: 
-    date = strtodate(date_str) 
-    return datetostr(date, SOURCE_DATE_FORMAT)
+    try:
+        date = strtodate(date_str) 
+        date_str = datetostr(date, SOURCE_DATE_FORMAT)
+        return date_str
+    except Exception as err: 
+        print(f"Failed parsing date: {date_str}: {repr(err)}")
+        return ""
 
 def datetostr_month(date: datetime) -> str: 
     return datetime.strftime(date, OUTPUT_DATE_FORMAT_2)

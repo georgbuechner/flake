@@ -657,7 +657,10 @@ class DManager:
         def extract(name: str, parts: List[str]):
             for part in parts: 
                 if name in part: 
-                    date = part[part.find(":")+1:].strip()
+                    index = part.find(":")+1
+                    date = part[index:index+11].strip()
+                    if not date_filled(date):
+                        continue
                     return convert_source_2_to_1(date)
             return None
         parts = value.split(";")
