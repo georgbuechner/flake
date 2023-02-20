@@ -105,8 +105,7 @@ async function GenerateWeightList(animal_id, weight) {
   // Send request to server:
   try {
     // Send request:
-    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, 
-      {method: "POST", body: new FormData()}); 
+    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, {method: "GET"}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (r.status === 200) {
@@ -116,6 +115,9 @@ async function GenerateWeightList(animal_id, weight) {
     else if (r.status > 400 && r.status < 500) {
       let response_text = await r.text()
       alert("Error code: " + r.status + ": " + response_text);
+    }
+    else if (r.status === 504) {
+      alert("Generation took too long. We're working on a fix.")
     }
     else
       alert("Something went wrong: Error code: " + r.status);
@@ -150,7 +152,7 @@ async function UpdateSuffering(animal_id, suffering) {
 async function GenerateMainSheet(animal_id, type) {
   console.log("animal_id: ", animal_id);
   var req = new XMLHttpRequest();
-  req.open("POST", "/generate/"+type+"/"+animal_id, true);
+  req.open("GET", "/generate/"+type+"/"+animal_id, true);
   req.responseType = "blob";
   req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   req.onreadystatechange = function() {
