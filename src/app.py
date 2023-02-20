@@ -595,7 +595,7 @@ def clear_experiment_data(animal_id: str):
     dmanager.set_subprotocol(animal_id, animal_data.subprotocol, True)
     return "Success", 200
 
-@app.route("/generate/surgery_sheet/<animal_id>", methods=["POST"])
+@app.route("/generate/surgery_sheet/<animal_id>")
 @login_required
 def generate_surgery_sheet(animal_id: str):
     animal_data = AnimalData.query.get(animal_id)
@@ -610,7 +610,7 @@ def generate_surgery_sheet(animal_id: str):
     dcreator.create_from_template()
     return send_file("output/surgery_sheet.docx", as_attachment=True)
 
-@app.route("/generate/score_sheet/<animal_id>", methods=["POST"])
+@app.route("/generate/score_sheet/<animal_id>")
 @login_required
 def generate_score_sheet(animal_id: str):
     animal_data = AnimalData.query.get(animal_id)
