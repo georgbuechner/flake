@@ -105,7 +105,7 @@ async function GenerateWeightList(animal_id, weight) {
   // Send request to server:
   try {
     // Send request:
-    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, {method: "GET"}); 
+    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, {method: "POST"}); 
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (r.status === 200) {
@@ -147,7 +147,6 @@ async function UpdateSuffering(animal_id, suffering) {
     alert("Something went wrong: " + e);
   }
 }
-
 
 async function GenerateMainSheet(animal_id, type) {
   console.log("animal_id: ", animal_id);
