@@ -3,6 +3,7 @@ from typing import List
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
 SOURCE_DATE_FORMAT_2 = "%d/%m/%Y"
+SOURCE_DATE_FORMAT_3 = "%d.%m.%Y"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
 OUTPUT_DATE_FORMAT_2  = "%b %Y"
 
@@ -10,7 +11,10 @@ def strtodate(date_str: str) -> datetime:
     try:
         return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
     except: 
-        return datetime.strptime(date_str, SOURCE_DATE_FORMAT_2)
+        try:
+            return datetime.strptime(date_str, SOURCE_DATE_FORMAT_2)
+        except: 
+            return datetime.strptime(date_str, SOURCE_DATE_FORMAT_3)
 
 def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
     return datetime.strftime(date, date_format)
