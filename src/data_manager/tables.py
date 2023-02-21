@@ -568,11 +568,12 @@ class General(db.Model):
 
     def set_start_weight(self, start_weight: int): 
         self.start_weight = start_weight
-        rows = Medication.query.filter(Medication.animal_id == self.animal_id)
-        if rows.first(): 
-            for row in rows: 
-                row.update_amount(float(self.start_weight))
-            db.session.commit()
+        if float(start_weight) > 0:
+            rows = Medication.query.filter(Medication.animal_id == self.animal_id)
+            if rows.first(): 
+                for row in rows: 
+                    row.update_amount(float(self.start_weight))
+                db.session.commit()
 
 
 class Medication(db.Model): 
