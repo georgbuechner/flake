@@ -2,11 +2,21 @@ import copy
 import json
 import os
 import re
+import threading
 from docx import Document
 from docx.shared import Cm
 from typing import Dict, List, Tuple
 from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
 from utils.utils import get_signature_path
+
+class GenerationThread(threading.Thread):
+    def __init__(self, target, dcreator): 
+        self.dcreator = dcreator 
+        super().__init__(target=target)
+
+    def progress(self): 
+        print({"cur": self.dcreator.cur, "total": self.dcreator.total})
+        return {"cur": self.dcreator.cur, "total": self.dcreator.total}
 
 class DCreator:
 
@@ -30,6 +40,8 @@ class DCreator:
         self.fields = experiment_data
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
+        self.total = 100
+        self.cur = 0
 
     def create_from_template(self):
         # Create document:
@@ -40,6 +52,7 @@ class DCreator:
         self.doc.save("src/output/surgery_sheet.docx")
 
     def create_score_sheet(self): 
+        print("starting generation...")
         self.__edit_paragraphs()
         self.__edit_tables()
         user = self.fields["general"]["user"]
@@ -90,11 +103,16 @@ class DCreator:
                 else:
                     update_paragraph(cells[i].paragraphs[0], "", val)
 
+        # Update total
+        for i, month in enumerate(monthly_weights):
+            self.total += len(month["data"])
+
         remember_i = {}
         for i, month in enumerate(monthly_weights):
             table = self.doc.tables[i]
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
             for x, data in month["data"].items():
+                self.cur += 1
                 if x not in remember_i:
                     for r, row in enumerate(table.rows):
                         for c in range(2):
