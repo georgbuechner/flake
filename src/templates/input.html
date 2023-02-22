@@ -99,14 +99,14 @@
           <td>Start date:</td>
           <td>
             <input 
-              id="start" 
-              type="date" 
-              value="{{ general.start if general.start != '' else dob}}" 
-              min="{{dob}}" 
+              id="start"
+              type="date"
+              value="{{ general.start if general.start != '' else dob}}"
+              min="{{dob}}"
               {%- if general.start == '' -%}class="date_suggest"{%- endif -%}
               {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-              onchange="OpenUpdateDatesConfirmation(this.value);" 
-            />
+              onchange="OpenUpdateDatesConfirmation(this.value);"
+            >
           </td>
         </tr>
         <tr> 
@@ -117,13 +117,13 @@
               onchange="UpdateSuffering('{{animal_id}}', this.value);" 
             >
               <option 
-                value="Leicht" {%- if general.suffering == "Leicht" -%}selected{%- endif -%}
+                value="Leicht" {%- if general.suffering == "Leicht" -%} selected{%- endif -%}
               >Leicht</option>
               <option 
-                value="Mittel" {%- if general.suffering == "Mittel" -%}selected{%- endif -%}
+                value="Mittel" {%- if general.suffering == "Mittel" -%} selected{%- endif -%}
               >Mittel</option>
               <option 
-                value="Schwer" {%- if general.suffering == "Schwer" -%}selected{%- endif -%}
+                value="Schwer" {%- if general.suffering == "Schwer" -%} selected{%- endif -%}
               >Schwer</option>
             </select>
           </td>
@@ -343,8 +343,11 @@
     </form>
   </dialog>
 
-
-
+  <div id="progress_container" class="overlay"> 
+    <progress 
+      id="progress_bar" value="0" max="100" style="margin-top: 40%; font-size: 50px">
+    </progress>
+  </div>
 
 </body>
 

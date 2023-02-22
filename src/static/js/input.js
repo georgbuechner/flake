@@ -148,37 +148,39 @@ async function UpdateSuffering(animal_id, suffering) {
   }
 }
 
+async function UpdateProgress(id) {
+  fetch("/generate/progress/" + id)
+    .then(response => response.json())
+    .then(data => {
+      let progress = document.getElementById("progress_bar");
+      progress.setAttribute("max", Number(data["total"]));
+      progress.setAttribute("value", Number(data["cur"]));
+      console.log("set progress to: ", data["cur"], progress);
+    })
+    .catch(error => console.error('Error:', error));
+}
+
 async function GenerateMainSheet(animal_id, type) {
-  console.log("animal_id: ", animal_id);
-  var req = new XMLHttpRequest();
-  req.open("GET", "/generate/"+type+"/"+animal_id, true);
-  req.responseType = "blob";
-  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  req.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var blob = new Blob([this.response], {type: "application/docx"});
-      var url = window.URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      document.body.appendChild(link);
-      link.style = "display: none";
+  let progress = document.getElementById("progress_container");
+  progress.style = "display: block";
+  const id = type + "/" + animal_id;
+  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 1000);
+  const url = "/generate/" + id;
+  fetch(url, {"headers": {"Content-Type": "application/x-www-form-urlencoded"}}) 
+    .then(response => response.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
       link.href = url;
       link.download = animal_id + "_" + type + ".docx";
       link.click();
-
-      setTimeout(() => {
-      window.URL.revokeObjectURL(url);
-      link.remove(); } , 100);
-    }
-    else if (this.readyState === 4 && this.status >= 400 ) {
-      var blob = new Blob([this.response], {type: "text"});
-      var reader = new FileReader();
-      reader.onload = function() {
-        alert(reader.result);
-      }
-      reader.readAsText(blob);
-    }
-  };
-  req.send();
+      progress.style = "display: none";
+      clearInterval(interval);
+    })
+    .catch(error => {
+      clearInterval(interval);
+      alert("Error:", error);
+    });
 }
 
 function AddOrEdit(elem) {

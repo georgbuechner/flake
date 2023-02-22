@@ -5,10 +5,11 @@ from flask_login import LoginManager, login_required, login_user, logout_user, c
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
-from document_creator.dcreator import DCreator
+from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import ParserException
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
+import time
 import os
 import subprocess
 import tempfile
@@ -21,6 +22,8 @@ SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
 SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
 
+generation_threads = {}
+
 # Create global instance of sql-connector, data-manager and flask-app.
 dmanager = DManager()
 app = Flask(__name__)
@@ -29,7 +32,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
-
 
 def create_root_user_if_not_exists():
     root_email = get_root_user(SERVER_CONFIG_PATH)
@@ -623,7 +625,15 @@ def generate_score_sheet(animal_id: str):
         animal_data=table_to_json(animal_data),
         user_email=current_user.email
     )
-    dcreator.create_score_sheet()
+    global generation_threads
+    thread_id = f"score_sheet_{animal_id}"
+    generation_threads[thread_id] = GenerationThread(
+        target=dcreator.create_score_sheet, dcreator=dcreator
+    )
+    print("Created thread: ", thread_id)
+    generation_threads[thread_id].start()
+    generation_threads[thread_id].join()
+    del generation_threads[thread_id]
     return send_file("output/score_sheet.docx", as_attachment=True)
 
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
@@ -655,6 +665,16 @@ def generate_paragraph_9(escaped_protocol: str):
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
 
+@app.route("/generate/progress/<thread_id>")
+@login_required
+def generation_progress(thread_id: str): 
+    global generation_threads
+    print("Checking thread: ", thread_id, len(generation_threads));
+    if thread_id in generation_threads:
+        return make_response(
+            jsonify(generation_threads[thread_id].progress()), 200
+        )
+    return {}, 404
 
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
