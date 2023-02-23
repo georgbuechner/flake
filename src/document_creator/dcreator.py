@@ -15,7 +15,6 @@ class GenerationThread(threading.Thread):
         super().__init__(target=target)
 
     def progress(self): 
-        print({"cur": self.dcreator.cur, "total": self.dcreator.total})
         return {"cur": self.dcreator.cur, "total": self.dcreator.total}
 
 class DCreator:
@@ -111,7 +110,6 @@ class DCreator:
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
             for x, data in month["data"].items():
                 self.cur += 1
-                print("CUR: ", self.cur)
                 if x not in remember_i:
                     for r, row in enumerate(table.rows):
                         for c in range(2):
