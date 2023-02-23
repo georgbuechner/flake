@@ -167,7 +167,11 @@ async function GenerateMainSheet(animal_id, type) {
   const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 1000);
   const url = "/generate/" + id;
   fetch(url, {"headers": {"Content-Type": "application/x-www-form-urlencoded"}}) 
-    .then(response => response.blob())
+    .then(response => {
+      if (!response.ok)
+        throw new Error("Network response was not ok.");
+      return response.blob()
+    })
     .then(blob => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -179,7 +183,8 @@ async function GenerateMainSheet(animal_id, type) {
     })
     .catch(error => {
       clearInterval(interval);
-      alert("Error:", error);
+      progress.style = "display: none";
+      alert("Error:", error.message);
     });
 }
 
