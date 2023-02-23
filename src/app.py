@@ -1,12 +1,14 @@
 import json
 import html
-from flask import Flask, render_template, make_response, jsonify, request, send_file, redirect
+from flask import (
+    Flask, render_template, make_response, jsonify, request, send_file, redirect, session
+)
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
-from exceptions.exceptions import ParserException
+from exceptions.exceptions import *
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import time
@@ -637,31 +639,36 @@ def generate_score_sheet(animal_id: str):
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
 @login_required
 def generate_paragraph_9(escaped_protocol: str):
-    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
-    txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
-    tmp_path = tempfile.mkdtemp() 
-    full_path = f"{tmp_path}/main.tex"
-    f = open(full_path, "w") 
-    f.write(txt) 
-    f.close()
+    try:
+        subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
+        txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
+        tmp_path = tempfile.mkdtemp() 
+        full_path = f"{tmp_path}/main.tex"
+        f = open(full_path, "w") 
+        f.write(txt) 
+        f.close()
 
-    # Copy images to temp location
-    shutil.copy("logo.jpg", f"{tmp_path}")
-    for filename in os.listdir(SIGNATURE_PATH):
-        f = os.path.join(SIGNATURE_PATH, filename)
-        # checking if it is a file
-        if os.path.isfile(f):
-            shutil.copy(f, f"{tmp_path}")
+        # Copy images to temp location
+        shutil.copy("logo.jpg", f"{tmp_path}")
+        for filename in os.listdir(SIGNATURE_PATH):
+            f = os.path.join(SIGNATURE_PATH, filename)
+            # checking if it is a file
+            if os.path.isfile(f):
+                shutil.copy(f, f"{tmp_path}")
 
-    # proc=subprocess.Popen(["pdflatex", full_path]) 
-    proc=subprocess.Popen(
-        ["pdflatex", full_path], 
-        cwd=tmp_path, 
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
-    )
-    proc.communicate()
-    return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+        # proc=subprocess.Popen(["pdflatex", full_path]) 
+        proc=subprocess.Popen(
+            ["pdflatex", full_path], 
+            cwd=tmp_path, 
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT
+        )
+        proc.communicate()
+        return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+    except ParserException as error:
+        return error.msg, error.status
+    except Exception as error:
+        return repr(error), 500
 
 @app.route("/generate/progress/<thread_id>")
 @login_required
@@ -692,12 +699,14 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
     dmanager.update_protocol_entry(
         category, f"{protocol}/{subprotocol}", request.form
     )
+    session["subprotocol_changed"] = True
     return redirect(request.referrer)
 
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
 def delete_protocol_entry(category: str, uuid: str): 
     dmanager.delete_protocol_entry(category, uuid)
+    session["subprotocol_changed"] = True
     return redirect(request.referrer)
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
@@ -710,6 +719,8 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     if procedures.first(): 
         procedures = sort_query(procedures, "name")
     if protocol:
+        subprotocol_changed = session.get("subprotocol_changed")
+        session.pop("subprotocol_changed", None)
         return render_template(
             "subprotocol.html", 
             protocol=protocol,
@@ -721,6 +732,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             users=dmanager.users(), 
+            subprotocol_changed=subprotocol_changed,
             msg=""
         )
 

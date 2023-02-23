@@ -6,8 +6,7 @@
   <title>FLAKE - {{user}}</title>
 
   {% include "default_imports.html" %}
-
-  <script src="/static/js/general.js"></script>
+  <script src="/static/js/overview.js"></script>
 </head>
 
 <body>
@@ -27,8 +26,8 @@
 
   </div>
 
-  <dialog id="confirm_modal" style="height: 100px; width: 50%;" category="">
-    <button onclick="CloseModal();" style="float: right;">Close</button>
+  <dialog id="confirm_modal" style="height: 150px; width: 50%;" category="">
+    <button onclick="Refresh()" style="float: right;">Close</button>
     <br><br>
     <p id="set_subprotocol_msg"></p>
     <br>

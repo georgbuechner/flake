@@ -164,7 +164,7 @@ async function GenerateMainSheet(animal_id, type) {
   let progress = document.getElementById("progress_container");
   progress.style = "display: block";
   const id = type + "/" + animal_id;
-  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 1000);
+  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 2500);
   const url = "/generate/" + id;
   fetch(url, {"headers": {"Content-Type": "application/x-www-form-urlencoded"}}) 
     .then(response => {

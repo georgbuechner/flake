@@ -24,8 +24,7 @@ function Add(entry) {
     }
   }
   // open add-/edit-modal
-  var dialog = document.getElementById("edit_modal"); 
-  dialog.showModal();
+  OpenModel("edit_modal"); 
 } 
 
 function BlockAmount() {
@@ -115,11 +114,6 @@ function Restricted() {
     alert("This action is restricted to admin-users!")
 }
 
-function CloseModal() { 
-  var dialog = document.getElementById("edit_modal"); 
-  dialog.close(); 
-}
-
 function Set(elem, availible) {
   console.log("all availible entries: ", availible)
   const getByKey = (arr, key) => (arr.find(x => x["name"] === key) || {});
@@ -140,10 +134,10 @@ function Set(elem, availible) {
 function OpenAllowedUsers() {
   var users = document.getElementById("allowed_users").value;
   users.split(", ").forEach(function(user) {
-    AddAllowedUser(user); 
+    if (user !== "")
+      AddAllowedUser(user); 
   });
-  var dialog = document.getElementById("allowed_users_modal"); 
-  dialog.showModal(); 
+  OpenModel("allowed_users_modal"); 
 }
 
 function CloseAllowedUsers() {
@@ -156,8 +150,7 @@ function CloseAllowedUsers() {
   if (users.length >=2) 
     users = users.substring(0, users.length-2);
   document.getElementById("allowed_users").value = users;
-  var dialog = document.getElementById("allowed_users_modal"); 
-  dialog.close(); 
+  CloseModal("allowed_users_modal"); 
 }
 
 function AddAllowedUser(user) {

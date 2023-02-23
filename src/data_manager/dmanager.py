@@ -199,6 +199,7 @@ class DManager:
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, any]
     ):
+        print("update_experiment_data_entry: ", animal_id, category, data)
         Table = EXPERIMENT_TABLES[category] 
         element = Table.query.get(data["uuid"])
         if element:
@@ -308,6 +309,10 @@ class DManager:
                 if not date_filled(p.start_date) or not date_filled(p.end_date):
                     continue
                 default = get_protocol_entry_by_name(PProcedure, general.experiment, p.name)
+                if default is None: 
+                    raise MissingEntryException(
+                        f"For animal: <i>{general.animal_id}</i>: no procedure: <i>{p.name}</i>."
+                    )
                 if (p.start_date, p.end_date) not in data: 
                     data[(p.start_date, p.end_date)] = {
                         "start": convert(p.start_date), 
@@ -718,7 +723,5 @@ def get_protocol_entry_by_uuid(Table, uuid: str):
 def get_protocol_entry_by_name(Table, protocol: str, name: str):
     res = Table.query.filter(Table.protocol == protocol, Table.name == name)
     if not res.first(): 
-        raise QueryEmpty(
-            f"For table {Table} with protocol {protocol} and name {name}: no entry found!", 404
-        )
+        return None
     return res.first() 
