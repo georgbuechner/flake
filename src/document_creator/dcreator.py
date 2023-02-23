@@ -15,7 +15,6 @@ class GenerationThread(threading.Thread):
         super().__init__(target=target)
 
     def progress(self): 
-        print({"cur": self.dcreator.cur, "total": self.dcreator.total})
         return {"cur": self.dcreator.cur, "total": self.dcreator.total}
 
 class DCreator:
@@ -52,7 +51,6 @@ class DCreator:
         self.doc.save("src/output/surgery_sheet.docx")
 
     def create_score_sheet(self): 
-        print("starting generation...")
         self.__edit_paragraphs()
         self.__edit_tables()
         user = self.fields["general"]["user"]
@@ -104,15 +102,14 @@ class DCreator:
                     update_paragraph(cells[i].paragraphs[0], "", val)
 
         # Update total
-        for i, month in enumerate(monthly_weights):
-            self.total += len(month["data"])
+        self.total = len(monthly_weights)
 
         remember_i = {}
         for i, month in enumerate(monthly_weights):
+            self.cur += 1
             table = self.doc.tables[i]
             table.rows[0].cells[0].paragraphs[0].text = month["month_str"]
             for x, data in month["data"].items():
-                self.cur += 1
                 if x not in remember_i:
                     for r, row in enumerate(table.rows):
                         for c in range(2):

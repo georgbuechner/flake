@@ -235,7 +235,6 @@ def input(animal_id: str, category: str):
     protocol_general = PGeneral.query.filter(PGeneral.protocol == general.experiment)
     if protocol_general.first(): 
         allowed_users = protocol_general.first().allowed_users.split(", ")
-    print(f"str: {protocol_general.first().allowed_users}, list: {allowed_users}")
 
     # Create ref to previous page
     ref = False
@@ -630,7 +629,6 @@ def generate_score_sheet(animal_id: str):
     generation_threads[thread_id] = GenerationThread(
         target=dcreator.create_score_sheet, dcreator=dcreator
     )
-    print("Created thread: ", thread_id)
     generation_threads[thread_id].start()
     generation_threads[thread_id].join()
     del generation_threads[thread_id]
@@ -669,7 +667,6 @@ def generate_paragraph_9(escaped_protocol: str):
 @login_required
 def generation_progress(thread_id: str): 
     global generation_threads
-    print("Checking thread: ", thread_id, len(generation_threads));
     if thread_id in generation_threads:
         return make_response(
             jsonify(generation_threads[thread_id].progress()), 200
