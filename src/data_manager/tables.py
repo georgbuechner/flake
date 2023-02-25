@@ -724,6 +724,7 @@ class Procedure(db.Model):
         return cls.from_form(procedure["animal_id"], procedure)
 
     def update(self, p: Dict[str, any]):
+        self.name = p["name"]
         self.start_date = p["start_date"]
         self.end_date = p["end_date"]
         self.experimenter = p["experimenter"]

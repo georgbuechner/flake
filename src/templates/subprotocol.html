@@ -9,6 +9,7 @@
 
   <script src="/static/js/protocols.js"></script>
   <script src="/static/js/definitions.js"></script>
+
 </head>
 
 <body>
@@ -27,7 +28,7 @@
 
     <h1><i>FLAKE</i> DATABASE</h1>
 
-    <h2>{{protocol.name}} {{subprotocol}}</i></h2>
+    <h2><i>{{protocol.name}} {{subprotocol}}</i></h2>
     <table class="center"> 
       <tr>
         <th>
@@ -251,6 +252,7 @@
             <td><input 
               type="text" name="days_after_start" id="days_after_start" placeholder="days after start"
               value="{{data['days_after_start'] if 'days_after_start' in data}}"
+              required
             ></td>
           </tr>
           <tr>
@@ -258,6 +260,7 @@
             <td><input 
               type="text" name="duration" id="duration" placeholder="duration in days"
               value="{{data['duration'] if 'duration' in data}}"
+              required
             ></td>
           </tr>
           </table>
@@ -269,7 +272,7 @@
 
 
   <dialog id="edit_modal" style="height: 350px; width: 80%;" category="">
-    <button onclick="CloseModal()" style="float: right;">Close</button>
+    <button onclick="CloseModal('edit_modal')" style="float: right;">Close</button>
     <h2>Entry</h2>
     {% if category=="medication" %}
       {% include "protocol_medication_edit.html" %}
@@ -290,12 +293,14 @@
 
       <table id="allowed_users_table" class="center">
         <tr>
-          <select onchange="AddAllowedUser(this.value)";>
-            <option selected>---</option>
-            {% for user in users %}
-              <option>{{user}}</option>
-            {% endfor %}
-          </select>
+          <td>
+            <select onchange="AddAllowedUser(this.value);" autocomplete="off">
+              <option selected>---</option>
+              {% for user in users %}
+                <option>{{user}}</option>
+              {% endfor %}
+            </select>
+          </td>
         </tr>
       </table>
 
@@ -303,6 +308,57 @@
     </dialog>
   {% endif %}
 
+  {% if category != "allowed_animals" %} 
+    <dialog 
+      id="protocol_changed_modal" style="height: 250px; width: 60%;" category=""
+    >
+      <button onclick="CloseModal('protocol_changed_modal')" style="float: right;">Close</button>
+      <h3>Protocol changed</h3>
+      <p>Important protocol data has changed! You meight want to concider
+      recreating the experiment data based on this protocol, to definitly match the 
+      default data defined here. 
+      You can do this by changing the subprotocol for all animal data to "---"
+      and then back again. 
+      Or you can click here to apply changes directly: 
+      </p>
+      <br>
+      <input 
+        type="submit"
+        onclick="ResetSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+        value="RESET all subprotocols"
+      >
+      <input 
+        type="submit"
+        onclick="ReloadSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+        value="RELOAD ALL subprotocols"
+        title="This functionality is not implemented yet"
+      >
+    </dialog>
+
+    {% if subprotocol_changed %} 
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          OpenModel("protocol_changed_modal");
+        });
+      </script>
+    {% endif %}
+
+  {% endif %}
+
+  {% include "error_modal.html" %}
+
+  <dialog id="animal_modal" style="height: 200px; width: 50%;" category="">
+    <button onclick="Refresh();" style="float: right;">Close</button>
+    <br><br>
+    <p id="animal_modal_text"></p>
+    <p id="animal_modal_text_2" style="display: none;">
+      Select protocol and subprotocol to directly apply data. If the start- or 
+      end-date is already filled, then it was parsed from the pyrat comment. 
+      Otherwise you may select the dates now, or later.
+    </p>
+    <p id="animal_modal_table"></p>
+    <p id="animal_modal_text_3"></p>
+  </dialog>
 
  </body>
 

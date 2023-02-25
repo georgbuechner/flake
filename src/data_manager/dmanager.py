@@ -98,17 +98,22 @@ class DManager:
         if len(updated) > 0:
             response["text"] += f" {len(updated)} updated ({' '.join(x for x in updated)})"
         if len(mlas_with_date) > 0: 
-            animal_data = []
-            for mla, data in mlas_with_date.items(): 
-                start, end = data
-                animal_data.append(AnimalData.query.get(mla))
-            response["animal_data"] = render_template(
-                "overview_table_reduced.html", 
-                animal_data=animal_data,
-                mlas_with_date=mlas_with_date,
-                protocols=self.protocols_and_subprotocols(),
-            )
+            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date)
         return response, 200
+
+    def get_quick_apply_animal_data(self, mlas_with_date, set_stored: bool = None):
+        animal_data = []
+        for mla, _ in mlas_with_date.items(): 
+            animal = AnimalData.query.get(mla)
+            if set_stored != None:
+                animal.stored = set_stored
+            animal_data.append(animal) 
+        return render_template(
+            "overview_table_reduced.html", 
+            animal_data=animal_data,
+            mlas_with_date=mlas_with_date,
+            protocols=self.protocols_and_subprotocols(),
+        )
 
     def set_protocol(
         self, animal_id: str, protocol: str, force: bool
@@ -129,7 +134,6 @@ class DManager:
         db.session.commit()
         return "", 200, escaped_protocol
 
-
     def set_subprotocol(
         self, animal_id: str, subprotocol: str, force: bool
     ) -> Tuple[str, int]:
@@ -146,7 +150,6 @@ class DManager:
         x, of = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
-        print("Accessing animal_data: ", animal_id)
         animal_data = AnimalData.query.get(animal_id)
         animal_data.subprotocol = subprotocol
         if subprotocol == "---":
@@ -199,6 +202,10 @@ class DManager:
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, any]
     ):
+        # Check name:
+        if "name" not in data or data["name"] == "---": 
+            raise MissingEntryException(entry="name")
+        # Update or add element:
         Table = EXPERIMENT_TABLES[category] 
         element = Table.query.get(data["uuid"])
         if element:
@@ -224,6 +231,32 @@ class DManager:
             db.session.commit()
             return "", 200
         return "Animal not found", 404
+
+    def reset_animal_data(self, experiment):
+        query = General.query.filter(General.experiment == experiment)
+        num_data_reset = 0
+        if query.first():
+            for general in query: 
+                num_data_reset += 1
+                self.set_subprotocol(general.animal_id, "---", True)
+        return num_data_reset 
+
+    def reload_animal_data(self, experiment): 
+        query = General.query.filter(General.experiment == experiment)
+        mlas_with_date = {}
+        response = {"text": "reaload animals"}
+        if query.first():
+            # Build response
+            for general in query: 
+                mlas_with_date[general.animal_id] = {
+                    "start": general.start, "end": general.end
+                }
+            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date, False)
+            # Set stored to false 
+            # reset data: 
+            _ = self.reset_animal_data(experiment)
+        return response
+
 
     def delete_experiment_data_entry(self, category: str, uuid: str):
         Table = EXPERIMENT_TABLES[category] 
@@ -308,6 +341,10 @@ class DManager:
                 if not date_filled(p.start_date) or not date_filled(p.end_date):
                     continue
                 default = get_protocol_entry_by_name(PProcedure, general.experiment, p.name)
+                if default is None: 
+                    raise MissingEntryException(
+                        entry=p.name, msg=f"For animal: <i>{general.animal_id}</i>: no procedure: "
+                    )
                 if (p.start_date, p.end_date) not in data: 
                     data[(p.start_date, p.end_date)] = {
                         "start": convert(p.start_date), 
@@ -413,6 +450,10 @@ class DManager:
 
     def update_definitions_entry(self, category: str, data: Dict[str, any]):
         """! Updates or creates new definition entry. """
+        # Check neccesarry fields are included: 
+        if "name" not in data or data["name"] == "":
+            raise MissingEntryException(entry="name")
+        # Create or update entry
         Table = DEFINITION_TABLES[category] 
         definitions_entry = Table.query.get(data["name"])
         if definitions_entry:
@@ -432,6 +473,8 @@ class DManager:
             protocol_entry = PWatercontrol.query.get(data["uuid"]) 
             Table = PWatercontrol
         else: 
+            if "name" not in data or data["name"] == "---": 
+                raise MissingEntryException(entry="name")
             Table = PROTOCOL_TABLES[category] 
             protocol_entry = Table.query.get(data["uuid"]) 
         # Update or add new protocol entry depending on wether it existed before.
@@ -503,7 +546,9 @@ class DManager:
         start_date = general.start
         if not date_filled(start_date): 
             return "Missing start-date", 401
-        watercontrol_infos = PWatercontrol.query.filter(PWatercontrol.protocol == general.experiment).first()
+        watercontrol_infos = PWatercontrol.query.filter(
+            PWatercontrol.protocol == general.experiment
+        ).first()
 
         # Get some values 
         start_weight = float(start_weight) if start_weight != "" else -1
@@ -517,14 +562,19 @@ class DManager:
 
         # Generate water-control-mask, if watercontrol is allowed:
         if watercontrol_infos.allowed:
-            days_after_start = int(watercontrol_infos.days_after_start)
-            water_restriction_start = incdate(start_date, days_after_start)
-            surgery_dates = get_surgery_dates(animal_id, general.experiment)
-            duration_water = len(daterange(water_restriction_start, sacrifice_date))
-            if duration_water > int(watercontrol_infos.duration):
-                duration_water = int(watercontrol_infos.duration)
-            if duration_water > duration:
-                duration_water = duration
+            try:
+                days_after_start = int(watercontrol_infos.days_after_start)
+                water_restriction_start = incdate(start_date, days_after_start)
+                surgery_dates = get_surgery_dates(animal_id, general.experiment)
+                duration_water = len(daterange(water_restriction_start, sacrifice_date))
+                if duration_water > int(watercontrol_infos.duration):
+                    duration_water = int(watercontrol_infos.duration)
+                if duration_water > duration:
+                    duration_water = duration
+            except ValueError: 
+                raise MissingEntryException(
+                    "The matching protocol has invalid entries for watercontrol."
+                )
             # Calculate water-control-mask and estimated weights
             water_control_mask = get_water_control_mask(
                 water_restriction_start, duration_water, surgery_dates, sacrificed=True
@@ -718,7 +768,5 @@ def get_protocol_entry_by_uuid(Table, uuid: str):
 def get_protocol_entry_by_name(Table, protocol: str, name: str):
     res = Table.query.filter(Table.protocol == protocol, Table.name == name)
     if not res.first(): 
-        raise QueryEmpty(
-            f"For table {Table} with protocol {protocol} and name {name}: no entry found!", 404
-        )
+        return None
     return res.first() 

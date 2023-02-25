@@ -1,5 +1,8 @@
 window.onload = function() {
   // Get some values
+
+  if (document.getElementById("weights") === null)
+    return;
   const date_string = document.getElementById("start").value
   const day = new Date(date_string).getDate();
   const start_date = new Date().getDate();
@@ -73,57 +76,43 @@ function ToggleGraph() {
 }
 
 async function UpdateDates(animal_id, autofill) {
-  // Send request to server:
-  try {
-    let formData = new FormData();
-    formData.append("date", document.getElementById("start").value);
-    // Send request:
-    let r = await fetch('/update/animal_data/dates/'+animal_id+"/"+autofill, 
-      {method: "POST", body: formData}); 
-    // Handle response:
-    console.log('HTTP response code: ' + r.status); 
-    let response_text = await r.text()
-    if (r.status === 200) {
-      alert(response_text);
-      window.location=window.location;
-    }
-    else if (r.status === 409) {
-      document.getElementById("date_msg").innerHTML = response_text;
-      CloseConfirmationModal();
-    }
-    else if (r.status > 400 && r.status < 500) {
-      alert("Error code: " + r.status + ": " + response_text);
-    }
-    else
-      alert("Something went wrong: Error code: " + r.status);
-  } catch(e) {
-    alert("Something went wrong: " + e);
-  }
+  // build request and url
+  let formData = new FormData();
+  formData.append("date", document.getElementById("start").value);
+  const url = '/update/animal_data/dates/' + animal_id + "/" + autofill;
+  // Send request:
+  fetch(url, {method: "POST", body: formData})
+    .then(response => {
+      if (!response.ok)
+        response.text().then(text => OpenErrorModal(text, response.status, "confirm_modal"));
+      else {
+        response.text().then(text => {
+          alert(text);
+          window.location=window.location;
+        });
+      }
+    })
+    .catch(error => {
+      OpenErrorModal(error, 500);
+    });
 }
 
 async function GenerateWeightList(animal_id, weight) {
   // Send request to server:
-  try {
-    // Send request:
-    let r = await fetch('/generate/weights/'+animal_id+"/"+weight, {method: "POST"}); 
-    // Handle response:
-    console.log('HTTP response code: ' + r.status); 
-    if (r.status === 200) {
-      alert("Generated weight placeholders, fill in the proper weights as soon as they are messuered!")
+  const url = '/generate/weights/' + animal_id + "/" + weight;
+  // Send request:
+  let r = await fetch(url, {method: "POST"})
+   .then(response => {
+    if (!response.ok)
+      response.text().then(text => OpenErrorModal(text, response.status));
+    else {
+      alert("Generated weight placeholders, fill in the proper weights as soon as they are messuered!");
       window.location=window.location;
     }
-    else if (r.status > 400 && r.status < 500) {
-      let response_text = await r.text()
-      alert("Error code: " + r.status + ": " + response_text);
-    }
-    else if (r.status === 504) {
-      alert("Generation took too long. We're working on a fix.")
-    }
-    else
-      alert("Something went wrong: Error code: " + r.status);
-  } catch(e) {
-    alert("Something went wrong: " + e);
-  }
+  })
+  .catch(error => {
+    OpenErrorModal(error, 500);
+  });
 }
 
 async function UpdateSuffering(animal_id, suffering) {
@@ -164,7 +153,7 @@ async function GenerateMainSheet(animal_id, type) {
   let progress = document.getElementById("progress_container");
   progress.style = "display: block";
   const id = type + "/" + animal_id;
-  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 1000);
+  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 2500);
   const url = "/generate/" + id;
   fetch(url, {"headers": {"Content-Type": "application/x-www-form-urlencoded"}}) 
     .then(response => {

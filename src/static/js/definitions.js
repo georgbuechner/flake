@@ -1,3 +1,23 @@
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('form');
+  form.addEventListener('submit', (event) => {
+    console.log("ADDED EVENTLISTENER: ", form.action);
+    event.preventDefault();
+    const formData = new FormData(form);
+    fetch(form.action, { method: form.method, body: formData, })
+      .then((response) => {
+        if (!response.ok)
+          response.text().then(text => OpenErrorModal(text, response.status, "edit_modal"));
+        else 
+          window.location=window.location;
+        // Handle successful response
+      })
+      .catch((error) => {
+          OpenErrorModal("Unkown error", 500, "edit_modal");
+      });
+  });
+});
+
 function Add(entry) { 
   console.log(entry);
   if (entry !== undefined) {
@@ -24,8 +44,7 @@ function Add(entry) {
     }
   }
   // open add-/edit-modal
-  var dialog = document.getElementById("edit_modal"); 
-  dialog.showModal();
+  OpenModel("edit_modal"); 
 } 
 
 function BlockAmount() {
@@ -115,11 +134,6 @@ function Restricted() {
     alert("This action is restricted to admin-users!")
 }
 
-function CloseModal() { 
-  var dialog = document.getElementById("edit_modal"); 
-  dialog.close(); 
-}
-
 function Set(elem, availible) {
   console.log("all availible entries: ", availible)
   const getByKey = (arr, key) => (arr.find(x => x["name"] === key) || {});
@@ -127,10 +141,14 @@ function Set(elem, availible) {
   for (const [key, value] of Object.entries(definition)) {
     let el = document.getElementById(key)
     if (el !== undefined && el !== null) {
-      if ((el || {}).type === "checkbox" && value === true)
+      if ((el || {}).type === "checkbox" && value === true) {
         el.checked = true;
-      else if ((el || {}).type === "checkbox" && value === false)
+        if (el.id === "weight_independant") BlockDosis();
+      }
+      else if ((el || {}).type === "checkbox" && value === false) {
         el.checked = false;
+        if (el.id === "weight_independant") BlockAmount();
+      }
       else 
         el.value = value; 
     }
@@ -140,10 +158,10 @@ function Set(elem, availible) {
 function OpenAllowedUsers() {
   var users = document.getElementById("allowed_users").value;
   users.split(", ").forEach(function(user) {
-    AddAllowedUser(user); 
+    if (user !== "")
+      AddAllowedUser(user); 
   });
-  var dialog = document.getElementById("allowed_users_modal"); 
-  dialog.showModal(); 
+  OpenModel("allowed_users_modal"); 
 }
 
 function CloseAllowedUsers() {
@@ -156,8 +174,7 @@ function CloseAllowedUsers() {
   if (users.length >=2) 
     users = users.substring(0, users.length-2);
   document.getElementById("allowed_users").value = users;
-  var dialog = document.getElementById("allowed_users_modal"); 
-  dialog.close(); 
+  CloseModal("allowed_users_modal"); 
 }
 
 function AddAllowedUser(user) {
@@ -179,4 +196,52 @@ function AddAllowedUser(user) {
 function RemoveAllowedUser(elem) {
   var table = document.getElementById("allowed_users_table");
   elem.parentNode.removeChild(elem);
+}
+
+function ResetSubprotocols(protocol) {
+  let formData = new FormData();
+  formData.append("experiment", protocol);
+  fetch("/animal_data/reset/", {method: "POST", body: formData})
+    .then(response => { 
+      if (!response.ok)
+        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
+      else {
+        response.text().then(text => {
+          alert("resetted subprotocol for " + text + " animals")
+          window.location = window.location;
+        });
+      }
+    })
+    .catch(error => {
+      OpenErrorModal(error);
+    });
+}
+
+function ReloadSubprotocols(protocol) {
+  let formData = new FormData();
+  formData.append("experiment", protocol);
+  fetch("/animal_data/reload/", {method: "POST", body: formData})
+    .then(response => { 
+      if (!response.ok)
+        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
+      else {
+        response.json().then(json => {
+          if ("animal_data" in json && json["animal_data"].length > 2) {
+            document.getElementById("animal_modal_text").innerHTML = json["text"];
+            document.getElementById("animal_modal_text_2").style.display = "block";
+            document.getElementById("animal_modal").style.height = "400px";
+            document.getElementById("animal_modal").style.width = "70%";
+            document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+            OpenModel("animal_modal")
+          }
+          else {
+            alert("Nothing to do: there has been no animal-data listed under this protocol.");
+            window.location = window.location;
+          }
+        });
+      }
+    })
+    .catch(error => {
+      OpenErrorModal(error);
+    });
 }

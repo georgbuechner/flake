@@ -6,8 +6,7 @@
   <title>FLAKE - {{protocol}}</title>
 
   {% include "default_imports.html" %}
-
-  <script src="/static/js/general.js"></script>
+  <script src="/static/js/overview.js"></script>
 </head>
 
 <body>
@@ -47,6 +46,8 @@
        <!-- submit is added by javascript -->
     </input>
   </dialog>
+
+  {% include "error_modal.html" %}
 
 </body>
 

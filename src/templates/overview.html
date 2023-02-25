@@ -6,8 +6,7 @@
   <title>FLAKE - Overview</title>
 
   {% include "default_imports.html" %}
-
-  <script src="/static/js/general.js"></script>
+  <script src="/static/js/overview.js"></script>
 </head>
 
 <body>
@@ -82,13 +81,15 @@
     <br><br>
     <p id="animal_modal_text"></p>
     <p id="animal_modal_text_2" style="display: none;">
-	Select protocol and subprotocol to directly apply data. If the start- or 
-	end-date is already filled, then it was parsed from the pyrat comment. 
-	Otherwise you may select the dates now, or later.
+      Select protocol and subprotocol to directly apply data. If the start- or 
+      end-date is already filled, then it was parsed from the pyrat comment. 
+      Otherwise you may select the dates now, or later.
     </p>
     <p id="animal_modal_table"></p>
     <p id="animal_modal_text_3"></p>
   </dialog>
+
+  {% include "error_modal.html" %}
 
 
 </body>

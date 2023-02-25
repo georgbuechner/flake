@@ -1,26 +1,33 @@
 import json
 import html
-from flask import Flask, render_template, make_response, jsonify, request, send_file, redirect
+from flask import (
+    Flask, render_template, make_response, jsonify, request, send_file, redirect, session
+)
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
-from exceptions.exceptions import ParserException
+from exceptions.exceptions import *
 from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import time
 import os
 import subprocess
 import tempfile
+import traceback
 import shutil
 from cryptography.fernet import Fernet
+from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
 
 SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
 SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
+
+BACKUP_PATH = "backups/"
+DB_PATH = "instance/larkum.db"
 
 generation_threads = {}
 
@@ -32,6 +39,19 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
+
+def handle_exception(func): 
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try: 
+            return func(*args, **kwargs)
+        except ParserException as error:
+            print(traceback.format_exc())
+            return error.msg, error.status
+        except Exception as error:
+            print(traceback.format_exc())
+            return repr(error), 500
+    return wrapper
 
 def create_root_user_if_not_exists():
     root_email = get_root_user(SERVER_CONFIG_PATH)
@@ -60,6 +80,11 @@ def update_lines():
                 db.session.add(line)
         db.session.commit()
 
+def create_backup(): 
+    shutil.copyfile(
+        DB_PATH,
+        f"{BACKUP_PATH}/backup_{datetostr(today(), DATE_TIME)}.db"
+    )
 
 with app.app_context():
     # Example to remove tables
@@ -70,8 +95,6 @@ with app.app_context():
     # drop("animal_data", AnimalData)
     # drop("general", General)
     # drop_all(EXPERIMENT_TABLES)
-    # safe_all("backup")
-    # load_backup("backup_2")
     create_root_user_if_not_exists()
     update_lines()
        
@@ -208,6 +231,20 @@ def delete_animal_data(animal_id: str):
     text, status = dmanager.delete_animal_data(animal_id)
     return text, status
 
+@app.route("/animal_data/reset/", methods=["POST"])
+@login_required
+def reset_animal_data(): 
+    """! Updates an entry in an animals experiment data. """
+    data_reset = dmanager.reset_animal_data(request.form["experiment"])
+    return str(data_reset), 200
+
+@app.route("/animal_data/reload/", methods=["POST"])
+@login_required
+def reload_animal_data(): 
+    """! Updates an entry in an animals experiment data. """
+    response = dmanager.reload_animal_data(request.form["experiment"])
+    return make_response(jsonify(response), 200)
+
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
 @app.route("/animal_data/<animal_id>/<category>")
 @login_required
@@ -294,6 +331,17 @@ def account():
         escaped_user=escape(current_user.name),
         has_signature=has_signature(current_user.name),
     )
+
+@app.route("/settings/backup-management")
+@login_required
+def backup():
+    # Walk through the directory tree and append subdirectory paths to the list
+    backups = []
+    for backup in os.listdir(BACKUP_PATH):
+        backup_path = os.path.join(BACKUP_PATH, backup)
+        if os.path.isfile(backup_path):
+            backups.append(backup)
+    return render_template("backup_management.html", backups=backups)
 
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
 @login_required 
@@ -402,6 +450,27 @@ def protocol(escaped_protocol: str):
         msg="Protocol not found"
     )
 
+@app.route("/settings/backups/add", methods=["POST"])
+@login_required
+def add_backup(): 
+    create_backup()
+    return "", 200
+
+@app.route("/settings/backups/delete/<backup>", methods=["POST"])
+@login_required
+def delete_backup(backup: str): 
+    print(f"Erasing backup: {BACKUP_PATH}/{backup}")
+    os.remove(f"{BACKUP_PATH}/{backup}")
+    return "", 200
+
+@app.route("/settings/backups/load/<backup>", methods=["POST"])
+@login_required
+def load_backup(backup: str): 
+    print(f"Loading backup: {BACKUP_PATH}/{backup}")
+    create_backup()
+    shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
+    return "", 200
+
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
 def update_animal_all(): 
@@ -497,6 +566,7 @@ def update_animal_death_date(animal_id):
 
 @app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required
+@handle_exception
 def update_dates(animal_id: str, autofill: bool): 
     """! Updates the dates an animal 
 
@@ -505,6 +575,7 @@ def update_dates(animal_id: str, autofill: bool):
     @return error-/ success-message and status code.
     """
     return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
+    # exception handled
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
 @login_required
@@ -552,9 +623,9 @@ def store_animal_data():
 
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
+@handle_exception
 def generate_weight_list(animal_id: str, weight: int): 
-    txt, status = dmanager.generate_weight_list(animal_id, weight)
-    return txt, status
+    return dmanager.generate_weight_list(animal_id, weight)
 
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
@@ -568,13 +639,16 @@ def store_notes(animal_id: str, category: str):
     if dmanager.store_note(animal_id, category, note_txt):
         return "Success", 200
     return "Something went wrong", 500
+    # exception handled
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
+@handle_exception
 def update_experiment_data(animal_id: str, category: str): 
     """! Updates an entry in an animals experiment data. """
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
-    return redirect(request.referrer)
+    return "", 200
+    # exception handled
 
 @app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
 @login_required
@@ -636,6 +710,7 @@ def generate_score_sheet(animal_id: str):
 
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
 @login_required
+@handle_exception
 def generate_paragraph_9(escaped_protocol: str):
     subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
     txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
@@ -662,6 +737,7 @@ def generate_paragraph_9(escaped_protocol: str):
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+    # exception handled
 
 @app.route("/generate/progress/<thread_id>")
 @login_required
@@ -675,6 +751,7 @@ def generation_progress(thread_id: str):
 
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
+@handle_exception
 def update_definitions_entry(category: str):
     dmanager.update_definitions_entry(category, request.form)
     return redirect(request.referrer)
@@ -688,17 +765,22 @@ def delete_definition(category: str, name: str):
 
 @app.route("/settings/protocols/<protocol>/<subprotocol>/<category>", methods=["POST"])
 @login_required 
+@handle_exception
 def update_protocol_entry(protocol: str, subprotocol: str, category: str):
     dmanager.update_protocol_entry(
         category, f"{protocol}/{subprotocol}", request.form
     )
-    return redirect(request.referrer)
+    session["subprotocol_changed"] = True
+    return "", 200
+    # exception handled
 
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
 def delete_protocol_entry(category: str, uuid: str): 
     dmanager.delete_protocol_entry(category, uuid)
-    return redirect(request.referrer)
+    session["subprotocol_changed"] = True
+    print("Set 'subprotocol_changed' to: ", session.get("subprotocol_changed"))
+    return "", 200
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
@@ -710,6 +792,8 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     if procedures.first(): 
         procedures = sort_query(procedures, "name")
     if protocol:
+        subprotocol_changed = session.get("subprotocol_changed")
+        session.pop("subprotocol_changed", None)
         return render_template(
             "subprotocol.html", 
             protocol=protocol,
@@ -721,6 +805,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             users=dmanager.users(), 
+            subprotocol_changed=subprotocol_changed,
             msg=""
         )
 
