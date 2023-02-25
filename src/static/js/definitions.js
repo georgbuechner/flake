@@ -1,3 +1,23 @@
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('form');
+  form.addEventListener('submit', (event) => {
+    console.log("ADDED EVENTLISTENER: ", form.action);
+    event.preventDefault();
+    const formData = new FormData(form);
+    fetch(form.action, { method: form.method, body: formData, })
+      .then((response) => {
+        if (!response.ok)
+          response.text().then(text => OpenErrorModal(text, response.status, "edit_modal"));
+        else 
+          window.location=window.location;
+        // Handle successful response
+      })
+      .catch((error) => {
+          OpenErrorModal("Unkown error", 500, "edit_modal");
+      });
+  });
+});
+
 function Add(entry) { 
   console.log(entry);
   if (entry !== undefined) {
@@ -121,10 +141,14 @@ function Set(elem, availible) {
   for (const [key, value] of Object.entries(definition)) {
     let el = document.getElementById(key)
     if (el !== undefined && el !== null) {
-      if ((el || {}).type === "checkbox" && value === true)
+      if ((el || {}).type === "checkbox" && value === true) {
         el.checked = true;
-      else if ((el || {}).type === "checkbox" && value === false)
+        if (el.id === "weight_independant") BlockDosis();
+      }
+      else if ((el || {}).type === "checkbox" && value === false) {
         el.checked = false;
+        if (el.id === "weight_independant") BlockAmount();
+      }
       else 
         el.value = value; 
     }
@@ -211,7 +235,7 @@ function ReloadSubprotocols(protocol) {
             OpenModel("animal_modal")
           }
           else {
-            alert("no animal_data");
+            alert("Nothing to do: there has been no animal-data listed under this protocol.");
             window.location = window.location;
           }
         });

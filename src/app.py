@@ -15,8 +15,10 @@ import time
 import os
 import subprocess
 import tempfile
+import traceback
 import shutil
 from cryptography.fernet import Fernet
+from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
 
@@ -34,6 +36,19 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
+
+def handle_exception(func): 
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try: 
+            return func(*args, **kwargs)
+        except ParserException as error:
+            print(traceback.format_exc())
+            return error.msg, error.status
+        except Exception as error:
+            print(traceback.format_exc())
+            return repr(error), 500
+    return wrapper
 
 def create_root_user_if_not_exists():
     root_email = get_root_user(SERVER_CONFIG_PATH)
@@ -62,6 +77,12 @@ def update_lines():
                 db.session.add(line)
         db.session.commit()
 
+# def create_backup(packup_path: str): 
+#     shutil.copyfile(
+#         "instance/larkum.db", 
+#         f"{backup_path}/backup/{datetostr(today(), SOURCE_DATE_FORMAT)}"
+#     )
+# 
 
 with app.app_context():
     # Example to remove tables
@@ -513,6 +534,7 @@ def update_animal_death_date(animal_id):
 
 @app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required
+@handle_exception
 def update_dates(animal_id: str, autofill: bool): 
     """! Updates the dates an animal 
 
@@ -521,6 +543,7 @@ def update_dates(animal_id: str, autofill: bool):
     @return error-/ success-message and status code.
     """
     return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
+    # exception handled
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
 @login_required
@@ -568,9 +591,9 @@ def store_animal_data():
 
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
+@handle_exception
 def generate_weight_list(animal_id: str, weight: int): 
-    txt, status = dmanager.generate_weight_list(animal_id, weight)
-    return txt, status
+    return dmanager.generate_weight_list(animal_id, weight)
 
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
@@ -584,13 +607,16 @@ def store_notes(animal_id: str, category: str):
     if dmanager.store_note(animal_id, category, note_txt):
         return "Success", 200
     return "Something went wrong", 500
+    # exception handled
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
+@handle_exception
 def update_experiment_data(animal_id: str, category: str): 
     """! Updates an entry in an animals experiment data. """
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
-    return redirect(request.referrer)
+    return "", 200
+    # exception handled
 
 @app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
 @login_required
@@ -652,37 +678,34 @@ def generate_score_sheet(animal_id: str):
 
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
 @login_required
+@handle_exception
 def generate_paragraph_9(escaped_protocol: str):
-    try:
-        subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
-        txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
-        tmp_path = tempfile.mkdtemp() 
-        full_path = f"{tmp_path}/main.tex"
-        f = open(full_path, "w") 
-        f.write(txt) 
-        f.close()
+    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
+    txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
+    tmp_path = tempfile.mkdtemp() 
+    full_path = f"{tmp_path}/main.tex"
+    f = open(full_path, "w") 
+    f.write(txt) 
+    f.close()
 
-        # Copy images to temp location
-        shutil.copy("logo.jpg", f"{tmp_path}")
-        for filename in os.listdir(SIGNATURE_PATH):
-            f = os.path.join(SIGNATURE_PATH, filename)
-            # checking if it is a file
-            if os.path.isfile(f):
-                shutil.copy(f, f"{tmp_path}")
+    # Copy images to temp location
+    shutil.copy("logo.jpg", f"{tmp_path}")
+    for filename in os.listdir(SIGNATURE_PATH):
+        f = os.path.join(SIGNATURE_PATH, filename)
+        # checking if it is a file
+        if os.path.isfile(f):
+            shutil.copy(f, f"{tmp_path}")
 
-        # proc=subprocess.Popen(["pdflatex", full_path]) 
-        proc=subprocess.Popen(
-            ["pdflatex", full_path], 
-            cwd=tmp_path, 
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT
-        )
-        proc.communicate()
-        return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
-    except ParserException as error:
-        return error.msg, error.status
-    except Exception as error:
-        return repr(error), 500
+    # proc=subprocess.Popen(["pdflatex", full_path]) 
+    proc=subprocess.Popen(
+        ["pdflatex", full_path], 
+        cwd=tmp_path, 
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT
+    )
+    proc.communicate()
+    return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+    # exception handled
 
 @app.route("/generate/progress/<thread_id>")
 @login_required
@@ -696,6 +719,7 @@ def generation_progress(thread_id: str):
 
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
+@handle_exception
 def update_definitions_entry(category: str):
     dmanager.update_definitions_entry(category, request.form)
     return redirect(request.referrer)
@@ -709,12 +733,14 @@ def delete_definition(category: str, name: str):
 
 @app.route("/settings/protocols/<protocol>/<subprotocol>/<category>", methods=["POST"])
 @login_required 
+@handle_exception
 def update_protocol_entry(protocol: str, subprotocol: str, category: str):
     dmanager.update_protocol_entry(
         category, f"{protocol}/{subprotocol}", request.form
     )
     session["subprotocol_changed"] = True
-    return redirect(request.referrer)
+    return "", 200
+    # exception handled
 
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
@@ -735,7 +761,6 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
         procedures = sort_query(procedures, "name")
     if protocol:
         subprotocol_changed = session.get("subprotocol_changed")
-        print("Got 'subprotocol_changed': ", session.get("subprotocol_changed"))
         session.pop("subprotocol_changed", None)
         return render_template(
             "subprotocol.html", 

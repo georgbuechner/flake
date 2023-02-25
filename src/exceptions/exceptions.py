@@ -22,8 +22,15 @@ class DublicateEntry(ParserException):
     def __init__(self, msg: str):
         super().__init__(msg, 409)
 
-class MissingEntryException(ParserException):
+class InvalidTypeException(ParserException): 
     def __init__(self, msg: str):
-        self.msg = msg
+        super().__init__(msg, 400)
+
+class MissingEntryException(ParserException):
+    def __init__(self, entry: str, msg: str = None):
+        self.msg = "Missing entry: "
+        if msg != None:
+            self.msg = msg
+        self.msg += f"<i>{entry}</i>!"
         self.status = 406
         super().__init__(self.msg, self.status)

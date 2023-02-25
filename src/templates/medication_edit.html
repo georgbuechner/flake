@@ -1,5 +1,5 @@
 <form action="{{category}}" method="POST">
-  <input type="text" style="display: none" name="uuid" id="uuid" style="display:none" value=""/>
+  <input type="text" style="display: none" name="uuid" id="uuid" value=""/>
   <table class="center">
     <tr>
       <td><label for="name">Name:</label></td>
@@ -27,7 +27,7 @@
     <tr>
       <td><label for="procedure">Procedure:</label></td>
       <td>
-        <select type="text" name="procedure" id="procedure" autocomplete="off">
+        <select type="text" name="procedure" id="procedure" autocomplete="off" required>
         {% for procedure in availible_procedures %}
           <option value="{{procedure.name}}">{{procedure.name}}</option>
         {% endfor %}
@@ -51,7 +51,15 @@
 
     <tr>
       <td><label for="concentration">Concentration [mg/ml (1% = 10mg/ml)]:</label></td>
-      <td><input type="text" name="concentration" id="concentration" placeholder="concentration"></td>
+      <td>
+        <input 
+          type="text" 
+          name="concentration" 
+          id="concentration" 
+          placeholder="concentration"
+          required
+        >
+      </td>
     </tr>
 
     <tr>
