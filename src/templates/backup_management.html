@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>FLAKE - Overview</title>
+
+  {% include "default_imports.html" %}
+
+  <script src="/static/js/general.js"></script>
+  <script src="/static/js/backup.js"></script>
+  <script src="/static/js/snow.js-gh-pages/snow.js"></script>
+</head>
+
+<body>
+  <div>
+    <a href="/">FLAKE</a>
+    <a class="active" href="/overview">Overview</a>
+  </div>
+  {% include "userinfos_header.html" %}
+
+  <div class="center_in_box">
+    {% include "in_box_header.html" %}
+
+    <h1><i>FLAKE</i> Backups:</h1>
+
+    <table class="center">
+      <tr>
+        <th>Backup</th>
+      </tr>
+      {% for backup in backups %}
+      <tr>
+        <td>{{backup}}</td>
+        <td>
+            <i 
+              class="material-icons mini_icon"
+              title="Load backup. (Automatically creates a backup of the current database)"
+              onclick="DeleteBackup('{{backup}}');"
+            >delete</i>
+        </td>
+        <td>
+            <i 
+              class="material-icons mini_icon"
+              title="Load backup. (Automatically creates a backup of the current database)"
+              onclick="LoadBackup('{{backup}}');"
+            >cached</i>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <br><br>
+
+    <i 
+      class="material-icons mini_icon"
+      title="Creates new backup"
+      onclick="AddBackup('{{backup}}');"
+    >add</i>
+
+
+  </div>
+
+  {% include "error_modal.html" %}
+
+</body>
+
+</html>

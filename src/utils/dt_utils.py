@@ -7,6 +7,8 @@ SOURCE_DATE_FORMAT_3 = "%d.%m.%Y"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
 OUTPUT_DATE_FORMAT_2  = "%b %Y"
 
+DATE_TIME = "%Y-%m-%d_%H-%M"
+
 def strtodate(date_str: str) -> datetime: 
     try:
         return datetime.strptime(date_str, SOURCE_DATE_FORMAT)

@@ -26,6 +26,9 @@ SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
 SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
 
+BACKUP_PATH = "backups/"
+DB_PATH = "instance/larkum.db"
+
 generation_threads = {}
 
 # Create global instance of sql-connector, data-manager and flask-app.
@@ -77,12 +80,11 @@ def update_lines():
                 db.session.add(line)
         db.session.commit()
 
-# def create_backup(packup_path: str): 
-#     shutil.copyfile(
-#         "instance/larkum.db", 
-#         f"{backup_path}/backup/{datetostr(today(), SOURCE_DATE_FORMAT)}"
-#     )
-# 
+def create_backup(): 
+    shutil.copyfile(
+        DB_PATH,
+        f"{BACKUP_PATH}/backup_{datetostr(today(), DATE_TIME)}.db"
+    )
 
 with app.app_context():
     # Example to remove tables
@@ -93,8 +95,6 @@ with app.app_context():
     # drop("animal_data", AnimalData)
     # drop("general", General)
     # drop_all(EXPERIMENT_TABLES)
-    # safe_all("backup")
-    # load_backup("backup_2")
     create_root_user_if_not_exists()
     update_lines()
        
@@ -332,6 +332,17 @@ def account():
         has_signature=has_signature(current_user.name),
     )
 
+@app.route("/settings/backup-management")
+@login_required
+def backup():
+    # Walk through the directory tree and append subdirectory paths to the list
+    backups = []
+    for backup in os.listdir(BACKUP_PATH):
+        backup_path = os.path.join(BACKUP_PATH, backup)
+        if os.path.isfile(backup_path):
+            backups.append(backup)
+    return render_template("backup_management.html", backups=backups)
+
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
 @login_required 
 def update_username(email, username):
@@ -438,6 +449,27 @@ def protocol(escaped_protocol: str):
         protocols=Protocol.query.all(),
         msg="Protocol not found"
     )
+
+@app.route("/settings/backups/add", methods=["POST"])
+@login_required
+def add_backup(): 
+    create_backup()
+    return "", 200
+
+@app.route("/settings/backups/delete/<backup>", methods=["POST"])
+@login_required
+def delete_backup(backup: str): 
+    print(f"Erasing backup: {BACKUP_PATH}/{backup}")
+    os.remove(f"{BACKUP_PATH}/{backup}")
+    return "", 200
+
+@app.route("/settings/backups/load/<backup>", methods=["POST"])
+@login_required
+def load_backup(backup: str): 
+    print(f"Loading backup: {BACKUP_PATH}/{backup}")
+    create_backup()
+    shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
+    return "", 200
 
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
