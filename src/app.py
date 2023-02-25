@@ -210,6 +210,20 @@ def delete_animal_data(animal_id: str):
     text, status = dmanager.delete_animal_data(animal_id)
     return text, status
 
+@app.route("/animal_data/reset/", methods=["POST"])
+@login_required
+def reset_animal_data(): 
+    """! Updates an entry in an animals experiment data. """
+    data_reset = dmanager.reset_animal_data(request.form["experiment"])
+    return str(data_reset), 200
+
+@app.route("/animal_data/reload/", methods=["POST"])
+@login_required
+def reload_animal_data(): 
+    """! Updates an entry in an animals experiment data. """
+    response = dmanager.reload_animal_data(request.form["experiment"])
+    return make_response(jsonify(response), 200)
+
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
 @app.route("/animal_data/<animal_id>/<category>")
 @login_required
@@ -707,7 +721,8 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
 def delete_protocol_entry(category: str, uuid: str): 
     dmanager.delete_protocol_entry(category, uuid)
     session["subprotocol_changed"] = True
-    return redirect(request.referrer)
+    print("Set 'subprotocol_changed' to: ", session.get("subprotocol_changed"))
+    return "", 200
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
@@ -720,6 +735,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
         procedures = sort_query(procedures, "name")
     if protocol:
         subprotocol_changed = session.get("subprotocol_changed")
+        print("Got 'subprotocol_changed': ", session.get("subprotocol_changed"))
         session.pop("subprotocol_changed", None)
         return render_template(
             "subprotocol.html", 

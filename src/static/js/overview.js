@@ -123,32 +123,6 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
   }
 }
 
-async function UpdateAll(subprotocol, td, force) {
-  console.log(td);
-  let entries = td.children;
-  let formData = new FormData();
-  // Add extracted data to form.
-  formData.append("start", entries[2].children[0].value);
-  formData.append("end", entries[3].children[0].value);
-  formData.append("protocol", entries[5].children[0].value);
-  formData.append("subprotocol", subprotocol);
-  formData.append("animal_id", entries[0].innerHTML);
-  // Send request to server:
-  try {
-    // Send request:
-    let r = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
-    // Handle response:
-    let response_text = await r.text();
-    document.getElementById("animal_modal_text_3").innerHTML = response_text + " " + r.status;
-    if (r.status == 200) {
-      td.classList.remove("not_stored");
-      document.getElementById("animal_modal_text_3").innerHTML = "success";
-    }
-  } catch(e) {
-    alert("Something went wrong: " + e);
-  }
-}
-
 async function UpdateProtocol(protocol, animal_id, force) {
   console.log(subprotocol, animal_id, force);
   let formData = new FormData();

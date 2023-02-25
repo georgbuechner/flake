@@ -28,3 +28,45 @@ function OpenErrorModal(msg, resp_status, previous) {
   }
   document.getElementById("error_modal_msg").innerHTML = msg + " (status: " + resp_status + ")";
 }
+
+async function UpdateAll(td, force) {
+  console.log(td);
+  let entries = td.children;
+  start = entries[2].children[0].value;
+  end = entries[3].children[0].value;
+  protocol = entries[5].children[0].value;
+  subprotocol = entries[6 ].children[0].value;
+  if (start == "")
+    document.getElementById("animal_modal_text_3").innerHTML = "Missing start-date";
+  else if (end == "")
+    document.getElementById("animal_modal_text_3").innerHTML = "Missing end-date";
+  else if (protocol == "---")
+    document.getElementById("animal_modal_text_3").innerHTML = "Missing protocol";
+  else if (subprotocol == "---")
+    document.getElementById("animal_modal_text_3").innerHTML = "Missing sub-protocol";
+  else {
+    let formData = new FormData();
+    // Add extracted data to form.
+    formData.append("start", start);
+    formData.append("end", end);
+    formData.append("protocol", protocol);
+    formData.append("subprotocol", subprotocol);
+    formData.append("animal_id", entries[0].innerHTML);
+    // Send request to server:
+    try {
+      // Send request:
+      let r = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
+      // Handle response:
+      let response_text = await r.text();
+      document.getElementById("animal_modal_text_3").innerHTML = response_text + " " + r.status;
+      if (r.status == 200) {
+        td.classList.remove("not_stored");
+        document.getElementById("animal_modal_text_3").innerHTML = "success";
+      }
+    } catch(e) {
+      alert("Something went wrong: " + e);
+    }
+  }
+}
+
+

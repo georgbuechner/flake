@@ -98,17 +98,22 @@ class DManager:
         if len(updated) > 0:
             response["text"] += f" {len(updated)} updated ({' '.join(x for x in updated)})"
         if len(mlas_with_date) > 0: 
-            animal_data = []
-            for mla, data in mlas_with_date.items(): 
-                start, end = data
-                animal_data.append(AnimalData.query.get(mla))
-            response["animal_data"] = render_template(
-                "overview_table_reduced.html", 
-                animal_data=animal_data,
-                mlas_with_date=mlas_with_date,
-                protocols=self.protocols_and_subprotocols(),
-            )
+            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date)
         return response, 200
+
+    def get_quick_apply_animal_data(self, mlas_with_date, set_stored: bool = None):
+        animal_data = []
+        for mla, _ in mlas_with_date.items(): 
+            animal = AnimalData.query.get(mla)
+            if set_stored != None:
+                animal.stored = set_stored
+            animal_data.append(animal) 
+        return render_template(
+            "overview_table_reduced.html", 
+            animal_data=animal_data,
+            mlas_with_date=mlas_with_date,
+            protocols=self.protocols_and_subprotocols(),
+        )
 
     def set_protocol(
         self, animal_id: str, protocol: str, force: bool
@@ -225,6 +230,32 @@ class DManager:
             db.session.commit()
             return "", 200
         return "Animal not found", 404
+
+    def reset_animal_data(self, experiment):
+        query = General.query.filter(General.experiment == experiment)
+        num_data_reset = 0
+        if query.first():
+            for general in query: 
+                num_data_reset += 1
+                self.set_subprotocol(general.animal_id, "---", True)
+        return num_data_reset 
+
+    def reload_animal_data(self, experiment): 
+        query = General.query.filter(General.experiment == experiment)
+        mlas_with_date = {}
+        response = {"text": "reaload animals"}
+        if query.first():
+            # Build response
+            for general in query: 
+                mlas_with_date[general.animal_id] = {
+                    "start": general.start, "end": general.end
+                }
+            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date, False)
+            # Set stored to false 
+            # reset data: 
+            _ = self.reset_animal_data(experiment)
+        return response
+
 
     def delete_experiment_data_entry(self, category: str, uuid: str):
         Table = EXPERIMENT_TABLES[category] 

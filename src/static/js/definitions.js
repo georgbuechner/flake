@@ -173,3 +173,51 @@ function RemoveAllowedUser(elem) {
   var table = document.getElementById("allowed_users_table");
   elem.parentNode.removeChild(elem);
 }
+
+function ResetSubprotocols(protocol) {
+  let formData = new FormData();
+  formData.append("experiment", protocol);
+  fetch("/animal_data/reset/", {method: "POST", body: formData})
+    .then(response => { 
+      if (!response.ok)
+        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
+      else {
+        response.text().then(text => {
+          alert("resetted subprotocol for " + text + " animals")
+          window.location = window.location;
+        });
+      }
+    })
+    .catch(error => {
+      OpenErrorModal(error);
+    });
+}
+
+function ReloadSubprotocols(protocol) {
+  let formData = new FormData();
+  formData.append("experiment", protocol);
+  fetch("/animal_data/reload/", {method: "POST", body: formData})
+    .then(response => { 
+      if (!response.ok)
+        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
+      else {
+        response.json().then(json => {
+          if ("animal_data" in json && json["animal_data"].length > 2) {
+            document.getElementById("animal_modal_text").innerHTML = json["text"];
+            document.getElementById("animal_modal_text_2").style.display = "block";
+            document.getElementById("animal_modal").style.height = "400px";
+            document.getElementById("animal_modal").style.width = "70%";
+            document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+            OpenModel("animal_modal")
+          }
+          else {
+            alert("no animal_data");
+            window.location = window.location;
+          }
+        });
+      }
+    })
+    .catch(error => {
+      OpenErrorModal(error);
+    });
+}

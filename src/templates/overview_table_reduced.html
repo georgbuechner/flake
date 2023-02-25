@@ -47,10 +47,7 @@
           {% if animal_id %}
             {{entry.subprotocol}}
           {% else %}
-            <select 
-              id="subprotocol" autocomplete="off" 
-              onchange="UpdateAll(this.value, this.parentNode.parentNode, false)"
-            >
+            <select id="subprotocol" autocomplete="off" >
               <option value="---" selected>---</option>
               {% for sub in protocols[entry.protocol] %}
                 <option 
@@ -59,6 +56,12 @@
               {% endfor %}
             </select>
           {% endif %}
+        </td>
+        <td> 
+          <i 
+            class="material-icons mini_icon"
+            onclick="UpdateAll(this.parentNode.parentNode, false);"
+            >ac_unit</i>
         </td>
       </tr>
     {% endfor %}

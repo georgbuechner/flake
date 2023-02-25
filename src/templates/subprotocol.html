@@ -10,17 +10,6 @@
   <script src="/static/js/protocols.js"></script>
   <script src="/static/js/definitions.js"></script>
 
-  {% if subprotocol_changed %} 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var dialog = document.getElementById('protocol_changed_modal');
-        if (!dialog.showModal) {
-          dialogPolyfill.registerDialog(dialog);
-        }
-        dialog.show();
-      });
-    </script>
-  {% endif %}
 </head>
 
 <body>
@@ -302,12 +291,14 @@
 
       <table id="allowed_users_table" class="center">
         <tr>
-          <select onchange="AddAllowedUser(this.value);" autocomplete="off">
-            <option selected>---</option>
-            {% for user in users %}
-              <option>{{user}}</option>
-            {% endfor %}
-          </select>
+          <td>
+            <select onchange="AddAllowedUser(this.value);" autocomplete="off">
+              <option selected>---</option>
+              {% for user in users %}
+                <option>{{user}}</option>
+              {% endfor %}
+            </select>
+          </td>
         </tr>
       </table>
 
@@ -317,12 +308,13 @@
 
   {% if category != "allowed_animals" %} 
     <dialog 
-      id="protocol_changed_modal" style="height: 350px; width: 80%;" category=""
+      id="protocol_changed_modal" style="height: 250px; width: 60%;" category=""
     >
       <button onclick="CloseModal('protocol_changed_modal')" style="float: right;">Close</button>
       <h3>Protocol changed</h3>
       <p>Important protocol data has changed! You meight want to concider
-      recreating the data, to definitly match the default data defined here.
+      recreating the experiment data based on this protocol, to definitly match the 
+      default data defined here. 
       You can do this by changing the subprotocol for all animal data to "---"
       and then back again. 
       Or you can click here to apply changes directly: 
@@ -335,14 +327,36 @@
       >
       <input 
         type="submit"
-        onclick="ResetSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+        onclick="ReloadSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
         value="RELOAD ALL subprotocols"
-        disabled
         title="This functionality is not implemented yet"
       >
     </dialog>
+
+    {% if subprotocol_changed %} 
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          OpenModel("protocol_changed_modal");
+        });
+      </script>
+    {% endif %}
+
   {% endif %}
 
+  {% include "error_modal.html" %}
+
+  <dialog id="animal_modal" style="height: 200px; width: 50%;" category="">
+    <button onclick="Refresh();" style="float: right;">Close</button>
+    <br><br>
+    <p id="animal_modal_text"></p>
+    <p id="animal_modal_text_2" style="display: none;">
+      Select protocol and subprotocol to directly apply data. If the start- or 
+      end-date is already filled, then it was parsed from the pyrat comment. 
+      Otherwise you may select the dates now, or later.
+    </p>
+    <p id="animal_modal_table"></p>
+    <p id="animal_modal_text_3"></p>
+  </dialog>
 
  </body>
 
