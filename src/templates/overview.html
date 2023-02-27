@@ -72,7 +72,11 @@
     </p>
     <br>
     <label>Upload pyrat csv: <label>
-    <input type="file" id="pyrat_csv" accept=".csv" /></input>
+    <input type="file" id="pyrat_csv" accept=".csv"></input>
+    <a title="Click if parsing comment produces errors.">
+      <label>Ignore comment<label>
+      <input type="checkbox" id="ignore_comment"></input>
+    </a>
     <input type="submit" id="submit" value="upload" onclick="UploadPyratData()">
   </dialog>
 

@@ -72,7 +72,7 @@ class DManager:
             protocols[protocol.name] = protocol.get_subprotocols()
         return protocols
 
-    def extract_animal_data(self, file) -> Tuple[str, int]:
+    def extract_animal_data(self, file, ignore_comment: bool) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
         @param tmp_path  Path for temporarily storing csv-file.
@@ -84,7 +84,7 @@ class DManager:
         # temporarily store file
         file.save(tmp_path)
         # Load file and delete tmp-file afterwards
-        updated, total, mlas_with_date = self.__load_animal_data_from_csv(tmp_path)
+        updated, total, mlas_with_date = self.__load_animal_data_from_csv(tmp_path, ignore_comment)
         os.remove(tmp_path)
         # If none, send user information on which fields where missing.
         response = {"text":"", "animal_data": ""}
@@ -302,7 +302,6 @@ class DManager:
             return entries_with_date
         data["medication"] = get_entries_with_dates("medication")
         data["viruses"] = get_entries_with_dates("viruses")
-        print(data)
         return data
             
 
@@ -615,7 +614,7 @@ class DManager:
         self.__update_stored(animal_id)
         return 200
 
-    def __load_animal_data_from_csv(self, path: str):
+    def __load_animal_data_from_csv(self, path: str, ignore_comment: bool):
         """! Loads animal-data from CSV file.
 
         @param path  Path to CSV. 
@@ -648,8 +647,9 @@ class DManager:
                             if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
-                    if self.mapping[key] == "comments":
+                    if self.mapping[key] == "comments" and not ignore_comment:
                         start, end = self.__get_start_end_from_comment(value)
+
             # Create or update animal-data
             animal_id = data["id"]
             mlas_with_date[animal_id] = {"start":start, "end":end}
@@ -703,7 +703,7 @@ class DManager:
             animal_data.stored = False
         db.session.commit()
 
-    def __get_start_end_from_comment(self, value): 
+    def __get_start_end_from_comment(self, comment: str): 
         def extract(name: str, parts: List[str]):
             for part in parts: 
                 if name in part: 
@@ -713,8 +713,18 @@ class DManager:
                         continue
                     return convert_source_2_to_1(date)
             return None
-        parts = value.split(";")
-        return extract("start", parts), extract("end", parts)
+        # If comment as such is invalid, return empty start-/ end-date
+        try: 
+            parts = comment.split(";")
+        except Exception: 
+            return "", ""
+        # If comment content is invalid, raise exception
+        try: 
+            start = extract("start", parts)
+            end = extract("end", parts)
+            return start, end
+        except Exception:
+            ParseException(comment)
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
