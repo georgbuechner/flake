@@ -339,7 +339,7 @@ def backup():
     backups = []
     for backup in os.listdir(BACKUP_PATH):
         backup_path = os.path.join(BACKUP_PATH, backup)
-        if os.path.isfile(backup_path):
+        if os.path.isfile(backup_path) and backup != ".keep":
             backups.append(backup)
     return render_template("backup_management.html", backups=backups)
 
