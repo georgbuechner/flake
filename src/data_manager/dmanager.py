@@ -740,8 +740,9 @@ def get_surgery_dates(animal_id: str, protocol: str):
         # Get matching protocol-entry to check if procedure is a surgery
         protocol_procedure = get_protocol_entry_by_name(PProcedure, protocol, procedure.name)
         if protocol_procedure.surgery:
-            for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
-                surgery_dates.append(date)
+            if date_filled(procedure.start_date) and date_filled(procedure.end_date):
+                for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
+                    surgery_dates.append(date)
     return surgery_dates
 
 def fill_sacrifice_date(animal_id: str, protocol: str):
