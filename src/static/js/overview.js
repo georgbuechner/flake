@@ -9,6 +9,7 @@ async function UploadPyratData() {
   let formData = new FormData();
 
   formData.append("csv", pyrat_csv);
+  formData.append("ignore_comment", document.getElementById("ignore_comment").checked);
   
   const ctrl = new AbortController();    // timeout
   setTimeout(() => ctrl.abort(), 5000);
@@ -19,17 +20,19 @@ async function UploadPyratData() {
     let r = await fetch('/upload/pyrat_csv', 
      {method: "POST", body: formData, signal: ctrl.signal}); 
     // Handle response:
-      let json = await r.json()
       if (r.status != 200) {
-        OpenErrorModal(json["text"], r.status, "upload_modal");
+        r.text().then(text => OpenErrorModal(text, r.status, "upload_modal"));
       }
-      if (json["animal_data"].length > 2) {
-        document.getElementById("animal_modal_text").innerHTML = json["text"];
-        document.getElementById("animal_modal_text_2").style.display = "block";
-        document.getElementById("animal_modal").style.height = "400px";
-        document.getElementById("animal_modal").style.width = "70%";
-        document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
-        OpenModel("animal_modal")
+      else {
+        let json = await r.json()
+        if (json["animal_data"].length > 2) {
+          document.getElementById("animal_modal_text").innerHTML = json["text"];
+          document.getElementById("animal_modal_text_2").style.display = "block";
+          document.getElementById("animal_modal").style.height = "400px";
+          document.getElementById("animal_modal").style.width = "70%";
+          document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+          OpenModel("animal_modal")
+        }
       }
   } catch(e) {
     alert("Something went wrong: " + e);

@@ -341,6 +341,7 @@ def backup():
         backup_path = os.path.join(BACKUP_PATH, backup)
         if os.path.isfile(backup_path) and backup != ".keep":
             backups.append(backup)
+    backups.reverse()
     return render_template("backup_management.html", backups=backups)
 
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
@@ -459,14 +460,12 @@ def add_backup():
 @app.route("/settings/backups/delete/<backup>", methods=["POST"])
 @login_required
 def delete_backup(backup: str): 
-    print(f"Erasing backup: {BACKUP_PATH}/{backup}")
     os.remove(f"{BACKUP_PATH}/{backup}")
     return "", 200
 
 @app.route("/settings/backups/load/<backup>", methods=["POST"])
 @login_required
 def load_backup(backup: str): 
-    print(f"Loading backup: {BACKUP_PATH}/{backup}")
     create_backup()
     shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
     return "", 200
@@ -611,6 +610,7 @@ def update_weights(animal_id: str):
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 @login_required
+@handle_exception
 def store_animal_data():
     """! Adds new animal-data from .CSV.
 
@@ -618,7 +618,9 @@ def store_animal_data():
     """
     content = request.files
     # upload via data-manager
-    response, status = dmanager.extract_animal_data(content.get("csv"))
+    response, status = dmanager.extract_animal_data(
+        content.get("csv"), request.form.get("ignore_comment")=="true"
+    )
     return make_response(jsonify(response), status)
 
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
@@ -779,7 +781,6 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
 def delete_protocol_entry(category: str, uuid: str): 
     dmanager.delete_protocol_entry(category, uuid)
     session["subprotocol_changed"] = True
-    print("Set 'subprotocol_changed' to: ", session.get("subprotocol_changed"))
     return "", 200
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
