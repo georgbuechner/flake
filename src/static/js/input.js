@@ -255,9 +255,8 @@ async function CloseModalNotes(animal_id, save) {
 
 function EditWeightList(category, note) { 
   // Fill weight-table
-  const date_string = document.getElementById("start").value
+  const date_string = document.getElementById("start").value + " 04:00:00";
   const day = new Date(date_string).getDate();
-  const start_date = new Date().getDate();
 
   const weights = JSON.parse(document.getElementById("weights").value);
   const watercontrol = JSON.parse(document.getElementById("watercontrol").value);
