@@ -1,16 +1,16 @@
   <table class="center">
     <tr>
       {%- if not animal_id -%}<th></th>{%- endif -%}
-      <th>ID</th>
-      <th>Responsible</th>
-      <th>Sex</th>
-      <th>Line / Strain (Name)</th>
-      <th>DOB</th>
-      <th>Sacrifice date</th>
-      <th>Supplier</th>
-      <th>Protocol (pyrat)</th>
-      <th>Protocol (flake)</th>
-      <th>Sub Protocol</th>
+      <th><a href="{{url}}?sort_by=mla_num&reverse={{reverse}}">ID</a></th>
+      <th><a href="{{url}}?sort_by=user&reverse={{reverse}}"</a>Responsible</th>
+      <th><a href="{{url}}?sort_by=sex&reverse={{reverse}}"</a>Sex</th>
+      <th><a href="{{url}}?sort_by=line&reverse={{reverse}}"</a>Line / Strain (Name)</th>
+      <th><a href="{{url}}?sort_by=dob&reverse={{reverse}}"</a>DOB</th>
+      <th><a href="{{url}}?sort_by=death_date&reverse={{reverse}}"</a>Sacrifice date</th>
+      <th><a href="{{url}}?sort_by=supplier&reverse={{reverse}}"</a>Supplier</th>
+      <th><a href="{{url}}?sort_by=protocol_pyrat&reverse={{reverse}}"</a>Protocol (pyrat)</th>
+      <th><a href="{{url}}?sort_by=protocol&reverse={{reverse}}"</a>Protocol (flake)</th>
+      <th><a href="{{url}}?sort_by=subprotocol&reverse={{reverse}}"</a>Sub Protocol</th>
     </tr>
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">

@@ -7,6 +7,7 @@ import string
 import uuid
 import pandas as pd
 from copy import deepcopy
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 from exceptions.exceptions import *
@@ -52,7 +53,9 @@ class DManager:
         @return List of users.
         """
         animal_data = AnimalData.query.all()
-        return [*set([data.user for data in animal_data])]  # converting to set removes dublicates 
+        users = [*set([data.user for data in animal_data])]  # converting to set removes dublicates 
+        users.sort() # sort users alphabetically
+        return users
 
     def protocols(self) -> Dict[str, str]:
         """! Gets list of all protocols which are currently
@@ -61,9 +64,11 @@ class DManager:
         @return List of protocols.
         """
         animal_data = AnimalData.query.all()
-        return { 
+        protocols = {
             data.protocol:data.protocol_escaped for data in animal_data if data.protocol_escaped != "---"
         }
+        ordered_protocols = OrderedDict(sorted(protocols.items()))
+        return ordered_protocols
 
     def protocols_and_subprotocols(self) -> Dict[str, List[str]]: 
         """! Gets all protocols with list of their subprotocols. """
@@ -320,7 +325,9 @@ class DManager:
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
         # Sort tables by days_after_start:
         if category == "procedures":
-            protocol_data = sort_query(protocol_data, "days_after_start")
+            protocol_data = sort_query(protocol_data, "days_after_start", to_int=True)
+        else: 
+            protocol_data = sort_query(protocol_data, "name")
         # Get definitions:
         if category == "allowed_animals":
             definitions = sort_query(ALine.query.all(), "name")
