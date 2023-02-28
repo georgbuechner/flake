@@ -215,7 +215,7 @@ def apply_surgery_periods(start_date, water_control_mask, surgery_dates, pre_sur
 
     for surgery_date in surgery_dates:
         position = (surgery_date - start_date).days
-        if position > len(modified_water_control_mask) or position < 0:
+        if position > len(modified_water_control_mask)-1 or position < 0:
             continue
 
         modified_water_control_mask[position] = False

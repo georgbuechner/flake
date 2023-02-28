@@ -205,6 +205,8 @@ class DManager:
         # Check name:
         if "name" not in data or data["name"] == "---": 
             raise MissingEntryException(entry="name")
+        if category == "procedures" and "experimenter" not in data:
+            raise MissingEntryException(entry="experimenter")
         # Update or add element:
         Table = EXPERIMENT_TABLES[category] 
         element = Table.query.get(data["uuid"])
@@ -558,6 +560,10 @@ class DManager:
         start_date = strtodate(start_date) 
         dob = strtodate(animal_data.dob)
         age_at_start = (start_date - dob).days
+        if start_date > sacrifice_date:
+            raise InvalidTypeException(
+                f"Start {start_date} after sacrifice_date {sacrifice_date}"
+            )
         duration = len(daterange(start_date, sacrifice_date))-1
 
         # Generate water-control-mask, if watercontrol is allowed:
@@ -580,13 +586,14 @@ class DManager:
                 water_restriction_start, duration_water, surgery_dates, sacrificed=True
             )
             # Add `False`-values for days_after_start  
-            water_control_mask = [False for _ in range(days_after_start)] + water_control_mask
+            water_control_mask = [False for _ in range(days_after_start-1)] + water_control_mask
             water_control_mask = water_control_mask + [
                 False for _ in range(duration-(len(water_control_mask)-1))
             ]
         else:
             water_control_mask = [False for _ in range(duration+1)]
         # Generate estimated weights 
+        print(len(water_control_mask), duration)
         estimated_weights = get_estimated_weight_list(
             age_at_start, animal_data.sex, duration, water_control_mask, start_weight
         )
