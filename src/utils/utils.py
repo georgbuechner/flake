@@ -11,7 +11,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-def sort_query(obj_list, key: str):
+def sort_query(obj_list, key: str, to_int: bool = False):
     """! Sorts a given list of objects by given key. 
 
     @param obj_list  List of objects to sort.
@@ -20,10 +20,11 @@ def sort_query(obj_list, key: str):
     @return Sorted list.
     """
     def sort_by_key(e):
-        if "date" in key or key == "name" or key == "dob":
-            return table_to_json(e)[key]
         try:
-            return int(table_to_json(e)[key])
+            if to_int:
+                return int(table_to_json(e)[key])
+            else:
+                return table_to_json(e)[key]
         except Exception as err:
             print(f"sort_query: key: {key}, value: {table_to_json(e)[key]} failed: {repr(err)}") 
             return 0

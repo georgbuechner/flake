@@ -1,7 +1,8 @@
 import json
 import html
 from flask import (
-    Flask, render_template, make_response, jsonify, request, send_file, redirect, session
+    Flask, render_template, make_response, jsonify, request, send_file,
+    redirect, session, url_for
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -186,10 +187,19 @@ def overview():
 
     @return Rendered html overview-page from jinja2-template.
     """
+    sort_by = request.args.get("sort_by", default="dob", type=str)
+    reverse = request.args.get("reverse", default="False", type=str)
+    # Reverse
+    animal_data = sort_query(AnimalData.query.all(), sort_by)
+    if reverse == "True":
+        animal_data.reverse()
+
     return render_template(
         "overview.html", 
-        animal_data=sort_query(AnimalData.query.all(), "dob"),
+        animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
+        url="/overview",
+        reverse="True" if reverse == "False" else "False"
     )
 
 @app.route("/users/<user>")
@@ -201,11 +211,19 @@ def user_overview(user: str):
 
     @return Rendered html user-overview page from jinja2-template.
     """
+    sort_by = request.args.get("sort_by", default="dob", type=str)
+    reverse = request.args.get("reverse", default="False", type=str)
+    # Reverse
+    animal_data = sort_query(AnimalData.query.filter(AnimalData.user == user), sort_by)
+    if reverse == "True":
+        animal_data.reverse()
     return render_template(
         "user_overview.html", 
         user=user, 
-        animal_data=sort_query(AnimalData.query.filter(AnimalData.user == user), "dob"),
+        animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
+        url=f"/users/{user}",
+        reverse="True" if reverse == "False" else "False"
     )
 
 @app.route("/protocols/<protocol>")
@@ -217,11 +235,19 @@ def protocol_overview(protocol: str):
 
     @return Rendered html protocol-overview page from jinja2-template.
     """
+    sort_by = request.args.get("sort_by", default="dob", type=str)
+    reverse = request.args.get("reverse", default="False", type=str)
+    # Reverse
+    animal_data = sort_query(AnimalData.query.filter(AnimalData.protocol_escaped == protocol), sort_by)
+    if reverse == "True":
+        animal_data.reverse()
     return render_template(
         "protocol_overview.html", 
         protocol=protocol,
-        animal_data=sort_query(AnimalData.query.filter(AnimalData.protocol_escaped == protocol), "dob"),
+        animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
+        url=f"/protocols/{protocol}",
+        reverse="True" if reverse == "False" else "False"
     )
 
 @app.route("/animal_data/delete/<animal_id>", methods=["POST"])
@@ -317,7 +343,7 @@ def settings():
 def user_management():
     if not current_user.admin:
         return redirect("/") 
-    return render_template("user_management.html", users=User.query.all())
+    return render_template("user_management.html", users=sort_query(User.query.all(), "name"))
 
 @app.route("/account")
 @login_required
@@ -430,7 +456,7 @@ def availible(category: str):
 def protocols():
     return render_template(
         "protocols.html", 
-        protocols=Protocol.query.all(),
+        protocols=sort_query(Protocol.query.all(), "name"),
         msg=""
     )
 
