@@ -10,13 +10,28 @@ OUTPUT_DATE_FORMAT_2  = "%b %Y"
 DATE_TIME = "%Y-%m-%d_%H-%M"
 
 def strtodate(date_str: str) -> datetime: 
+    def switch_month_day(date_str: str, delimiter: str): 
+        day = date_str[:date_str.find(delimiter)]
+        month = date_str[date_str.find(delimiter)+1:date_str.rfind(delimiter)]
+        year = date_str[date_str.rfind(delimiter)+1:]
+        return f"{month}{delimiter}{day}{delimiter}{year}"
+
     try:
         return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
     except: 
         try:
             return datetime.strptime(date_str, SOURCE_DATE_FORMAT_2)
         except: 
-            return datetime.strptime(date_str, SOURCE_DATE_FORMAT_3)
+            try: 
+                switched = switch_month_day(date_str, "/")
+                return datetime.strptime(switched, SOURCE_DATE_FORMAT_2)
+            except:
+                try:
+                    return datetime.strptime(date_str, SOURCE_DATE_FORMAT_3)
+                except: 
+                    switched = switch_month_day(date_str, ".")
+                    return datetime.strptime(switched, SOURCE_DATE_FORMAT_3)
+
 
 def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
     return datetime.strftime(date, date_format)
