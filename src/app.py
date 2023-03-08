@@ -98,7 +98,7 @@ with app.app_context():
     # drop_all(EXPERIMENT_TABLES)
     create_root_user_if_not_exists()
     update_lines()
-       
+
 
 @login_manager.user_loader 
 def user_loader(user_id): 
