@@ -189,12 +189,14 @@ def overview():
     """
     sort_by = request.args.get("sort_by", default="dob", type=str)
     reverse = request.args.get("reverse", default="False", type=str)
-    # Reverse
-    dob = request.args.get("dob", default="", type=str)
     query = AnimalData.query
+    # Apply filter
+    dob = request.args.get("dob", default="", type=str)
     if dob != "":
         query = query.filter(AnimalData.dob.like(f"%{dob}%"))
+    # Sort
     animal_data = sort_query(query, sort_by)
+    # Reverse
     if reverse == "True":
         animal_data.reverse()
 
@@ -217,15 +219,23 @@ def user_overview(user: str):
     """
     sort_by = request.args.get("sort_by", default="dob", type=str)
     reverse = request.args.get("reverse", default="False", type=str)
+    query = AnimalData.query.filter(AnimalData.user == user)
+    # Apply filter
+    dob = request.args.get("dob", default="", type=str)
+    if dob != "":
+        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
+    # Sort
+    animal_data = sort_query(query, sort_by)
     # Reverse
-    animal_data = sort_query(AnimalData.query.filter(AnimalData.user == user), sort_by)
     if reverse == "True":
         animal_data.reverse()
+
     return render_template(
         "user_overview.html", 
         user=user, 
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
+        args=request.args,
         reverse="True" if reverse == "False" else "False"
     )
 
@@ -240,8 +250,14 @@ def protocol_overview(protocol: str):
     """
     sort_by = request.args.get("sort_by", default="dob", type=str)
     reverse = request.args.get("reverse", default="False", type=str)
+    query = AnimalData.query.filter(AnimalData.protocol_escaped == protocol)
+    # Apply filter
+    dob = request.args.get("dob", default="", type=str)
+    if dob != "":
+        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
     # Reverse
-    animal_data = sort_query(AnimalData.query.filter(AnimalData.protocol_escaped == protocol), sort_by)
+    animal_data = sort_query(query, sort_by)
+    # Sort
     if reverse == "True":
         animal_data.reverse()
     return render_template(
@@ -249,6 +265,7 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
+        args=request.args,
         reverse="True" if reverse == "False" else "False"
     )
 
