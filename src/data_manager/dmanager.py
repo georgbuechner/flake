@@ -17,7 +17,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import sort_query, escape, get_signature_path
+from utils.utils import sort, sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
 
@@ -307,8 +307,9 @@ class DManager:
                         x["date"] = date
                         entries_with_date.append(deepcopy(x))
             return entries_with_date
-        data["medication"] = get_entries_with_dates("medication")
-        data["viruses"] = get_entries_with_dates("viruses")
+        data["medication"] = sort(get_entries_with_dates("medication"), "date")
+        data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
+        data["procedures"] = sort(data["procedures"], "start_date")
         return data
             
 
