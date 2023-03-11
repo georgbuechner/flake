@@ -367,6 +367,7 @@ def backup():
         backup_path = os.path.join(BACKUP_PATH, backup)
         if os.path.isfile(backup_path) and backup != ".keep":
             backups.append(backup)
+    backups.sort()
     backups.reverse()
     return render_template("backup_management.html", backups=backups)
 

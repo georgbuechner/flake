@@ -42,7 +42,7 @@ class User(db.Model):
     def is_active(self):
         """! True, as all users are active."""
         return True
-"---"
+
     def get_id(self):
         """! Return the email address to satisfy Flask-Login's requirements."""
         return self.email
