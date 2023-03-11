@@ -742,9 +742,8 @@ def generate_score_sheet(animal_id: str):
 def generate_paragraph_9(escaped_protocol: str):
     subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
     def safe(txt: str) -> str: 
-        for c in ["#", "$", "%", "~", "_", "^", "\\"]:
+        for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\{c}")
-        return txt
     txt = render_template(
         "main.tex", subprotocols=subprotocols, protocol=protocol, safe=safe
     )
@@ -766,8 +765,8 @@ def generate_paragraph_9(escaped_protocol: str):
     proc=subprocess.Popen(
         ["pdflatex", full_path], 
         cwd=tmp_path, 
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.STDOUT
     )
     proc.communicate()
     return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
