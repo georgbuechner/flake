@@ -1,49 +1,38 @@
 from datetime import datetime, timedelta
 from typing import List
+from exceptions.exceptions import InvalidDateException, ParserException
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
-SOURCE_DATE_FORMAT_2 = "%d/%m/%Y"
-SOURCE_DATE_FORMAT_3 = "%d.%m.%Y"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
 OUTPUT_DATE_FORMAT_2  = "%b %Y"
 
 DATE_TIME = "%Y-%m-%d_%H-%M"
 
-def strtodate(date_str: str) -> datetime: 
-    def switch_month_day(date_str: str, delimiter: str): 
-        day = date_str[:date_str.find(delimiter)]
-        month = date_str[date_str.find(delimiter)+1:date_str.rfind(delimiter)]
-        year = date_str[date_str.rfind(delimiter)+1:]
-        return f"{month}{delimiter}{day}{delimiter}{year}"
+def unify_date(date_str: str) -> str: 
+    # If date is not yet set, return placeholder
+    if date_str in ["", "---"] or date_str.isnumeric() or date_str[1:].isnumeric():
+        return date_str
+    if date_str in ["nan"]:
+        return "---"
+    # Try to parse date from availible formats, then convert to SOURCE_DATE_FORMAT
+    date_formats = [SOURCE_DATE_FORMAT, "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%m.%d.%Y"]
+    for df in date_formats: 
+        try: 
+            date = datetime.strptime(date_str, df)
+            return datetostr(date, SOURCE_DATE_FORMAT) 
+        except:
+            pass 
+    # If date did not match any formats, raise error
+    raise InvalidDateException(date_str, ', '.join(date_formats))
 
-    try:
+def strtodate(date_str: str) -> datetime: 
+    try: 
         return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
     except: 
-        try:
-            return datetime.strptime(date_str, SOURCE_DATE_FORMAT_2)
-        except: 
-            try: 
-                switched = switch_month_day(date_str, "/")
-                return datetime.strptime(switched, SOURCE_DATE_FORMAT_2)
-            except:
-                try:
-                    return datetime.strptime(date_str, SOURCE_DATE_FORMAT_3)
-                except: 
-                    switched = switch_month_day(date_str, ".")
-                    return datetime.strptime(switched, SOURCE_DATE_FORMAT_3)
-
+        raise ParserException(f"Date {date_str} seems not to have been unified!", 409)
 
 def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
     return datetime.strftime(date, date_format)
-
-def convert_source_2_to_1(date_str) -> str: 
-    try:
-        date = strtodate(date_str) 
-        date_str = datetostr(date, SOURCE_DATE_FORMAT)
-        return date_str
-    except Exception as err: 
-        print(f"Failed parsing date: {date_str}: {repr(err)}")
-        return ""
 
 def datetostr_month(date: datetime) -> str: 
     return datetime.strftime(date, OUTPUT_DATE_FORMAT_2)
