@@ -190,7 +190,11 @@ def overview():
     sort_by = request.args.get("sort_by", default="dob", type=str)
     reverse = request.args.get("reverse", default="False", type=str)
     # Reverse
-    animal_data = sort_query(AnimalData.query.all(), sort_by)
+    dob = request.args.get("dob", default="", type=str)
+    query = AnimalData.query
+    if dob != "":
+        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
+    animal_data = sort_query(query, sort_by)
     if reverse == "True":
         animal_data.reverse()
 
@@ -198,7 +202,7 @@ def overview():
         "overview.html", 
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
-        url="/overview",
+        args=request.args,
         reverse="True" if reverse == "False" else "False"
     )
 
@@ -222,7 +226,6 @@ def user_overview(user: str):
         user=user, 
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
-        url=f"/users/{user}",
         reverse="True" if reverse == "False" else "False"
     )
 
@@ -246,7 +249,6 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
-        url=f"/protocols/{protocol}",
         reverse="True" if reverse == "False" else "False"
     )
 

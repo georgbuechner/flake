@@ -1,17 +1,51 @@
   <p>Showing <i>{{animal_data|length}} animals.</p>
+  <i 
+    id="filter_toggle"
+    class="material-icons mini_icon"
+    onclick="ToggleExpandFilter();"
+  >expand_less</i>
+  <div id="filter">
+    <select id="filter_year" autocomplete="off">
+      {% for x in range(10) %}
+        {% set year = 2023 - x %}
+        {% if year|string in args.dob %}
+          <option selected>{{year}}</option>
+        {% else %}
+          <option>{{year}}</option>
+        {%- endif -%}
+      {% endfor %}
+    </select>
+    <select id="filter_month" autocomplete="off">
+      {% set months = {"01":"January", "02":"February", "03":"March", "04":"April", "05":"May", "06":"June", "07":"July", "08":"August", "09":"September", "10":"October", "11":"November", "12":"December"} %}
+      <option value=""></option>
+      {% for month, month_name in months.items() %}
+        {% if month|string in args.dob %}
+        <option value={{month}} selected>{{month_name}}</option>
+        {% else %}
+          <option value={{month}}>{{month_name}}</option>
+        {%- endif -%}
+      {% endfor %}
+    </select>
+
+    <i class="mod u" title="Apply filter." onclick="ApplyFilter();">apply filter</i>
+    <i class="mod u" title="Apply filter." onclick="RemoveFilter();">remove filter</i>
+    <br>
+    <br>
+  </div>
+
   <table class="center">
     <tr>
       {%- if not animal_id -%}<th></th>{%- endif -%}
-      <th><a href="{{url}}?sort_by=mla_num&reverse={{reverse}}">ID</a></th>
-      <th><a href="{{url}}?sort_by=user&reverse={{reverse}}"</a>Responsible</th>
-      <th><a href="{{url}}?sort_by=sex&reverse={{reverse}}"</a>Sex</th>
-      <th><a href="{{url}}?sort_by=line&reverse={{reverse}}"</a>Line / Strain (Name)</th>
-      <th><a href="{{url}}?sort_by=dob&reverse={{reverse}}"</a>DOB</th>
-      <th><a href="{{url}}?sort_by=death_date&reverse={{reverse}}"</a>Sacrifice date</th>
-      <th><a href="{{url}}?sort_by=supplier&reverse={{reverse}}"</a>Supplier</th>
-      <th><a href="{{url}}?sort_by=protocol_pyrat&reverse={{reverse}}"</a>Protocol (pyrat)</th>
-      <th><a href="{{url}}?sort_by=protocol&reverse={{reverse}}"</a>Protocol (flake)</th>
-      <th><a href="{{url}}?sort_by=subprotocol&reverse={{reverse}}"</a>Sub Protocol</th>
+      <th><i class="mod u" onclick="ApplySorting('mla_num', '{{reverse}}');">ID</a></th>
+      <th><i class="mod u" onclick="ApplySorting('user', '{{reverse}}');"</a>Responsible</th>
+      <th><i class="mod u" onclick="ApplySorting('sex', '{{reverse}}');"</a>Sex</th>
+      <th><i class="mod u" onclick="ApplySorting('line', '{{reverse}}');"</a>Line / Strain (Name)</th>
+      <th><i class="mod u" onclick="ApplySorting('dob', '{{reverse}}');"</a>DOB</th>
+      <th><i class="mod u" onclick="ApplySorting('death_date', '{{reverse}}');"</a>Sacrifice date</th>
+      <th><i class="mod u" onclick="ApplySorting('supplier', '{{reverse}}');"</a>Supplier</th>
+      <th><i class="mod u" onclick="ApplySorting('protocol_pyrat', '{{reverse}}');"</a>Protocol (pyrat)</th>
+      <th><i class="mod u" onclick="ApplySorting('protocol', '{{reverse}}');"</a>Protocol (flake)</th>
+      <th><i class="mod u" onclick="ApplySorting('subprotocol', '{{reverse}}');"</a>Sub Protocol</th>
     </tr>
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
