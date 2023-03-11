@@ -36,6 +36,12 @@ def sort_query(obj_list, key: str, to_int: bool = False):
     obj_list.sort(key=sort_by_key)
     return obj_list
 
+def sort(obj_list, key: str): 
+    def sort_by_key(e): 
+        return e[key]
+    obj_list.sort(key=sort_by_key)
+    return obj_list
+
 
 def hash_pw(password: str, salt: str = None) -> Tuple[str, str]: 
     """! Creates hash from given password with salt and retuns hash and salt 
