@@ -183,37 +183,37 @@
       \setlength{\fboxsep}{0.4cm}
       \parbox[t]{0.5cm}{ 1 } &
       \setlength{\fboxsep}{0.4cm}
-      \parbox[t]{2cm}{ {{a.animal_data.line}} }&
+      \parbox[t]{2cm}{ {{safe(a.animal_data.line)}} }&
       \setlength{\fboxsep}{0.4cm}
-      \parbox[t]{0.5cm}{ {{a.animal_data.sex}} }&
+      \parbox[t]{0.5cm}{ {{safe(a.animal_data.sex)}} }&
       \setlength{\fboxsep}{0.4cm}
-      \parbox[t]{1.5cm}{ {{a.animal_data.supplier}} }&
+      \parbox[t]{1.5cm}{ {{safe(a.animal_data.supplier)}} }&
 
       {% for p in a.procedures %} 
         {% if loop.index0 > 0 %}
            & & & & &
         {% else %}
-          \textbf{\emph{\small{ {{a.animal_data.mla_num}}} }}
+          \textbf{\emph{\small{ {{safe(a.animal_data.mla_num)}} }}}
         {% endif %}
       \parbox[t]{7cm}{
         \small{
           {% if p.start == p.end %}
-            \ul{ {{p.start}}: {{p.names}}}\\
+            \ul{ {{p.start}}: {{safe(p.names)}}}\\
           {% else %}
-            \ul{ {{p.start}} - {{p.end}}: {{p.names}}}\\
+            \ul{ {{p.start}} - {{p.end}}: {{safe(p.names)}}}\\
           {% endif %}
-          {%- if p.medication|length > 0 -%}Medication: {{p.medication}}\\{%- endif -%}
-          {%- if p.viruses|length > 0 -%}Viruses: {{p.viruses}}{%- endif -%}\\
+          {%- if p.medication|length > 0 -%}Medication: {{safe(p.medication)}}\\{%- endif -%}
+          {%- if p.viruses|length > 0 -%}Viruses: {{safe(p.viruses)}}{%- endif -%}\\
         }
       } &
       {% if loop.index0 == 0 %}
           \begin{minipage}{0.5\linewidth}
             {% if d.experiment|length > 1 %}
               \vspace{2pt}
-              \begin{turn}{-90}\small{ {{d.experiment}}}\end{turn}  
+              \begin{turn}{-90}\small{ {{safe(d.experiment)}}}\end{turn}  
               \vspace{2pt}
             {% else %} 
-              \small{ {{d.experiment}}}
+              \small{ {{safe(d.experiment)}}}
             {% endif %}
           \end{minipage}
           &
@@ -227,7 +227,7 @@
         \parbox[t]{1.2cm}{Entfällt} &
         \setlength{\fboxsep}{0.4cm}
         \parbox[t]{2cm}{ 
-            {{a.animal_data.user}},
+            {{safe(a.animal_data.user)}},
             \includegraphics[width=1.9cm]{ {{a.signature}}}
         }&
         \setlength{\fboxsep}{0.4cm}

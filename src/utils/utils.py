@@ -139,3 +139,7 @@ def get_root_user(path):
     with open(path, "w") as f:
         json.dump(config, f)
     return root_email
+
+def escape_latex_string(txt: str) -> str: 
+    for c in ["#", "$", "%", "~", "_", "^", "\\"]:
+        txt = txt.replace(c, f"\{c}")
