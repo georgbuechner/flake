@@ -193,3 +193,37 @@ function NotResponsible() {
   alert("You're not responsible for this animal!")
   return false;
 }
+
+function ToggleExpandFilter() {
+  let filter_div = document.getElementById("filter");
+  let filter_toggle = document.getElementById("filter_toggle");
+  if (filter_div.style.display === "none") {
+    filter_div.style.display = "block";
+    filter_toggle.innerHTML = "expand_less";
+  }
+  else {
+    filter_div.style.display = "none";
+    filter_toggle.innerHTML = "expand_more";
+  }
+}
+
+function ApplySorting(key, reverse) {
+  var url = new URL(window.location.href);
+  url.searchParams.set('sort_by', key);
+  url.searchParams.set('reverse', reverse);
+  window.location = url.href;
+}
+
+function ApplyFilter() {
+  const year = document.getElementById("filter_year").value;
+  const month = document.getElementById("filter_month").value;
+  var url = new URL(window.location.href);
+  url.searchParams.set('dob', year + "-" + month);
+  window.location = url.href;
+}
+
+function RemoveFilter() {
+  var url = new URL(window.location.href);
+  url.searchParams.delete('dob');
+  window.location = url.href;
+}
