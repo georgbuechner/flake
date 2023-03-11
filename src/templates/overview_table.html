@@ -1,3 +1,4 @@
+{% if not animal_id %}
   <p>Showing <i>{{animal_data|length}} animals.</p>
   <i 
     id="filter_toggle"
@@ -32,6 +33,7 @@
     <br>
     <br>
   </div>
+{% endif %}
 
   <table class="center">
     <tr>

@@ -350,6 +350,7 @@ def input(animal_id: str, category: str):
         last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
         category=category,
         ref=ref, 
+        args=request.args,
     )
 
 @app.route("/settings")
