@@ -40,3 +40,12 @@ class ParseException(ParserException):
         self.msg = f"Could not parse start-/ end-date from comment: \"<i>{value}</i>\""
         super().__init__(self.msg, 400)
 
+class InvalidDateException(ParserException): 
+    def __init__(self, date_str: str, formats: str):
+        self.msg = (
+            f"The date \"{date_str}\" did not match any of the following"
+            + f"formats: \"<i>{formats}</i>\""
+        )
+        super().__init__(self.msg, 400)
+
+

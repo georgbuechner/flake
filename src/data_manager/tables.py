@@ -3,7 +3,7 @@ import math
 import uuid
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
-from utils.dt_utils import date_filled
+from utils.dt_utils import date_filled, unify_date
 
 db = SQLAlchemy()
 
@@ -42,7 +42,7 @@ class User(db.Model):
     def is_active(self):
         """! True, as all users are active."""
         return True
-
+"---"
     def get_id(self):
         """! Return the email address to satisfy Flask-Login's requirements."""
         return self.email
@@ -76,8 +76,8 @@ class AnimalData(db.Model):
         self.mla_num = data["id"]
         self.sex = data["sex"]
         self.line = data["line"]
-        self.dob = data["dob"]
-        self.death_date = str(data["death_date"])
+        self.dob = unify_date(data["dob"])
+        self.death_date = unify_date(str(data["death_date"]))
         self.user = data["user"]
         self.protocol_pyrat = data["protocol_pyrat"]
         self.protocol = data["protocol"] if "protocol" in data else "---"
@@ -93,9 +93,9 @@ class AnimalData(db.Model):
     def update(self, data: Dict[str, any]): 
         self.sex = data["sex"]
         self.line = data["line"]
-        self.dob = data["dob"]
+        self.dob = unify_date(data["dob"])
         if not date_filled(self.death_date):
-            self.death_date = str(data["death_date"])
+            self.death_date = unify_date(str(data["death_date"]))
         self.user = data["user"]
         self.protocol_pyrat = data["protocol_pyrat"]
         # Don't update protocol.
@@ -699,8 +699,8 @@ class Procedure(db.Model):
         self.uuid = str(uuid.uuid4())
         self.animal_id = animal_id 
         self.name = name 
-        self.start_date = start
-        self.end_date = end
+        self.start_date = unify_date(start)
+        self.end_date = unify_date(end)
         self.experimenter = experimenter
         self.protocol_entry_uuid = protocol_entry_uuid
 
@@ -725,11 +725,12 @@ class Procedure(db.Model):
 
     def update(self, p: Dict[str, any]):
         self.name = p["name"]
-        self.start_date = p["start_date"]
-        self.end_date = p["end_date"]
+        self.start_date = unify_date(p["start_date"])
+        self.end_date = unify_date(p["end_date"])
         self.experimenter = p["experimenter"]
 
     def set_date(self, date): 
+        # no need to unify, since date comes from death-date which is already unified.
         self.start_date = date
         self.end_date = date
 
