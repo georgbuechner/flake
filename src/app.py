@@ -741,7 +741,9 @@ def generate_score_sheet(animal_id: str):
 @handle_exception
 def generate_paragraph_9(escaped_protocol: str):
     subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
-    txt = render_template("main.tex", subprotocols=subprotocols, protocol=protocol)
+    txt = render_template(
+        "main.tex", subprotocols=subprotocols, protocol=protocol, safe=escape_latex_string
+    )
     tmp_path = tempfile.mkdtemp() 
     full_path = f"{tmp_path}/main.tex"
     f = open(full_path, "w") 
