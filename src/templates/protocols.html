@@ -32,7 +32,12 @@
       {% for protocol in protocols %}
         <tr> 
           <td>
-            <a href="/settings/protocols/{{protocol.escaped}}">{{protocol.name}}</a>
+            <a 
+              {% if not is_setup(protocol.escaped) %}
+                class="err"
+              {% endif %}
+              href="/settings/protocols/{{protocol.escaped}}"
+            >{{protocol.name}}</a>
           </td>
            <td onclick="DeleteProtocol('{{protocol.escaped}}');">
              <a class="mod thick" title="Remove entry.">-</a>

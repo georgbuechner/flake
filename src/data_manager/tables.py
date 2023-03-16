@@ -218,24 +218,43 @@ class AProcedure(db.Model):
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
+    requires_medication = db.Column(db.Integer, primary_key=False)
+    requires_virus = db.Column(db.Integer, primary_key=False)
 
     def __init__(
-        self, name: str, days_after_start: str, duration: str, surgery: bool
+        self, 
+        name: str, 
+        days_after_start: str, 
+        duration: str, 
+        surgery: bool,
+        requires_medication: int,
+        requires_virus: int
     ):
         self.name = name 
         self.days_after_start = days_after_start 
         self.duration = duration 
         self.surgery = surgery
+        self.requires_medication = requires_medication
+        self.requires_virus = requires_virus
 
     @classmethod
-    def from_json(cls, p: Dict[str, any]): 
-        return cls(p["name"], p["days_after_start"], p["duration"], "surgery" in p)
+    def from_json(cls, procedure: Dict[str, any]): 
+        return cls(
+            procedure["name"], 
+            procedure["days_after_start"], 
+            procedure["duration"], 
+            "surgery" in procedure,
+            procedure["requires_medication"], 
+            procedure["requires_virus"], 
+        )
 
     def update(self, procedure: Dict[str, any]): 
         self.name = procedure["name"] 
         self.days_after_start = procedure["days_after_start"] 
         self.duration = procedure["duration"] 
         self.surgery = "surgery" in procedure
+        self.requires_medication = procedure["requires_medication"] 
+        self.requires_virus = procedure["requires_virus"] 
 
 class AVirus(db.Model): 
     __tablename__ = "availible_viruses"
@@ -398,9 +417,19 @@ class PProcedure(db.Model):
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
     optional = db.Column(db.Boolean, primary_key=False)
+    requires_medication = db.Column(db.Integer, primary_key=False)
+    requires_virus = db.Column(db.Integer, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool, optional: bool
+        self, 
+        protocol: str, 
+        name: str, 
+        days_after_start: str, 
+        duration: str, 
+        surgery: bool, 
+        optional: bool,
+        requires_medication: int,
+        requires_virus: int  
     ):
         self.uuid = str(uuid.uuid4())
         self.protocol = protocol
@@ -409,13 +438,22 @@ class PProcedure(db.Model):
         self.duration = duration
         self.surgery = surgery
         self.optional = optional
+        self.requires_medication = requires_medication
+        self.requires_virus = requires_virus
 
     @classmethod
-    def from_form(cls, protocol: str, p: Dict[str, any]): 
-        surgery = AProcedure.query.get(p["name"]).surgery
-        optional = "optional" in p
+    def from_form(cls, protocol: str, procedure: Dict[str, any]): 
+        surgery = AProcedure.query.get(procedure["name"]).surgery
+        optional = "optional" in procedure
         return cls(
-            protocol, p["name"], p["days_after_start"], p["duration"], surgery, optional
+            protocol, 
+            procedure["name"], 
+            procedure["days_after_start"], 
+            procedure["duration"], 
+            surgery, 
+            optional,
+            procedure["requires_medication"], 
+            procedure["requires_virus"], 
         )
 
     @classmethod 
@@ -428,6 +466,8 @@ class PProcedure(db.Model):
         self.duration = procedure["duration"] 
         self.surgery = AProcedure.query.get(procedure["name"]).surgery
         self.optional = "optional" in procedure
+        self.requires_medication = procedure["requires_medication"] 
+        self.requires_virus = procedure["requires_virus"] 
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
