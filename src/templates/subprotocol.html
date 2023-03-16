@@ -29,6 +29,17 @@
     <h1><i>FLAKE</i> DATABASE</h1>
 
     <h2><i>{{protocol.name}} {{subprotocol}}</i></h2>
+
+    {% if not has_sacrifice_procedure %}
+      <p class="err">Missing sacrifice-procedure! </p>
+    {% endif %}
+    {% if missing_required_medication %}
+      <p class="err">Missing medication: {{missing_required_medication}}! </p>
+    {% endif %}
+    {% if missing_required_virus %}
+      <p class="err">Missing viruses: {{missing_required_virus}}! </p>
+    {% endif %}
+
     <table class="center"> 
       <tr>
         <th>
@@ -199,6 +210,8 @@
              <td name="duration">{{procedure.duration}}</td> 
              <td name="surgery">{{procedure.surgery}}</td> 
              <td name="optional">{{procedure.optional}}</td> 
+             <td name="requires_medication" style="display: none">{{procedure.requires_medication}}</td> 
+             <td name="requires_virus" style="display: none">{{procedure.requires_virus}}</td> 
              <td onclick="DelProtocolEntry('procedures', '{{procedure.uuid}}');">
                <a class="mod thick" title="Remove entry.">-</a>
              </td>
@@ -274,7 +287,7 @@
   </div>
 
 
-  <dialog id="edit_modal" style="height: 350px; width: 80%;" category="">
+  <dialog id="edit_modal" style="height: 400px; width: 80%;" category="">
     <button onclick="CloseModal('edit_modal')" style="float: right;">Close</button>
     <h2>Entry</h2>
     {% if category=="medication" %}

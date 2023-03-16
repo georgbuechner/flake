@@ -93,11 +93,12 @@ with app.app_context():
     db.create_all()
 
     # DROP all experiment and animal data:
-    # drop("animal_data", AnimalData)
-    # drop("general", General)
-    # drop_all(EXPERIMENT_TABLES)
     create_root_user_if_not_exists()
     update_lines()
+    # Remove invalid subprotocols
+    # Protocol.query.get("G0278_16").remove_subprotocol("G 0278/16 4.3")
+    # Protocol.query.get("G0278_16").remove_subprotocol("G 0278/16 5.2a")
+    db.session.commit()
 
 
 @login_manager.user_loader 
@@ -478,6 +479,7 @@ def protocols():
     return render_template(
         "protocols.html", 
         protocols=sort_query(Protocol.query.all(), "name"),
+        is_setup=dmanager.protocol_is_setup,
         msg=""
     )
 
@@ -490,11 +492,13 @@ def protocol(escaped_protocol: str):
             "protocol.html", 
             protocol=protocol,
             subprotocols=protocol.get_subprotocols(),
+            is_setup=dmanager.subprotocol_is_setup,
             msg=""
         )
     return render_template(
         "protocols.html", 
         protocols=Protocol.query.all(),
+        is_setup=dmanager.protocol_is_setup,
         msg="Protocol not found"
     )
 
@@ -860,6 +864,10 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
             users=dmanager.users(), 
             subprotocol_changed=subprotocol_changed,
+            protocol_is_setup=dmanager.subprotocol_is_setup(full_protocol),
+            has_sacrifice_procedure=dmanager.has_sacrifice_procedure(full_protocol),
+            missing_required_medication=dmanager.missing_required_medication(full_protocol),
+            missing_required_virus=dmanager.missing_required_virus(full_protocol),
             msg=""
         )
 
@@ -872,6 +880,7 @@ def add_protocal():
         return render_template(
             "protocols.html", 
             protocols=Protocol.query.all(),
+            is_setup=dmanager.protocol_is_setup,
             msg="A protocol with this name already exists!"
         )
 
@@ -893,6 +902,7 @@ def add_subprotocal(escaped_protocol):
         return render_template(
             "protocols.html", 
             protocols=Protocol.query.all(),
+            is_setup=dmanager.protocol_is_setup,
             msg="Matching protocol does not exist!"
         )
     if subprotocol in protocol.get_subprotocols(): 
@@ -933,12 +943,14 @@ def remove_subprotocol(escaped_protocol, subprotocol):
         return render_template(
             "protocols.html", 
             protocols=Protocol.query.all(),
+            is_setup=dmanager.protocol_is_setup,
             msg="Matching protocol does not exist!"
         )
     if subprotocol not in protocol.get_subprotocols(): 
         return render_template(
             "protocol.html", 
             protocol=protocol,
+            is_setup=dmanager.subprotocol_is_setup,
             msg="Subprotocol does not exists!"
         )
 

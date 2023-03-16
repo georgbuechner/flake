@@ -144,6 +144,8 @@
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
              <td name="duration">{{procedure.duration}}</td> 
              <td name="surgery">{{procedure.surgery}}</td> 
+             <td name="requires_medication" style="display: none">{{procedure.requires_medication}}</td> 
+             <td name="requires_virus" style="display: none">{{procedure.requires_virus}}</td> 
              <td 
                 {% if not current_user.admin %}
                   onclick="Restricted();"

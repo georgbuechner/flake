@@ -77,6 +77,59 @@ class DManager:
             protocols[protocol.name] = protocol.get_subprotocols()
         return protocols
 
+    def protocol_is_setup(self, escaped_protocol: str) -> bool: 
+        protocol = Protocol.query.get(escaped_protocol)
+        for subprotocol in protocol.get_subprotocols(): 
+            if not self.subprotocol_is_setup(f"{escaped_protocol}/{subprotocol}"):
+                return False
+        return True 
+
+    def subprotocol_is_setup(self, full_protocol: str) -> bool: 
+        return (
+            self.has_sacrifice_procedure(full_protocol) 
+            and self.missing_required_medication(full_protocol) is None
+            and self.missing_required_virus(full_protocol) is None
+        )
+
+    def has_sacrifice_procedure(self, full_protocol: str) -> bool: 
+        query = PProcedure.query.filter(
+            PProcedure.protocol == full_protocol, PProcedure.name.like("Sacrifice%")
+        )
+        return True if query.first() else False
+
+    def missing_required_medication(self, full_protocol: str) -> str: 
+        query = PProcedure.query.filter(PProcedure.protocol == full_protocol)
+        if not query.first(): 
+            return None
+        missing = []
+        for procedure in query: 
+            if procedure.requires_medication > 0:
+                query = PMedication.query.filter(
+                    PMedication.protocol == full_protocol, PMedication.procedure == procedure.name
+                )
+                if not query.first(): 
+                    missing.append(f"for {procedure.name} missing {procedure.requires_medication}")
+                elif procedure.requires_medication-query.count() > 0:
+                    missing.append(f"for {procedure.name} missing {procedure.requires_medication-query.count()}")
+        return ", ".join(missing) if len(missing) > 1 else None
+
+    def missing_required_virus(self, full_protocol: str) -> str: 
+        query = PProcedure.query.filter(PProcedure.protocol == full_protocol)
+        if not query.first(): 
+            return None
+        missing = []
+        for procedure in query: 
+            if procedure.requires_virus > 0:
+                query = PVirus.query.filter(
+                    PVirus.protocol == full_protocol, PVirus.procedure == procedure.name
+                )
+                if not query.first(): 
+                    missing.append(f"for {procedure.name} missing {procedure.requires_medication}")
+                elif procedure.requires_medication-query.count() > 0:
+                    missing.append(f"for {procedure.name} missing {procedure.requires_medication-query.count()}")
+        return ", ".join(missing) if len(missing) > 1 else None
+
+
     def extract_animal_data(self, file, ignore_comment: bool) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
@@ -311,7 +364,6 @@ class DManager:
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
         data["procedures"] = sort(data["procedures"], "start_date")
         return data
-            
 
     def get_protocol_data(self, category: str, full_protocol: str): 
         # Get tables which should have only 1 element:

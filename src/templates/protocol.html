@@ -32,8 +32,12 @@
       </tr>
       {% for subprotocol in subprotocols %}
         <tr> 
+          {% set full_protocol = protocol.escaped + "/" + subprotocol %}
           <td>
             <a
+              {% if not is_setup(full_protocol) %}
+                class="err"
+              {% endif %}
               href="/settings/protocols/{{protocol.escaped}}/{{subprotocol}}/general">
                 {{protocol.name}} {{subprotocol}}
             </a>
