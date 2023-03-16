@@ -397,9 +397,10 @@ class PProcedure(db.Model):
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
+    optional = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool
+        self, protocol: str, name: str, days_after_start: str, duration: str, surgery: bool, optional: bool
     ):
         self.uuid = str(uuid.uuid4())
         self.protocol = protocol
@@ -407,12 +408,14 @@ class PProcedure(db.Model):
         self.days_after_start = days_after_start 
         self.duration = duration
         self.surgery = surgery
+        self.optional = optional
 
     @classmethod
     def from_form(cls, protocol: str, p: Dict[str, any]): 
         surgery = AProcedure.query.get(p["name"]).surgery
+        optional = "optional" in p
         return cls(
-            protocol, p["name"], p["days_after_start"], p["duration"], surgery
+            protocol, p["name"], p["days_after_start"], p["duration"], surgery, optional
         )
 
     @classmethod 
@@ -424,6 +427,7 @@ class PProcedure(db.Model):
         self.days_after_start = procedure["days_after_start"] 
         self.duration = procedure["duration"] 
         self.surgery = AProcedure.query.get(procedure["name"]).surgery
+        self.optional = "optional" in procedure
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"

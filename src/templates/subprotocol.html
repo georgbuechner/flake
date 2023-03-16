@@ -187,6 +187,9 @@
           <th>Days After Start</td> 
           <th>Duration </td> 
           <th>Surgery?</td> 
+          <th title="If `optional` procedure is not automatically added to experiment data">
+            Optional?
+          </td> 
         </tr>
         {% for procedure in data %}
            <tr>
@@ -195,13 +198,13 @@
              <td name="days_after_start">{{procedure.days_after_start}}</td> 
              <td name="duration">{{procedure.duration}}</td> 
              <td name="surgery">{{procedure.surgery}}</td> 
+             <td name="optional">{{procedure.optional}}</td> 
              <td onclick="DelProtocolEntry('procedures', '{{procedure.uuid}}');">
                <a class="mod thick" title="Remove entry.">-</a>
              </td>
              <td onclick="Add(this.parentNode);">
                <i class="mod u" title="Edit this entry.">edit</i>
              </td>
-
           </tr>
         {% endfor %}
       </table>
