@@ -169,10 +169,10 @@ class DManager:
         general = General(animal_id, full_protocol, watercontrol.allowed, default_general.suffering)
         db.session.add(general)
         # Initialize procedures:
-        surgery_start = get_surgery_start(full_protocol)
         for protocol_procedure in PProcedure.query.filter(PProcedure.protocol == full_protocol): 
-            procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
-            db.session.add(procedure)
+            if not protocol_procedure.optional:
+                procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
+                db.session.add(procedure)
         # Initialize medication and virus:
         def create_entry_from_template(Template, Table):
             for template in Template.query.filter(Template.protocol == full_protocol):
