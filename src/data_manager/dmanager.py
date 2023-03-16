@@ -271,6 +271,8 @@ class DManager:
         if element:
             element.update(data)
         else: 
+            if check_experiment_data_entry_exists(Table, category, data, animal_id): 
+                raise DublicateEntry(f"A entry for {data['name']} already exists!")
             element = Table.from_form(animal_id, data)
             db.session.add(element)
         db.session.commit()
@@ -802,14 +804,6 @@ def get_surgery_start(protocol: str):
     return surgery_start
 
 
-def get_primary_key(category: str, animal_id: str, data: Dict[str, any]): 
-    if category == "medication":
-        return (animal_id, data["name"], data["procedure"]) 
-    if category == "procedures":
-        return (animal_id, data["name"], data["start_date"]) 
-    return (animal_id, data["name"]) 
-
-
 def get_surgery_dates(animal_id: str, protocol: str): 
     procedures = Procedure.query.filter(Procedure.animal_id == animal_id)
     surgery_dates = []
@@ -837,14 +831,33 @@ def fill_sacrifice_date(animal_id: str, protocol: str):
     db.session.commit()
 
 
-def get_protocol_entry_by_uuid(Table, uuid: str):
-    entry = Table.query.get(uuid)
-    if not entry:
-        raise EntryNotFound(f"For table {Table} with uuid {uuid}: no entry found!", 404)
-    return entry
-
 def get_protocol_entry_by_name(Table, protocol: str, name: str):
     res = Table.query.filter(Table.protocol == protocol, Table.name == name)
     if not res.first(): 
         return None
     return res.first() 
+
+def check_experiment_data_entry_exists(
+    Table, category: str, data: Dict[str, any], animal_id: str
+) -> bool: 
+    if category == "procedures": 
+        return True if Table.query.filter(
+            Table.animal_id == animal_id, 
+            Table.name == data["name"],
+            Table.start_date == data["start_date"]
+        ).first() else False
+    elif category == "medication":
+        return True if Table.query.filter(
+            Table.animal_id == animal_id, 
+            Table.name == data["name"],
+            Table.procedure == data["procedure"]
+        ).first() else False
+    elif category == "viruses":
+        return True if Table.query.filter(
+            Table.animal_id == animal_id, 
+            Table.name == data["name"],
+        ).first() else False
+
+    else: 
+        return False
+
