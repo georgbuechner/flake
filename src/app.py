@@ -97,7 +97,6 @@ with app.app_context():
     update_lines()
     # Remove invalid subprotocols
     # Protocol.query.get("G0278_16").remove_subprotocol("G 0278/16 4.3")
-    # Protocol.query.get("G0278_16").remove_subprotocol("G 0278/16 5.2a")
     db.session.commit()
 
 
