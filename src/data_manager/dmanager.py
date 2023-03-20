@@ -780,8 +780,8 @@ class DManager:
                     date = part[index:index+11].strip()
                     if not date_filled(date):
                         continue
-                    return convert_source_2_to_1(date)
-            return None
+                    return unify_date(date)
+            return ""
         # If comment as such is invalid, return empty start-/ end-date
         try: 
             parts = comment.split(";")
@@ -792,8 +792,8 @@ class DManager:
             start = extract("start", parts)
             end = extract("end", parts)
             return start, end
-        except Exception:
-            ParseException(comment)
+        except Exception as err:
+            raise ParseException(f"{comment}: {repr(err)}")
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)
