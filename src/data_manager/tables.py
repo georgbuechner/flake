@@ -3,7 +3,7 @@ import math
 import uuid
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
-from utils.dt_utils import date_filled, unify_date
+from utils.dt_utils import date_filled, unify_date, daterange_str
 
 db = SQLAlchemy()
 
@@ -616,7 +616,7 @@ class General(db.Model):
             rows = Medication.query.filter(Medication.animal_id == self.animal_id)
             if rows.first(): 
                 for row in rows: 
-                    row.update_amount(float(self.start_weight))
+                    row.update_amount()
                 db.session.commit()
 
 
@@ -665,7 +665,7 @@ class Medication(db.Model):
         self.weight_independant = weight_independant
         self.toe_pinch = toe_pinch
         self.protocol_entry_uuid = protocol_entry_uuid
-        self.update_amount(30)
+        self.update_amount()
 
     @classmethod
     def from_default(cls, animal_id: str, medication: PMedication):
@@ -709,16 +709,41 @@ class Medication(db.Model):
         self.dosis = medication["dosis"] 
         self.weight_independant = "weight_independant" in medication
         self.toe_pinch = "toe_pinch" in medication 
-        self.update_amount(30)
+        self.update_amount()
 
     def string(self): 
         return f"{self.name} ({self.concentration} mg/ml)"
 
-    def update_amount(self, weight): 
+    def update_amount(self): 
+        def get_start_weight(general: General) -> int: 
+            return general.start_weight if general.start_weight > 0 else 30
+
+        def get_cur_weight() -> int: 
+            general = General.query.get(self.animal_id) 
+            print("general start: ", general.start)
+            procedure = Procedure.query.filter(
+                Procedure.animal_id==self.animal_id,
+                Procedure.name==self.procedure
+            ).first()
+            if procedure is None: 
+                return get_start_weight(general)
+            print("procedure start: ", procedure.start_date)
+
+            if not date_filled(procedure.start_date) or not date_filled(general.start):
+                return get_start_weight(general)
+            days_after_start = len(daterange_str(general.start, procedure.start_date))
+            weights = json.loads(general.weights)
+            print("weights: ", len(weights), days_after_start)
+            if days_after_start < len(weights):
+                return weights[days_after_start]
+            return get_start_weight(general)
+
         if not self.weight_independant: 
+            cur_weight = get_cur_weight()
+            print("weight @ procedure: ", cur_weight)
             float_dosis = get_float(self.dosis)
             float_concentration = get_float(self.concentration)
-            self.amount = str(roundup((float_dosis*weight)/float_concentration))
+            self.amount = str(roundup((float_dosis*cur_weight)/float_concentration))
 
 class Procedure(db.Model): 
     __tablename__ = "procedures"
