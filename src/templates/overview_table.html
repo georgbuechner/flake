@@ -50,7 +50,14 @@
       <th><i class="mod u" onclick="ApplySorting('subprotocol', '{{reverse}}');"</a>Sub Protocol</th>
     </tr>
     {% for entry in animal_data %}
-      <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
+      <tr 
+        {% if entry.stored == false %}
+          class="not_stored"
+          title="Animal not yet fully stored (not all dates are filled)."
+        {% else %} 
+          class="stored"
+        {% endif %} 
+      >
         {% if not animal_id %}
           <td>
             {% if entry.user == current_user.name or current_user.admin == True %}
