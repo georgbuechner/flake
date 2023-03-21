@@ -35,6 +35,7 @@
             <a 
               {% if not is_setup(protocol.escaped) %}
                 class="err"
+                title="Protocol not fully setup procedures or medication is missing!"
               {% endif %}
               href="/settings/protocols/{{protocol.escaped}}"
             >{{protocol.name}}</a>
