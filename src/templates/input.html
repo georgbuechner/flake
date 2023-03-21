@@ -97,15 +97,20 @@
         <tr>
           <td>Start date:</td>
           <td>
-            <input 
-              id="start"
-              type="date"
-              value="{{ general.start if general.start != '' else dob}}"
-              min="{{dob}}"
-              {%- if general.start == '' -%}class="date_suggest"{%- endif -%}
-              {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-              onchange="OpenUpdateDatesConfirmation(this.value);"
-            >
+            <form id="start_date_form">
+              <input 
+                id="start"
+                name="start"
+                type="date"
+                value="{{ general.start if general.start != '' else dob}}"
+                min="{{dob}}"
+                {%- if general.start == '' -%}class="date_suggest"{%- endif -%}
+                {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+              >
+            </form>
+          </td>
+          <td onclick="OpenModel('confirm_modal');">
+            <i class="mod u" title="Save date.">update</i>
           </td>
         </tr>
         <tr> 
@@ -316,9 +321,10 @@
   </dialog>
 
   <dialog id="confirm_modal" style="height: 150px; width: 50%;" category="">
-    <button onclick="CloseConfirmationModal();" style="float: right;">Close</button>
+    <button onclick="Refresh();" style="float: right;">Close</button>
     <br><br>
-    <p>Do you want all dates to be updated accoring to the start date and protocol definitions.</p>
+    <p>Do you want all dates to be updated accoring to the start date and
+    protocol definitions?</p>
     <br>
     <input type="submit" value="Yes" onclick="UpdateDates('{{animal_id}}', true)"/>
     <input type="submit" value="No" onclick="UpdateDates('{{animal_id}}', false)"/>

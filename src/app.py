@@ -623,7 +623,7 @@ def update_dates(animal_id: str, autofill: bool):
 
     @return error-/ success-message and status code.
     """
-    return dmanager.update_dates(animal_id, request.form["date"], autofill == "true")
+    return dmanager.update_dates(animal_id, request.form["start"], autofill == "true")
     # exception handled
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])

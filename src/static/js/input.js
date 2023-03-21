@@ -77,8 +77,7 @@ function ToggleGraph() {
 
 async function UpdateDates(animal_id, autofill) {
   // build request and url
-  let formData = new FormData();
-  formData.append("date", document.getElementById("start").value);
+  const formData = new FormData(document.getElementById("start_date_form"));
   const url = '/update/animal_data/dates/' + animal_id + "/" + autofill;
   // Send request:
   fetch(url, {method: "POST", body: formData})
@@ -343,15 +342,4 @@ async function CloseModalWeights(animal_id, save) {
       save_notes_error.innerHTML = "Unkown error. Sorry";
     }
   }
-}
-
-function OpenUpdateDatesConfirmation(start_date) { 
-  var dialog = document.getElementById("confirm_modal"); 
-  document.getElementById("start").value = start_date;
-  dialog.showModal();
-} 
-
-function CloseConfirmationModal(animal_id) { 
-  var dialog = document.getElementById("confirm_modal"); 
-  dialog.close();
 }
