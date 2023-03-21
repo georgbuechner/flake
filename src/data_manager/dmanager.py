@@ -226,13 +226,15 @@ class DManager:
             if not protocol_procedure.optional:
                 procedure = Procedure.from_default(animal_id, animal_data.user, protocol_procedure)
                 db.session.add(procedure)
-        # Initialize medication and virus:
-        def create_entry_from_template(Template, Table):
-            for template in Template.query.filter(Template.protocol == full_protocol):
-                entry = Table.from_default(animal_id, template)
+        # Initialize medication:
+        for protocol_medication in PMedication.query.filter(PMedication.protocol == full_protocol):
+            entry = Medication.from_default(animal_id, protocol_medication)
+            db.session.add(entry)
+        # Initialize virus:
+        for protocol_virus in PVirus.query.filter(PVirus.protocol == full_protocol):
+            if not protocol_virus.optional:
+                entry = Virus.from_default(animal_id, protocol_virus)
                 db.session.add(entry)
-        create_entry_from_template(PMedication, Medication)
-        create_entry_from_template(PVirus, Virus)
         db.session.commit()
         # If sacrifice-date already exists, set sacrifice-date for procedures referencing sacrifice-date
         fill_sacrifice_date(animal_id, full_protocol)
