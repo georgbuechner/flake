@@ -232,6 +232,9 @@
           <th>Name</td> 
           <th>Procedure</td> 
           <th>Amount (nl)</td> 
+          <th title="If `optional` procedure is not automatically added to experiment data">
+            Optional?
+          </td> 
         </tr>
         {% for virus in data %}
            <tr>
@@ -239,6 +242,7 @@
              <td name="name">{{virus.name}}</td> 
              <td name="procedure">{{virus.procedure}}</td> 
              <td name="amount">{{virus.amount}}</td> 
+             <td name="optional">{{virus.optional}}</td> 
              <td onclick="DelProtocolEntry('viruses', '{{virus.uuid}}');">
                <a class="mod thick" title="Remove entry.">-</a>
              </td>

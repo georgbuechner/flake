@@ -477,28 +477,32 @@ class PVirus(db.Model):
     name = db.Column(db.String, primary_key=False) 
     procedure = db.Column(db.String, primary_key=False)
     amount = db.Column(db.String, primary_key=False)
+    optional = db.Column(db.Boolean, primary_key=False)
 
     def __init__(
-        self, protocol: str, name: str, procedure: str, amount: str
+        self, protocol: str, name: str, procedure: str, amount: str, optional: bool
     ):
         self.uuid = str(uuid.uuid4())
         self.protocol = protocol
         self.name = name 
         self.procedure = procedure 
         self.amount = amount
+        self.optional = optional
 
     @classmethod
     def from_form(cls, protocol: str, v: Dict[str, any]): 
-        return cls(protocol, v["name"], v["procedure"], v["amount"])
+        optional = "optional" in v
+        return cls(protocol, v["name"], v["procedure"], v["amount"], optional)
 
     @classmethod 
     def from_json(cls, virus: Dict[str, any]): 
         return cls.from_form(virus["protocol"], virus)
 
-    def update(self, p: Dict[str, any]): 
-        self.name = p["name"] 
-        self.procedure = p["procedure"] 
-        self.amount = p["amount"] 
+    def update(self, v: Dict[str, any]): 
+        self.name = v["name"] 
+        self.procedure = v["procedure"] 
+        self.amount = v["amount"] 
+        self.optional = "optional" in v
 
 class PWatercontrol(db.Model): 
     __tablename__ = "protocol_watercontrol"
