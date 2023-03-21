@@ -65,10 +65,6 @@ function SwitchWeightDependant(checked) {
     BlockAmount();
 }
 
-function RemoveDateSuggest(elem) {
-    elem.classList.remove("date_suggest");
-}
-
 async function DelProtocolEntry(category, uuid) {
   console.log(category, uuid);
   try {

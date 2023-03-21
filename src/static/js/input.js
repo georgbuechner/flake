@@ -343,3 +343,23 @@ async function CloseModalWeights(animal_id, save) {
     }
   }
 }
+
+function RemoveDateSuggest(elem, durations) {
+  elem.classList.remove("date_suggest");
+  if (durations !== undefined) {
+    try {
+      const dialog = document.getElementById("edit_modal");
+      const uuid = dialog.querySelector("#uuid").value;
+      const puuid = document.getElementById(uuid).innerHTML;
+      let end_date = dialog.querySelector("#end_date");
+      let copiedDate = new Date(elem.value);
+      const day = new Date(elem.value).getDate();
+      copiedDate.setDate(parseInt(day) + parseInt(durations[puuid]));
+      end_date.value = copiedDate.toISOString().substring(0, 10);
+      end_date.classList.remove("date_suggest");
+    } 
+    catch(e) {
+      console.log("Could not set end-date: ", e)
+    }
+  }
+}

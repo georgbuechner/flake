@@ -324,6 +324,8 @@ def input(animal_id: str, category: str):
         ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
         ref = {"name": ref_name, "link": request.referrer}
 
+    durations = {str(p.uuid):p.duration for p in availible_procedures}
+
     age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
         "input.html", 
@@ -339,6 +341,7 @@ def input(animal_id: str, category: str):
         json_medication=json.dumps([table_to_json(x) for x in availible_medication]),
         json_procedures=json.dumps([table_to_json(x) for x in availible_procedures]),
         json_viruses=json.dumps([table_to_json(x) for x in availible_viruses]),
+        durations=durations,
         allowed_users=allowed_users,
         animal_id=animal_id,
         animal_data=[animal_data],

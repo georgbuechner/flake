@@ -16,7 +16,7 @@
       <td><input 
         type="date" name="start_date" id="start_date" placeholder="start date"
         {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
-        onchange="RemoveDateSuggest(this);"
+        onchange="RemoveDateSuggest(this, {{durations|safe}});"
       /></td>
     </tr>
 
