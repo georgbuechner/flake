@@ -170,6 +170,7 @@
         {% for entry in procedures %}
         <tr>
           <td name="uuid" style="display:none">{{entry.uuid}}</td> 
+          <td id="{{entry.uuid}}" style="display:none">{{entry.protocol_entry_uuid}}</td> 
           <td name="name">{{entry.name}}</td>
           <td name="start_date">{{entry.start_date if entry.start_date|length > 2 else "---"}}</td>
           <td name="end_date">{{entry.end_date if entry.end_date|length > 2 else "---"}}</td>
