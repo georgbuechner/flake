@@ -3,6 +3,7 @@ import json
 import os
 import math
 import random
+import re
 import string
 import uuid
 import pandas as pd
@@ -775,27 +776,31 @@ class DManager:
         db.session.commit()
 
     def __get_start_end_from_comment(self, comment: str): 
+        def parse_date(date_str: str):
+            x = re.search("(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
+            return x.group(1)
+
         def extract(name: str, parts: List[str]):
             for part in parts: 
                 if name in part: 
-                    index = part.find(":")+1
-                    date = part[index:index+11].strip()
-                    if not date_filled(date):
-                        continue
-                    return unify_date(date)
+                    try: 
+                        index = part.find(":")+1
+                        date = parse_date(part[index:index+11])
+                        return unify_date(date)
+                    except Exception as err: 
+                        print("  Could not parse: ", name, part, err)
+                        return ""
             return ""
-        # If comment as such is invalid, return empty start-/ end-date
+        # If return empty start and end date if anything should go wrong
+        # (invalid comments should not block importing)
         try: 
             parts = comment.split(";")
-        except Exception: 
+        except Exception as err: 
+            print("Failed parsing dates: ", err)
             return "", ""
-        # If comment content is invalid, raise exception
-        try: 
-            start = extract("start", parts)
-            end = extract("end", parts)
-            return start, end
-        except Exception as err:
-            raise ParseException(f"{comment}: {repr(err)}")
+        start = extract("start", parts)
+        end = extract("end", parts)
+        return start, end
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)

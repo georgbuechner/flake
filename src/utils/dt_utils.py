@@ -15,7 +15,10 @@ def unify_date(date_str: str) -> str:
     if date_str in ["nan"]:
         return "---"
     # Try to parse date from availible formats, then convert to SOURCE_DATE_FORMAT
-    date_formats = [SOURCE_DATE_FORMAT, "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%m.%d.%Y"]
+    date_formats = [
+        SOURCE_DATE_FORMAT, "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%m.%d.%Y",
+                            "%d/%m/%y", "%m/%d/%y", "%d.%m.%y", "%m.%d.%y"
+    ]
     for df in date_formats: 
         try: 
             date = datetime.strptime(date_str, df)
