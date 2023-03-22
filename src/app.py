@@ -15,6 +15,7 @@ from os.path import exists as file_exists
 import time
 import os
 import subprocess
+import re
 import tempfile
 import traceback
 import shutil
@@ -155,6 +156,8 @@ def register():
     """
     if request.method == "GET":
         return render_template("register.html", msg="")
+    if not re.match("[^@]+@[^@]+\.[^@]+", request.form["email"]):
+        return render_template("register.html", msg="Not a valid E-Mail adress!")
     if User.query.get(request.form["email"]):
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:
