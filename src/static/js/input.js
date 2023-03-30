@@ -188,7 +188,6 @@ function AddOrEdit(elem) {
       }
     }
   }
-
   var dialog = document.getElementById("edit_modal"); 
 }
 
@@ -344,13 +343,19 @@ async function CloseModalWeights(animal_id, save) {
   }
 }
 
+function FillProcedure(name, procedures) {
+  const procedure = procedures.find(x => x.name == name);
+  const dialog = document.getElementById("edit_modal");
+  dialog.querySelector("#protocol_entry_uuid").value = procedure.uuid;
+}
+
 function RemoveDateSuggest(elem, durations) {
   elem.classList.remove("date_suggest");
   if (durations !== undefined) {
     try {
       const dialog = document.getElementById("edit_modal");
-      const uuid = dialog.querySelector("#uuid").value;
-      const puuid = document.getElementById(uuid).innerHTML;
+      const puuid = dialog.querySelector("#protocol_entry_uuid").value;
+      console.log("Found puuid: ", puuid);
       let end_date = dialog.querySelector("#end_date");
       let copiedDate = new Date(elem.value);
       const day = new Date(elem.value).getDate();

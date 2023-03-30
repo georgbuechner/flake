@@ -607,7 +607,7 @@ class General(db.Model):
             general["start"],
             general["end"],
             general["experiment"],
-            general["start_weight"],
+            float(general["start_weight"]),
             general["watercontrol"],
             general["weights"],
             general["watercontrol_mask"],
@@ -615,7 +615,7 @@ class General(db.Model):
         )
 
     def set_start_weight(self, start_weight: int): 
-        self.start_weight = start_weight
+        self.start_weight = float(start_weight)
         if float(start_weight) > 0:
             rows = Medication.query.filter(Medication.animal_id == self.animal_id)
             if rows.first(): 
@@ -720,6 +720,7 @@ class Medication(db.Model):
 
     def update_amount(self): 
         def get_start_weight(general: General) -> int: 
+            print("Start weight: ", general.start_weight)
             return general.start_weight if general.start_weight > 0 else 30
 
         def get_cur_weight() -> int: 
@@ -790,7 +791,15 @@ class Procedure(db.Model):
 
     @classmethod 
     def from_form(cls, animal_id: str, p: Dict[str, any]): 
-        return cls(animal_id, p["name"], p["start_date"], p["end_date"], p["experimenter"])
+        print("Got dict: ", p)
+        return cls(
+            animal_id, 
+            p["name"], 
+            p["start_date"], 
+            p["end_date"], 
+            p["experimenter"],
+            p["protocol_entry_uuid"]
+        )
 
     @classmethod 
     def from_json(cls, procedure: Dict[str, any]): 
