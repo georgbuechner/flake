@@ -493,7 +493,6 @@ class DManager:
         # Update procedures: 
         for x in Procedure.query.filter(Procedure.animal_id == animal_id): 
             default = PProcedure.query.get(x.protocol_entry_uuid)
-            print("Got default: ", default, x.protocol_entry_uuid, x.name)
             if not default:
                 raise EntryNotFound(
                     f"For procedure \"{x.name}\", no matching protocol-entry. "
@@ -503,7 +502,7 @@ class DManager:
                     400
                 )
             x.start_date = get_date(int(default.days_after_start))
-            x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
+            x.end_date = get_date(int(default.days_after_start)+int(default.get_duration())-1)
         db.session.commit()
         fill_sacrifice_date(animal_id, general.experiment)
         self.__update_stored(animal_id)

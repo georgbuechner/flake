@@ -1,6 +1,8 @@
 import json
 import math
 import uuid
+import random
+from exceptions.exceptions import ParserException
 from flask_sqlalchemy import SQLAlchemy
 from typing import Dict, List
 from utils.dt_utils import date_filled, unify_date, daterange_str
@@ -468,6 +470,17 @@ class PProcedure(db.Model):
         self.optional = "optional" in procedure
         self.requires_medication = procedure["requires_medication"] 
         self.requires_virus = procedure["requires_virus"] 
+
+    def get_duration(self) -> int: 
+        """ Gets duration or random duration between min and max """
+        if isinstance(self.duration, str): 
+            min_max = self.duration.split("-")
+            if len(min_max) > 1: 
+                return random.randint(int(min_max[0]), int(min_max[1])) 
+            return int(min_max[0])
+        elif isinstance(self.duration, int):
+            return self.duration 
+        raise ParserException(f"Invalid duration: {self.duration}!", 404)
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
