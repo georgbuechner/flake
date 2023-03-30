@@ -359,7 +359,7 @@ function RemoveDateSuggest(elem, durations) {
       let end_date = dialog.querySelector("#end_date");
       let copiedDate = new Date(elem.value);
       const day = new Date(elem.value).getDate();
-      copiedDate.setDate(parseInt(day) + parseInt(durations[puuid]));
+      copiedDate.setDate(parseInt(day) + parseInt(durations[puuid])-1);
       end_date.value = copiedDate.toISOString().substring(0, 10);
       end_date.classList.remove("date_suggest");
     } 
