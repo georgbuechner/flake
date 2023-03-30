@@ -1,9 +1,18 @@
 <form action="{{category}}" method="POST">
   <input type="text" style="display: none" name="uuid" id="uuid" value=""/>
+  <input 
+    type="text" style="display: none" name="protocol_entry_uuid" id="protocol_entry_uuid" value=""
+  />
   <table class="center">
     <tr>
       <td><label for="name">Name:</label></td>
-      <td><select id="name" name="name" autocomplete="off">
+      <td>
+        <select 
+          id="name" 
+          name="name" 
+          autocomplete="off"
+          onchange='FillProcedure(this.value, {{json_procedures|safe}});'
+        >
         <option value="---" selected>---</option>
         {% for e in availible_procedures %} 
           <option value="{{e.name}}">{{e.name}}</option> 

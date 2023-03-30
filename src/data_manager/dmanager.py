@@ -493,6 +493,15 @@ class DManager:
         # Update procedures: 
         for x in Procedure.query.filter(Procedure.animal_id == animal_id): 
             default = PProcedure.query.get(x.protocol_entry_uuid)
+            print("Got default: ", default, x.protocol_entry_uuid, x.name)
+            if not default:
+                raise EntryNotFound(
+                    f"For procedure \"{x.name}\", no matching protocol-entry. "
+                    + f"Delete the procedure \"{x.name}\" for this animal and add it again."
+                    + "\n(This is a new functionality and was not possible before."
+                    + " Sorry for the inconvenience.)",
+                    400
+                )
             x.start_date = get_date(int(default.days_after_start))
             x.end_date = get_date(int(default.days_after_start)+int(default.duration)-1)
         db.session.commit()
@@ -500,7 +509,7 @@ class DManager:
         self.__update_stored(animal_id)
         if not date_filled(old_start_date):
             self.generate_weight_list(animal_id, -1)
-        return f"Dates where updated. Make sure to doublecheck! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
+        return f"Dates where updated. Make sure to double check! {len(not_updated)} dates where not updated: {json.dumps(not_updated)} ", 200
 
     def update_weights_and_watercontrol(
         self, animal_id: str, weights: str, water_control_mask: str
