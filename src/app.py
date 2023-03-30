@@ -327,7 +327,7 @@ def input(animal_id: str, category: str):
         ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
         ref = {"name": ref_name, "link": request.referrer}
 
-    durations = {str(p.uuid):p.duration for p in availible_procedures}
+    durations = {str(p.uuid):p.get_duration() for p in availible_procedures}
 
     age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
