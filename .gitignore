@@ -5,4 +5,5 @@ src/signatures/*
 !src/signatures/default.png
 backups/*
 !backups/.keep
+**/.\~lock*
 

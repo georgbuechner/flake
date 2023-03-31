@@ -195,6 +195,13 @@ class DCreator:
                     source = self.fields[res.group(1)]
                     filtered_source = [x for x in source if x[res.group(2)] == res.group(3)]
                     return iterator_name, filtered_source
+                # conditional not in list (f.e. analgesic where name != <Carprofen, Lidocain>)...
+                res = re.search(r"(.*) where (.*) != <(.*)>", result.group(2))
+                if res is not None: #and res.group(1) in self.fields:
+                    source = self.fields[res.group(1)]
+                    traits = res.group(3).split(", ")
+                    filtered_source = [x for x in source if x[res.group(2)] not in traits]
+                    return iterator_name, filtered_source
                 # list 
                 if result.group(2) in self.fields:
                     return iterator_name, self.fields[result.group(2)]
