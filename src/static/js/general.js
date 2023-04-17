@@ -69,4 +69,9 @@ async function UpdateAll(td, force) {
   }
 }
 
-
+function OpenDeleteAnimalModal(mla_num) {
+	let delete_btn = document.getElementById("confirm_delete_animal_btn");
+	delete_btn.setAttribute("onclick", "DeleteAnimalData('" + mla_num + "')");
+	delete_btn.setAttribute("value", "delete " + mla_num);
+	OpenModel("confirm_delete_animal_modal");
+}

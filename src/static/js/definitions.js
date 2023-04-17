@@ -160,7 +160,7 @@ function OpenAllowedUsers() {
   OpenModel("allowed_users_modal"); 
 }
 
-function CloseAllowedUsers() {
+function CloseAllowedUsers(store) {
   var table = document.getElementById("allowed_users_table");
   var users = "";
   while(table.rows.length > 1) {
@@ -169,7 +169,8 @@ function CloseAllowedUsers() {
   }
   if (users.length >=2) 
     users = users.substring(0, users.length-2);
-  document.getElementById("allowed_users").value = users;
+	if (store === true)
+  	document.getElementById("allowed_users").value = users;
   CloseModal("allowed_users_modal"); 
 }
 

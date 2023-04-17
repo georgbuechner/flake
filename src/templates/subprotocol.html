@@ -308,8 +308,9 @@
 
   {% if "allowed_users" in data %}
     <dialog id="allowed_users_modal" style="height: 350px; width: 80%;" category="">
-      <button onclick="CloseAllowedUsers()" style="float: right;">Close</button>
+      <button onclick="CloseAllowedUsers(false)" style="float: right;">Close</button>
       <h2>Allowed Users</h2>
+			<br>
 
       <table id="allowed_users_table" class="center">
         <tr>
@@ -323,8 +324,12 @@
           </td>
         </tr>
       </table>
-
       <br>
+      <button onclick="CloseAllowedUsers(true)">Save</button>
+			<br>
+			<br>
+			<p>hint: If the name is already selected but does not appear in list, select
+			"---" first and then the name again.</p>
     </dialog>
   {% endif %}
 
@@ -344,15 +349,18 @@
       <br>
       <input 
         type="submit"
-        onclick="ResetSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+        onclick="OpenModel('confirm_reset_dialog')"
         value="RESET all subprotocols"
       >
       <input 
         type="submit"
-        onclick="ReloadSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+        onclick="OpenModel('confirm_reload_dialog')"
         value="RELOAD ALL subprotocols"
         title="This functionality is not implemented yet"
       >
+    	<button onclick="CloseModal('protocol_changed_modal')">
+				I'm good, I'll update my animal data later
+			</button>
     </dialog>
 
     {% if subprotocol_changed %} 
@@ -364,6 +372,38 @@
     {% endif %}
 
   {% endif %}
+
+	<dialog id="confirm_reset_dialog" style="height: 200px; width: 60%;">
+    <button onclick="CloseModal('confirm_reset_dialog')" style="float: right;">Close</button>
+		<h3>Confirm Resetting animal data</h3> 
+		<p>All animal-data for this subprotocol will be resetted/ cleared. The start and end dates 
+		imported from pyrat are then lost</p>
+		<input 
+			type="submit"
+			onclick="ResetSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+			value="RESET all subprotocols"
+		>
+    <button onclick="CloseModal('confirm_reset_dialog')">
+			Rather not
+		</button>
+	</dialog>
+
+	<dialog id="confirm_reload_dialog" style="height: 200px; width: 60%;">
+    <button onclick="CloseModal('confirm_reload_dialog')" style="float: right;">Close</button>
+		<h3>Confirm reloading animal data</h3> 
+		<p>All animal-data for this subprotocol will be reloaded. All <i>manually</i> changed data 
+		will be lost. All data will be reconstructed based ob the default data for
+		this subprotocol. Only data can be resturcted which has a start and end
+		date. All other data will be resetted and cannot be reconstructed.</p>
+		<input 
+			type="submit"
+			onclick="ReloadSubprotocols('{{protocol.escaped}}/{{subprotocol}}')"
+			value="RELOAD all subprotocols"
+		>
+    <button onclick="CloseModal('confirm_reload_dialog')">
+			Rather not
+		</button>
+	</dialog>
 
   {% include "error_modal.html" %}
 
