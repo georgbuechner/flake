@@ -28,7 +28,8 @@ SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
 SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
 
-BACKUP_PATH = "backups/"
+REL_BACKUP_PATH = "backups/"
+BACKUP_PATH = f"src/{REL_BACKUP_PATH}/"
 DB_PATH = "instance/larkum.db"
 
 generation_threads = {}
@@ -518,6 +519,11 @@ def add_backup():
 def delete_backup(backup: str): 
     os.remove(f"{BACKUP_PATH}/{backup}")
     return "", 200
+
+@app.route("/settings/backups/download/<backup>", methods=["POST"])
+@login_required
+def download_backup(backup: str): 
+    return send_file(f"{REL_BACKUP_PATH}/{backup}", as_attachment=True)
 
 @app.route("/settings/backups/load/<backup>", methods=["POST"])
 @login_required
