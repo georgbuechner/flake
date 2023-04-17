@@ -45,6 +45,13 @@
               onclick="LoadBackup('{{backup}}');"
             >cached</i>
         </td>
+        <td>
+            <i 
+              class="material-icons mini_icon"
+              title="Download backup."
+              onclick="DownloadBackup('{{backup}}');"
+            >cloud_download</i>
+        </td>
       </tr>
       {% endfor %}
     </table>
