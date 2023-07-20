@@ -806,7 +806,9 @@ class DManager:
         except Exception as err: 
             print("Failed parsing dates: ", err)
             return "", ""
-        start = extract("start", parts)
+        start = extract("start:", parts)
+        if start == "": 
+            start = extract("start", parts)
         end = extract("end", parts)
         return start, end
 
