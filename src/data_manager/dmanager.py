@@ -295,7 +295,7 @@ class DManager:
             db.session.delete(animal_data)
             db.session.commit()
             return "", 200
-        return "Animal not found", 404
+        return f"Animal not found + {animal_id}", 404
 
     def reset_animal_data(self, experiment):
         query = General.query.filter(General.experiment == experiment)

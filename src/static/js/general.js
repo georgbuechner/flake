@@ -69,9 +69,42 @@ async function UpdateAll(td, force) {
   }
 }
 
+function SelectAll(checked) {
+  var checkboxes = document.getElementsByName("mark_animal");
+  for (var i=0; i<checkboxes.length; i++)
+    checkboxes[i].checked = checked;
+}
+
 function OpenDeleteAnimalModal(mla_num) {
+  document.getElementById("animals_to_delete").innerHTML = mla_num;
 	let delete_btn = document.getElementById("confirm_delete_animal_btn");
+  delete_btn.style.display = "";
 	delete_btn.setAttribute("onclick", "DeleteAnimalData('" + mla_num + "')");
 	delete_btn.setAttribute("value", "delete " + mla_num);
 	OpenModel("confirm_delete_animal_modal");
+}
+
+function OpenDeleteAllAnimalsModal() {
+  // Get all selected animals
+  var checkboxes = document.getElementsByName("mark_animal");
+  var mlas = [];
+  for (var i=0; i<checkboxes.length; i++) {
+    if (checkboxes[i].checked)
+      mlas.push(checkboxes[i].getAttribute("animal_id"));
+  }
+  console.log("Got mlas to delete: ", mlas);
+
+  // Open delete animal modal
+  let delete_btn = document.getElementById("confirm_delete_animal_btn");
+  if (mlas.length > 0) {
+    document.getElementById("animals_to_delete").innerHTML = mlas.join(", ");
+    delete_btn.style.display = "";
+    delete_btn.setAttribute("onclick", "DeleteAnimalData('" + mlas.join(",") + "')");
+    delete_btn.setAttribute("value", "delete all selected animals");
+  }
+  else {
+    delete_btn.style.display = "none";
+    document.getElementById("animals_to_delete").innerHTML = "No animals selected!";
+  }
+  OpenModel("confirm_delete_animal_modal");
 }

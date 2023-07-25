@@ -37,7 +37,16 @@
 
   <table class="center">
     <tr>
-      {%- if not animal_id -%}<th></th>{%- endif -%}
+      {%- if not animal_id -%}<th>Select All:<input type="checkbox" onclick="SelectAll(this.checked);"></th>{%- endif -%}
+      {% if not animal_id %}
+        <th>
+          Delete All
+          <i 
+            class="material-icons mini_icon"
+            onclick="OpenDeleteAllAnimalsModal();"
+          >delete</i>
+        </th>
+      {%- endif -%}
       <th><i class="mod u" onclick="ApplySorting('mla_num', '{{reverse}}');">ID</a></th>
       <th><i class="mod u" onclick="ApplySorting('user', '{{reverse}}');"</a>Responsible</th>
       <th><i class="mod u" onclick="ApplySorting('sex', '{{reverse}}');"</a>Sex</th>
@@ -58,6 +67,14 @@
           class="stored"
         {% endif %} 
       >
+        {% if not animal_id %}
+          <td>
+            {% if entry.user == current_user.name or current_user.admin == True %}
+            <input type="checkbox" name="mark_animal" animal_id="{{entry.mla_num}}">
+            {% endif %}
+          </td>
+        {% endif %}
+
         {% if not animal_id %}
           <td>
             {% if entry.user == current_user.name or current_user.admin == True %}

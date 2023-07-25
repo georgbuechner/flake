@@ -277,7 +277,11 @@ def protocol_overview(protocol: str):
 @login_required
 def delete_animal_data(animal_id: str): 
     """! Updates an entry in an animals experiment data. """
-    text, status = dmanager.delete_animal_data(animal_id)
+    if "," not in animal_id:
+        text, status = dmanager.delete_animal_data(animal_id)
+    else: 
+        for x in animal_id.split(","): 
+            text, status = dmanager.delete_animal_data(x)
     return text, status
 
 @app.route("/animal_data/reset/", methods=["POST"])
