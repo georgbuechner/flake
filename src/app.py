@@ -207,6 +207,7 @@ def overview():
     return render_template(
         "overview.html", 
         animal_data=animal_data,
+        start_dates=dmanager.get_start_dates(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
@@ -237,6 +238,7 @@ def user_overview(user: str):
     return render_template(
         "user_overview.html", 
         user=user, 
+        start_dates=dmanager.get_start_dates(animal_data),
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
@@ -268,6 +270,7 @@ def protocol_overview(protocol: str):
         "protocol_overview.html", 
         protocol=protocol,
         animal_data=animal_data,
+        start_dates=dmanager.get_start_dates(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
