@@ -160,6 +160,13 @@ class DManager:
             response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date)
         return response, 200
 
+    def get_start_dates(self, animals) -> Dict[str, str]: 
+        start_dates = {}
+        for x in animals: 
+            general = General.query.get(x.mla_num)
+            start_dates[x.mla_num] = general.start if general else "---"
+        return start_dates
+
     def get_quick_apply_animal_data(self, mlas_with_date, set_stored: bool = None):
         animal_data = []
         for mla, _ in mlas_with_date.items(): 

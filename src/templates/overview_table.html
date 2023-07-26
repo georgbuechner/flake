@@ -48,15 +48,34 @@
         </th>
       {%- endif -%}
       <th><i class="mod u" onclick="ApplySorting('mla_num', '{{reverse}}');">ID</a></th>
-      <th><i class="mod u" onclick="ApplySorting('user', '{{reverse}}');"</a>Responsible</th>
-      <th><i class="mod u" onclick="ApplySorting('sex', '{{reverse}}');"</a>Sex</th>
-      <th><i class="mod u" onclick="ApplySorting('line', '{{reverse}}');"</a>Line / Strain (Name)</th>
-      <th><i class="mod u" onclick="ApplySorting('dob', '{{reverse}}');"</a>DOB</th>
-      <th><i class="mod u" onclick="ApplySorting('death_date', '{{reverse}}');"</a>Sacrifice date</th>
-      <th><i class="mod u" onclick="ApplySorting('supplier', '{{reverse}}');"</a>Supplier</th>
-      <th><i class="mod u" onclick="ApplySorting('protocol_pyrat', '{{reverse}}');"</a>Protocol (pyrat)</th>
-      <th><i class="mod u" onclick="ApplySorting('protocol', '{{reverse}}');"</a>Protocol (flake)</th>
-      <th><i class="mod u" onclick="ApplySorting('subprotocol', '{{reverse}}');"</a>Sub Protocol</th>
+      <th><i class="mod u" onclick="ApplySorting('user', '{{reverse}}');">Responsible</i></th>
+      <th><i class="mod u" onclick="ApplySorting('sex', '{{reverse}}');">Sex</i></th>
+      <th>
+        <i class="mod u" onclick="ApplySorting('line', '{{reverse}}');">
+          Line / Strain (Name)
+        </i>
+      </th>
+      <th><i class="mod u" onclick="ApplySorting('dob', '{{reverse}}');">DOB</i></th>
+      <th><i>Start Date</i></th>
+      <th>
+        <i class="mod u" onclick="ApplySorting('death_date', '{{reverse}}');">Sacrifice date</i>
+      </th>
+      <th><i class="mod u" onclick="ApplySorting('supplier', '{{reverse}}');">Supplier</i></th>
+      <th>
+        <i class="mod u" onclick="ApplySorting('protocol_pyrat', '{{reverse}}');">
+          Protocol (pyrat)
+        </i>
+      </th>
+      <th>
+        <i class="mod u" onclick="ApplySorting('protocol', '{{reverse}}');">
+          Protocol (flake)
+        </i>
+      </th>
+      <th>
+        <i class="mod u" onclick="ApplySorting('subprotocol', '{{reverse}}');">
+          Sub Protocol
+        </i>
+      </th>
     </tr>
     {% for entry in animal_data %}
       <tr 
@@ -90,6 +109,9 @@
         <td>{{entry.sex}}</td>
         <td>{{entry.line}}</td>
         <td>{{entry.dob}}</td>
+        <td>
+          {%- if start_dates -%}{{start_dates[entry.mla_num]}}{%- else -%}---{%- endif -%}
+        </td>
         <td>
           {{entry.death_date}} 
           <i 
