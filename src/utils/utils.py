@@ -3,13 +3,15 @@ import bcrypt
 import json
 import os
 import getpass
-from typing import Dict, List
 from data_manager.tables import table_to_json
 from os.path import exists as file_exists
 from typing import Tuple
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from typing import Dict, List
+
+ENV_FIELD_MASTER_PW = "FLAKE_MASTER_PASSWORD"
 
 def sort_query(obj_list, key: str, to_int: bool = False):
     """! Sorts a given list of objects by given key. 
@@ -102,7 +104,9 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
     if secret != "":
         password = config["password"]["password"].encode()
         salt = config["password"]["salt"].encode()
-        inp = getpass.getpass("password: ") 
+        print("Loading .env")
+        print("Got dotenv: ", os.getenv(ENV_FIELD_MASTER_PW, False))
+        inp = os.getenv(ENV_FIELD_MASTER_PW) if os.getenv(ENV_FIELD_MASTER_PW) else getpass.getpass("password: ") 
         if hash_pw(inp, salt)[0] == password:
             encoded_password, _ = encode_password(inp.encode(), salt)
             fernet = Fernet(encoded_password) 
@@ -145,5 +149,3 @@ def get_root_user(path):
     with open(path, "w") as f:
         json.dump(config, f)
     return root_email
-
-
