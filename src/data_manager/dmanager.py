@@ -139,16 +139,19 @@ class DManager:
         for row in initial_query.all(): 
             print(row.mla_num, mla_num)
         if mla_num != "":  
-            print("size before: ", len([x for x in initial_query.all()]))
             filtered_query = initial_query.filter(AnimalData.mla_num.like(f"%{mla_num}%"))
-            print("size after: ", len(filtered_query.all()))
         else: 
             filtered_query = initial_query.all()
         if filter_date == "DOB":
-            filtered_query = [row for row in filtered_query.all() if row.dob >= f"{start}" and row.dob <= f"{end}"]
+            filtered_query = [row for row in filtered_query if row.dob >= f"{start}" and row.dob <= f"{end}"]
         elif filter_date == "Sacrifice date":
             filtered_query = [
-                row for row in filtered_query.all() if row.death_date>= f"{start}" and row.death_date <= f"{end}"
+                row for row in filtered_query if row.death_date>= f"{start}" and row.death_date <= f"{end}"
+            ]
+        elif filter_date == "start date": 
+            dates = self.get_start_dates(filtered_query) 
+            filtered_query = [
+                row for row in filtered_query if dates[row.mla_num] >= f"{start}" and dates[row.mla_num] <= f"{end}"
             ]
         # Sort
         sorted_query = sort_query(filtered_query, sort_by)

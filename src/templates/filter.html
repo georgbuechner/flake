@@ -9,6 +9,7 @@
       <option value=""></option>
       <option {% if args.range == "DOB" %} selected {%endif%}>DOB</option>
       <option {% if args.range == "Sacrifice date" %} selected {%endif%}>Sacrifice date</option>
+      <option {% if args.range == "start date" %} selected {%endif%}>start date</option>
     </select>
     <label >from: </label>
     {% set from_to_range = "from" %}
