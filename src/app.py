@@ -337,11 +337,14 @@ def input(animal_id: str, category: str):
 
     durations = {str(p.uuid):p.get_duration() for p in availible_procedures}
 
+    print(f"GENERAL.START={general.start} ({animal_id}, {animal_data.mla_num})")
+
     age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
         "input.html", 
         stored=True,
         general=general,
+        start_dates=dmanager.get_start_dates([animal_data]),
         medication=sort_query(Medication.query.filter(Medication.animal_id == animal_id), "name"),
         viruses=sort_query(Virus.query.filter(Virus.animal_id == animal_id), "name"),
         procedures=sort_query(Procedure.query.filter(Procedure.animal_id == animal_id), "start_date"),
