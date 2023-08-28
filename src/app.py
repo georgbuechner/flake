@@ -198,6 +198,7 @@ def overview():
         filter_date=request.args.get("range", default="", type=str),
         start=request.args.get("from", default="", type=str),
         end=request.args.get("to", default="", type=str),
+        mla_num=request.args.get("id", default="", type=str),
     )
     return render_template(
         "overview.html", 
@@ -226,6 +227,7 @@ def user_overview(user: str):
         filter_date=request.args.get("range", default="", type=str),
         start=request.args.get("from", default="", type=str),
         end=request.args.get("to", default="", type=str),
+        mla_num=request.args.get("id", default="", type=str),
     )
     return render_template(
         "user_overview.html", 
@@ -255,9 +257,42 @@ def protocol_overview(protocol: str):
         filter_date=request.args.get("range", default="", type=str),
         start=request.args.get("from", default="", type=str),
         end=request.args.get("to", default="", type=str),
+        mla_num=request.args.get("id", default="", type=str),
     )
     return render_template(
         "protocol_overview.html", 
+        protocol=protocol,
+        animal_data=animal_data,
+        start_dates=dmanager.get_start_dates(animal_data),
+        protocols=dmanager.protocols_and_subprotocols(),
+        args=request.args,
+        reverse="True" if reverse == "False" else "False"
+    )
+
+@app.route('/table/<area>/', defaults={'what': ""})
+@app.route("/table/<area>/<what>")
+@login_required
+def overview_table(area: str, what: str):
+    if area == "users": 
+        initial_request = AnimalData.query.filter(AnimalData.user == what)
+    elif area == "protocols":
+        initial_request = AnimalData.query.filter(AnimalData.protocol_escaped == what)
+    else: 
+        initial_request = AnimalData.query
+                                                  
+    # Apply filter,  sort (and reverse)
+    reverse = request.args.get("reverse", default="False", type=str)
+    animal_data = dmanager.get_overview_table(
+        initial_query=initial_request,
+        sort_by=request.args.get("sort_by", default="dob", type=str),
+        reverse=reverse,
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
+        mla_num=request.args.get("id", default="", type=str),
+    )
+    return render_template(
+        "overview_table.html", 
         protocol=protocol,
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),

@@ -1,32 +1,5 @@
 {% if not animal_id %}
-  <p>Showing <i>{{animal_data|length}} animals.</p>
-  <i 
-    id="filter_toggle"
-    class="material-icons mini_icon"
-    onclick="ToggleExpandFilter();"
-  >expand_less</i>
-  <div id="filter">
-    <select id="filter_month_what" autocomplete="off" class="month_picker_year">
-      <option value=""></option>
-      <option {% if args.range == "DOB" %} selected {%endif%}>DOB</option>
-      <option {% if args.range == "Sacrifice date" %} selected {%endif%}>Sacrifice date</option>
-    </select>
-    <label >from: </label>
-    {% set from_to_range = "from" %}
-    {% set curyear = args["from"] %}
-    {% set curmonth = args["from"][5:] if "from" in args %}
-    {% include "month_picker.html" %}
-    <label>to: </label>
-    {% set from_to_range = "to" %}
-    {% set curyear = args["to"] %}
-    {% set curmonth = args["to"][5:] if "to" in args %}
-    {% include "month_picker.html" %}
-
-    <i class="mod u" title="Apply filter." onclick="ApplyFilter();">apply filter</i>
-    <i class="mod u" title="Apply filter." onclick="RemoveFilter();">remove filter</i>
-    <br>
-    <br>
-  </div>
+  <p><i>Showing {{animal_data|length}} animals.</i></p>
 {% endif %}
 
   <table class="center">

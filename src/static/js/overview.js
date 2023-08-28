@@ -214,7 +214,7 @@ function ApplySorting(key, reverse) {
   window.location = url.href;
 }
 
-function ApplyFilter() {
+function BuildFilter() {
   const from_year = document.getElementById("filter_year_from").value;
   const from_month = document.getElementById("filter_month_from").value;
   const to_year = document.getElementById("filter_year_to").value;
@@ -223,7 +223,29 @@ function ApplyFilter() {
   url.searchParams.set('range', document.getElementById("filter_month_what").value);
   url.searchParams.set('from', from_year + "-" + ((from_month != "") ? from_month : "01") + "-01");
   url.searchParams.set('to', to_year+ "-" + ((to_month != "") ? to_month : "31") + "-31");
-  window.location = url.href;
+  url.searchParams.set('id', document.getElementById("filter_animal_id").value);
+  console.log("HREF: ", url);
+  return url;
+}
+
+function ApplyFilter() {
+  window.location = BuildFilter().href;
+}
+
+function TypeaheadFilter() {
+  const url = BuildFilter();
+  const req = '/table/' + url.pathname + url.search
+  fetch(req)
+    .then(response => {
+      if (response.ok) {
+        response.text().then(text => {
+          document.getElementById("overview_table").innerHTML = text;
+        });
+      }
+    })
+    .catch(Error => {
+      OpenErrorModal(error);
+    })
 }
 
 function RemoveFilter() {
@@ -231,5 +253,6 @@ function RemoveFilter() {
   url.searchParams.delete('range');
   url.searchParams.delete('to');
   url.searchParams.delete('from');
+  url.searchParams.delete('id');
   window.location = url.href;
 }
