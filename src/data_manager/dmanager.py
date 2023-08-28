@@ -10,6 +10,8 @@ import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
 from dataclasses import dataclass, field
+from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy.query import Query
 from typing import Dict, List, Tuple
 from exceptions.exceptions import *
 from utils.parser_weights_and_water import (
@@ -130,6 +132,23 @@ class DManager:
                     missing.append(f"for {procedure.name} missing {procedure.requires_medication-query.count()}")
         return ", ".join(missing) if len(missing) > 1 else None
 
+    def get_overview_table(
+        self, initial_query: Query, sort_by: str, reverse: bool, filter_date: str, start: str, end: str
+    ) -> List: 
+        # Apply filter 
+        filtered_query = initial_query.all()
+        if filter_date == "DOB":
+            filtered_query = [row for row in initial_query.all() if row.dob >= f"{start}" and row.dob <= f"{end}"]
+        elif filter_date == "Sacrifice date":
+            filtered_query = [
+                row for row in initial_query.all() if row.death_date>= f"{start}" and row.death_date <= f"{end}"
+            ]
+        # Sort
+        sorted_query = sort_query(filtered_query, sort_by)
+        # Reverse 
+        if reverse != "True":
+            sorted_query.reverse()
+        return sorted_query 
 
     def extract_animal_data(self, file, ignore_comment: bool) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.

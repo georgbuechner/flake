@@ -6,27 +6,21 @@
     onclick="ToggleExpandFilter();"
   >expand_less</i>
   <div id="filter">
-    <select id="filter_year" autocomplete="off">
-      {% for x in range(10) %}
-        {% set year = 2023 - x %}
-        {% if year|string in args.dob %}
-          <option selected>{{year}}</option>
-        {% else %}
-          <option>{{year}}</option>
-        {%- endif -%}
-      {% endfor %}
-    </select>
-    <select id="filter_month" autocomplete="off">
-      {% set months = {"01":"January", "02":"February", "03":"March", "04":"April", "05":"May", "06":"June", "07":"July", "08":"August", "09":"September", "10":"October", "11":"November", "12":"December"} %}
+    <select id="filter_month_what" autocomplete="off" class="month_picker_year">
       <option value=""></option>
-      {% for month, month_name in months.items() %}
-        {% if args.dob|length > 5 and month|string in args.dob[5:] %}
-          <option value={{month}} selected>{{month_name}}</option>
-        {% else %}
-          <option value={{month}}>{{month_name}}</option>
-        {%- endif -%}
-      {% endfor %}
+      <option {% if args.range == "DOB" %} selected {%endif%}>DOB</option>
+      <option {% if args.range == "Sacrifice date" %} selected {%endif%}>Sacrifice date</option>
     </select>
+    <label >from: </label>
+    {% set from_to_range = "from" %}
+    {% set curyear = args["from"] %}
+    {% set curmonth = args["from"][5:] if "from" in args %}
+    {% include "month_picker.html" %}
+    <label>to: </label>
+    {% set from_to_range = "to" %}
+    {% set curyear = args["to"] %}
+    {% set curmonth = args["to"][5:] if "to" in args %}
+    {% include "month_picker.html" %}
 
     <i class="mod u" title="Apply filter." onclick="ApplyFilter();">apply filter</i>
     <i class="mod u" title="Apply filter." onclick="RemoveFilter();">remove filter</i>

@@ -147,3 +147,11 @@ dialog {
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(2px);
 }
+
+.month_picker_year {
+  border: 0;
+}
+.month_picker_month {
+  margin-left: -0.2rem;
+  border: 0;
+}

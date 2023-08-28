@@ -215,15 +215,21 @@ function ApplySorting(key, reverse) {
 }
 
 function ApplyFilter() {
-  const year = document.getElementById("filter_year").value;
-  const month = document.getElementById("filter_month").value;
+  const from_year = document.getElementById("filter_year_from").value;
+  const from_month = document.getElementById("filter_month_from").value;
+  const to_year = document.getElementById("filter_year_to").value;
+  const to_month = document.getElementById("filter_month_to").value;
   var url = new URL(window.location.href);
-  url.searchParams.set('dob', year + "-" + month);
+  url.searchParams.set('range', document.getElementById("filter_month_what").value);
+  url.searchParams.set('from', from_year + "-" + ((from_month != "") ? from_month : "01") + "-01");
+  url.searchParams.set('to', to_year+ "-" + ((to_month != "") ? to_month : "31") + "-31");
   window.location = url.href;
 }
 
 function RemoveFilter() {
   var url = new URL(window.location.href);
-  url.searchParams.delete('dob');
+  url.searchParams.delete('range');
+  url.searchParams.delete('to');
+  url.searchParams.delete('from');
   window.location = url.href;
 }

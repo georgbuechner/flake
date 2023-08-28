@@ -10,7 +10,6 @@ from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import *
-from jinja2 import Environment, PackageLoader, select_autoescape
 from os.path import exists as file_exists
 import time
 import os
@@ -19,7 +18,6 @@ import re
 import tempfile
 import traceback
 import shutil
-from cryptography.fernet import Fernet
 from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
@@ -191,19 +189,16 @@ def overview():
 
     @return Rendered html overview-page from jinja2-template.
     """
-    sort_by = request.args.get("sort_by", default="dob", type=str)
+    # Apply filter,  sort (and reverse)
     reverse = request.args.get("reverse", default="False", type=str)
-    query = AnimalData.query
-    # Apply filter
-    dob = request.args.get("dob", default="", type=str)
-    if dob != "":
-        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
-    # Sort
-    animal_data = sort_query(query, sort_by)
-    # Reverse
-    if reverse == "True":
-        animal_data.reverse()
-
+    animal_data = dmanager.get_overview_table(
+        initial_query=AnimalData.query,
+        sort_by=request.args.get("sort_by", default="dob", type=str),
+        reverse=reverse,
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
+    )
     return render_template(
         "overview.html", 
         animal_data=animal_data,
@@ -222,19 +217,16 @@ def user_overview(user: str):
 
     @return Rendered html user-overview page from jinja2-template.
     """
-    sort_by = request.args.get("sort_by", default="dob", type=str)
+    # Apply filter,  sort (and reverse)
     reverse = request.args.get("reverse", default="False", type=str)
-    query = AnimalData.query.filter(AnimalData.user == user)
-    # Apply filter
-    dob = request.args.get("dob", default="", type=str)
-    if dob != "":
-        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
-    # Sort
-    animal_data = sort_query(query, sort_by)
-    # Reverse
-    if reverse == "True":
-        animal_data.reverse()
-
+    animal_data = dmanager.get_overview_table(
+        initial_query=AnimalData.query.filter(AnimalData.user == user),
+        sort_by=request.args.get("sort_by", default="dob", type=str),
+        reverse=reverse,
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
+    )
     return render_template(
         "user_overview.html", 
         user=user, 
@@ -254,18 +246,16 @@ def protocol_overview(protocol: str):
 
     @return Rendered html protocol-overview page from jinja2-template.
     """
-    sort_by = request.args.get("sort_by", default="dob", type=str)
+    # Apply filter,  sort (and reverse)
     reverse = request.args.get("reverse", default="False", type=str)
-    query = AnimalData.query.filter(AnimalData.protocol_escaped == protocol)
-    # Apply filter
-    dob = request.args.get("dob", default="", type=str)
-    if dob != "":
-        query = query.filter(AnimalData.dob.like(f"%{dob}%"))
-    # Reverse
-    animal_data = sort_query(query, sort_by)
-    # Sort
-    if reverse == "True":
-        animal_data.reverse()
+    animal_data = dmanager.get_overview_table(
+        initial_query=AnimalData.query.filter(AnimalData.protocol_escaped == protocol),
+        sort_by=request.args.get("sort_by", default="dob", type=str),
+        reverse=reverse,
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
+    )
     return render_template(
         "protocol_overview.html", 
         protocol=protocol,
