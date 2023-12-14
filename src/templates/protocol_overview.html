@@ -54,6 +54,24 @@
 
   {% include "confirm_delete_animal_dialog.html" %}
 
+  <dialog id="p9_error_modal" style="height: 300px; width: 60%;" category="">
+    <button onclick="Refresh();" style="float: right;">Close</button>
+    <br><br>
+    <h3>Missing Animal Data</h3>
+    <p class="err">P9 documents can only be created when <i>all</i> animal-data for this
+    protocol is complete! All animal-data marked red is considered incomplete.</p> 
+    <p>This decision was made to encourage everyone to do their paperwork and to
+    understand this as a task the whole LAB is invoked with.</p>
+    <p>To avoid incomplete data being deleted in order to generate the P9
+    document, admins can force-create the document bypassing
+    completeness-check. If you are not an admin, talk to one of the labs
+    admins.<p>
+    <br>
+    {% if current_user.admin %} 
+      <label>Force Generating P9 Document: <label>
+      <input type="submit" id="submit" value="generate" onclick="GenerateP9('{{protocol}}', true)">
+    {% endif %}
+  </dialog>
 </body>
 
 </html>
