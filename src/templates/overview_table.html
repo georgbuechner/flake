@@ -95,7 +95,8 @@
           {% else %}
             <select 
               id="protocol_flake" autocomplete="off" 
-              onchange="UpdateProtocol(this.value, this.parentNode.parentNode.children[1].innerHTML, false)"
+              onchange="UpdateProtocol(this.value,
+              this.parentNode.parentNode.children[2].innerHTML, false)"
             >
               <option value="---">---</option>
               {% for protocol in protocols.keys() %}
@@ -112,7 +113,7 @@
           {% else %}
             <select 
               id="subprotocol" autocomplete="off" 
-              onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[1].innerHTML, false)"
+              onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[2].innerHTML, false)"
             >
               <option value="---" selected>---</option>
               {% for sub in protocols[entry.protocol] %}
