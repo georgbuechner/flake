@@ -91,7 +91,6 @@ async function DeleteAnimalData(animal_id) {
 
 
 async function UpdateSubprotocol(subprotocol, animal_id, force) {
-  console.log(subprotocol, animal_id, force);
   let formData = new FormData();
   // Add extracted data to form.
   formData.append("subprotocol", subprotocol);
@@ -127,7 +126,7 @@ async function UpdateSubprotocol(subprotocol, animal_id, force) {
 }
 
 async function UpdateProtocol(protocol, animal_id, force) {
-  console.log(subprotocol, animal_id, force);
+  console.log("UpdateProtocol", protocol, animal_id, force);
   let formData = new FormData();
   // Add extracted data to form.
   formData.append("protocol", protocol);
@@ -141,7 +140,7 @@ async function UpdateProtocol(protocol, animal_id, force) {
     if (r.status === 200) {
       window.location=window.location;
     }
-    if (r.status === 409) {
+    else if (r.status === 409) {
       let response_text = await r.text()
       var dialog = document.getElementById("confirm_modal"); 
       document.getElementById("set_subprotocol_msg").innerHTML = response_text; 

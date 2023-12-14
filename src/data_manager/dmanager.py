@@ -136,8 +136,6 @@ class DManager:
         self, initial_query: Query, sort_by: str, reverse: bool, filter_date: str, start: str, end: str, mla_num: str
     ) -> List: 
         # Apply filter 
-        for row in initial_query.all(): 
-            print(row.mla_num, mla_num)
         if mla_num != "":  
             filtered_query = initial_query.filter(AnimalData.mla_num.like(f"%{mla_num}%"))
         else: 
@@ -242,9 +240,10 @@ class DManager:
 
         @return Tuple of error-message and http-return-code.
         """
-        x, of = self.__is_stored(animal_id, ignore_death_date=True)
+        x, _ = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
+        print("set_subprotocol for: ", animal_id)
         animal_data = AnimalData.query.get(animal_id)
         animal_data.subprotocol = subprotocol
         if subprotocol == "---":

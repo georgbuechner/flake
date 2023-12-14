@@ -362,8 +362,6 @@ def input(animal_id: str, category: str):
 
     durations = {str(p.uuid):p.get_duration() for p in availible_procedures}
 
-    print(f"GENERAL.START={general.start} ({animal_id}, {animal_data.mla_num})")
-
     age = len(daterange_str(animal_data.dob, general.start)) if date_filled(general.start) else 15
     return render_template(
         "input.html", 
