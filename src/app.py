@@ -947,13 +947,18 @@ def add_subprotocal(escaped_protocol):
             is_setup=dmanager.protocol_is_setup,
             msg="Matching protocol does not exist!"
         )
-    if subprotocol in protocol.get_subprotocols(): 
+    if " " in subprotocol or subprotocol in protocol.get_subprotocols():
+        if " " in subprotocol:
+            msg = f"Subprotocol must not contain whitespaces: {subprotocol}"
+        else: 
+            msg = "Subprotocol already exists!"
         return render_template(
             "protocol.html", 
             protocol=protocol,
-            msg="Subprotocol already exists!"
+            subprotocols=protocol.get_subprotocols(),
+            is_setup=dmanager.subprotocol_is_setup,
+            msg=msg
         )
-
     protocol.add_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
