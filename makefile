@@ -5,6 +5,7 @@ install:
 	cp -f requirements.txt /usr/bin/larkum/flake/ 
 	cp -f server.config /usr/bin/larkum/flake/ 
 	cp -f backup.sh /usr/bin/larkum/flake/ 
+	cp -f logo.jpg /usr/bin/larkum/flake/ 
 	cp -f .env /usr/bin/larkum/flake/ 
 	cp -f -r .venv /usr/bin/larkum/flake/ 
 	cp -f -r instance /usr/bin/larkum/flake/ 
@@ -17,6 +18,7 @@ update:
 	cp -f requirements.txt /usr/bin/larkum/flake/ 
 	cp -f .env /usr/bin/larkum/flake/ 
 	cp -f backup.sh /usr/bin/larkum/flake/ 
+	cp -f logo.jpg /usr/bin/larkum/flake/ 
 	cp -f -r resources /usr/bin/larkum/flake/ 
 	cp -f -r src /usr/bin/larkum/flake/ 
 	cp -f -r templates /usr/bin/larkum/flake/ 
