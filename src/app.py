@@ -2,16 +2,13 @@ import json
 import html
 from flask import (
     Flask, render_template, make_response, jsonify, request, send_file,
-    redirect, session, url_for
+    redirect, session
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
-from flask_sqlalchemy import SQLAlchemy
 from data_manager.dmanager import DManager, date_filled
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import *
-from os.path import exists as file_exists
-import time
 import os
 import subprocess
 import re
@@ -806,10 +803,11 @@ def generate_score_sheet(animal_id: str):
     return send_file("output/score_sheet.docx", as_attachment=True)
 
 @app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
+@app.route("/generate/paragraph9/<escaped_protocol>/<force>", methods=["POST"])
 @login_required
 @handle_exception
-def generate_paragraph_9(escaped_protocol: str):
-    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol)
+def generate_paragraph_9(escaped_protocol: str, force: str=""):
+    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol, force == "force")
     def safe(txt: str) -> str: 
         for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\{c}")

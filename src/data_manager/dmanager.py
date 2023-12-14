@@ -428,7 +428,7 @@ class DManager:
             definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
         return protocol_data, definitions
 
-    def get_p9_data(self, escaped_protocol: str): 
+    def get_p9_data(self, escaped_protocol: str, force: bool): 
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
         def to_string(elems, procedure): 
@@ -440,7 +440,10 @@ class DManager:
             for p in procedures: 
                 # Skip if date not yet filled.
                 if not date_filled(p.start_date) or not date_filled(p.end_date):
-                    continue
+                    if force: 
+                        continue
+                    else:
+                        raise AnimalDataIncompleteException()
                 default = get_protocol_entry_by_name(PProcedure, general.experiment, p.name)
                 if default is None: 
                     raise MissingEntryException(

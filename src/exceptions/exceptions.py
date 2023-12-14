@@ -35,6 +35,12 @@ class MissingEntryException(ParserException):
         self.status = 406
         super().__init__(self.msg, self.status)
 
+class AnimalDataIncompleteException(ParserException):
+    def __init__(self):
+        self.msg = "Animal Data incomplete. Can't generate p9"
+        self.status = 409
+        super().__init__(self.msg, self.status)
+
 class ParseException(ParserException): 
     def __init__(self, value: str):
         self.msg = f"Could not parse start-/ end-date from comment: \"<i>{value}</i>\""

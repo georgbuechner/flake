@@ -39,9 +39,9 @@ async function UploadPyratData() {
   }
 }
 
-function GenerateP9(protocol) {
+function GenerateP9(protocol, force) {
   var req = new XMLHttpRequest();
-  req.open("POST", "/generate/paragraph9/"+protocol, true);
+  req.open("POST", "/generate/paragraph9/"+protocol + ((force) ? "/force" : ""), true);
   req.responseType = "blob";
   req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   req.onreadystatechange = function() {
@@ -58,6 +58,9 @@ function GenerateP9(protocol) {
         window.URL.revokeObjectURL(url);
         link.remove(); 
       } , 100);
+    }
+    else if (this.readyState === 4 && this.status == 409) {
+      OpenModel("p9_error_modal");
     }
     else if (this.readyState === 4 && this.status != 400 ) {
       var blob = new Blob([this.response], {type: "text"});
