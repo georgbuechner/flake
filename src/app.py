@@ -132,7 +132,12 @@ def login():
         return render_template("login.html", msg="")
     # Check lab password first.
     if request.form["lab_password"] != LAB_PASSWORD:
-        return render_template("login.html", msg="Lab password incorrect")
+        return render_template("login.html", msg="Lab password incorrect or missing")
+    # Check for fotgot pw request 
+    if request.form["login"] == "forgot-username": 
+        print(request.form, request.form["email"])
+        priv = dmanager.generate_pw_reset_keys(request.form["email"])
+        return render_template("login.html", priv=priv)
     # Get user
     user = User.query.get(request.form["email"])
     if user:
@@ -143,6 +148,32 @@ def login():
             return redirect("/")
         return render_template("login.html", msg="Password incorrect")
     return render_template("login.html", msg="User not found")
+
+@app.route("/reset_pw", methods=["GET", "POST"])
+def reset_pw():
+    """! Serves login-page.
+
+    @return Rendered html login-page from jinja2-template.
+    """
+    if request.method == "GET":
+        return render_template("reset_pw.html", msg="")
+    if request.form["password"] != request.form["password2"]:
+        return render_template("reset_pw.html", msg="Passwords don't match!")
+    # Get user
+    verykey = VerificationCode.query.filter_by(
+        priv=request.form["priv"], pub=request.form["pub"]
+    ).first()
+    user = User.query.get(verykey.email)
+    if user:
+        # Get hashed password and check password.
+        hashed_password, salt = hash_pw(request.form["password"])
+        user.password=str(hashed_password)
+        user.salt=salt
+        db.session.delete(verykey)
+        db.session.commit()
+        return redirect("/login")
+    return render_template("reset_pw.html", msg="User not found")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -405,8 +436,23 @@ def user_management():
     return render_template(
         "user_management.html", 
         users=sort_query(User.query.all(), "name"),
-        availible_usernames=availible_usernames
+        availible_usernames=availible_usernames,
+        keys=VerificationCode.query.all()
     )
+
+@app.route("/user_management/delete_key/<email>", methods=["POST"])
+@login_required
+def delete_verification_code(email: str):
+    if not current_user.admin:
+        return redirect("/") 
+    # Delete verification code if exists
+    existing_entry = VerificationCode.query.filter_by(email=email).first()
+    if existing_entry:
+        db.session.delete(existing_entry)
+        db.session.commit()
+        return "Verification key for email " + email + " removed!", 200
+
+    return "No verification key with this email " + email + " found!", 404
 
 @app.route("/user_management/update_username", methods=["POST"])
 @login_required

@@ -57,6 +57,12 @@ class User(db.Model):
         """! False, as anonymous users aren't supported."""
         return False
 
+class VerificationCode(db.Model): 
+    __tablename__ = "verification_codes" 
+
+    priv = db.Column(db.String, primary_key=True)
+    pub = db.Column(db.String, primary_key=True)
+    email = db.Column(db.String, primary_key=False)
 
 class AnimalData(db.Model): 
     __tablename__ = "animal_data" 

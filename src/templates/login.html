@@ -19,12 +19,18 @@
     <h1>LARKUM DATABASE</h1>
 
     <h3>Login</h3>
+      {% if priv %} 
+        <p>Here is your private key: {{priv}}</p> 
+        Enter this and the public key you'll receive from any admin to change
+        your password <a href="/reset_pwd">here</a>.</p>
+      {% endif %}
       <form action='login' method='POST'>
         <input type='text' name='email' id='email' placeholder='email'/><br><br>
         <input type='password' name='password' id='password' placeholder='password'/><br><br>
         <input type='password' name='lab_password' id='lab_password' placeholder='lab password'/><br><br>
         <label id="msg" class="err">{{msg}}</label><br>
         <input type='submit' name='login' value="login"/>
+        <input type='submit' name='login' value="forgot-username"/>
       </form>
   </div>
 </body>

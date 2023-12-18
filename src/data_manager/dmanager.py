@@ -9,8 +9,7 @@ import uuid
 import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
 from flask_sqlalchemy.query import Query
 from typing import Dict, List, Tuple
 from exceptions.exceptions import *
@@ -728,6 +727,20 @@ class DManager:
         except Exception as e:
             db.session.rollback()
             return f"Error updating username: {str(e)}", 500
+
+    def generate_pw_reset_keys(self, email: str) -> str: 
+        existing_entry = VerificationCode.query.filter_by(email=email).first()
+        if existing_entry:
+            # Delete the existing entry
+            db.session.delete(existing_entry)
+
+        # Create a new entry with the provided values
+        priv = ''.join([ str(random.randint(0, 9)) for _ in range(8) ])
+        pub = ''.join([ str(random.randint(0, 9)) for _ in range(8) ])
+        new_entry = VerificationCode(email=email, priv=priv, pub=pub)
+        db.session.add(new_entry)
+        db.session.commit()
+        return priv
 
     def __clear_experiment_data(self, animal_id: str) -> int:
         """! Clears experiment-data for animal

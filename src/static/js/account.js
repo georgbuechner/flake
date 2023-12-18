@@ -112,3 +112,17 @@ function UpdateUsername() {
     })
     .catch(error => OpenErrorModal(error, 500));
 }
+
+function DeleteVerificationKey(email) {
+  fetch("/user_management/delete_key/" + email, {method: "POST" })
+    .then(response => {
+      if (response.ok) {
+        alert("Verification key for " + email + " successfully deleted!");
+        window.location=window.location;
+      }
+      else {
+        response.text().then(text => OpenErrorModal(text, response.status));
+      }
+    })
+    .catch(error => OpenErrorModal(error, 500));
+}
