@@ -82,6 +82,9 @@ li {
 .not_stored {
   background-color: #992e32;
 }
+.no_error {
+  background-color: rgb(201, 209, 213);
+}
 
 .mod {
   padding: 0.5rem;

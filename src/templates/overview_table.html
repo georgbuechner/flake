@@ -126,9 +126,9 @@
         </td>
         {% if not animal_id %}
           {% if entry.subprotocol != "---" and (entry.user == current_user.name or current_user.admin == True) %}
-            <td><a href="/animal_data/{{entry.mla_num}}" >edit experiment</a></td>
+            <td class="no_error"><a href="/animal_data/{{entry.mla_num}}" >edit experiment</a></td>
           {% elif entry.subprotocol != "---" and entry.user != current_user.name %}
-            <td>
+            <td class="no_error">
               <a href="/animal_data/{{entry.mla_num}}" onclick="return NotResponsible();">
                 edit experiment
               </a>

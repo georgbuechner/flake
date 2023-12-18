@@ -24,6 +24,8 @@
 
     <h1><i>FLAKE</i> USER MANAGEMENT:</h1>
 
+    <h2>Users</h2>
+
     <table class="center">
       <tr>
         <th>E-Mail</th>
@@ -52,11 +54,51 @@
 
       </tr>
       {% endfor %}
+    </table>
 
     <br><br>
 
+    <h2>User actions</h2> 
+
+    <select id="old_username">
+      {% for (user, _) in availible_usernames %}
+        <option value="{{user}}" >{{user}}</option>
+      {% endfor %}
+    </select>
+    <select id="new_username">
+      {% for (user, used) in availible_usernames %}
+        <option 
+          value="{{user}}" 
+          {% if used %}
+            disabled
+            title="Username already in use"
+          {% endif %}
+        >{{user}}</option>
+      {% endfor %}
+    </select>
+    <button 
+      onclick="document.getElementById('old_username_txt').innerHTML = document.getElementById('old_username').value;
+      document.getElementById('new_username_txt').innerHTML = document.getElementById('new_username').value;
+      OpenModel('update_username');"
+    >Update Username</button>
+
   </div>
 
+  <dialog id="update_username" style="height: 300px; width: 50%;" category="">
+    <button onclick="Refresh();" style="float: right;">Close</button>
+    <br><br>
+    <h4>Update Username</h4> 
+    <p>By applying, you change the responsible personen for all animal entries
+    from <b><a id="old_username_txt"></a></b> to <b><a
+        id="new_username_txt"></a></b>.
+    Also, the user's username will be updated to the new username. 
+    This action will potentially result in changing quite a lot of entries. Are
+    you sure?</p>
+    <p>Consider creating a backup of the data first</p>
+    <button onclick="UpdateUsername();">Apply</button>
+  </dialog>
+
+  {% include "error_modal.html" %}
 
 </body>
 

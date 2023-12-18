@@ -118,7 +118,7 @@ def main():
     """
     return render_template(
         "index.html", 
-        users=dmanager.users(), 
+        users=dmanager.pyrat_usernames(), 
         protocols=dmanager.protocols(),
     )
 
@@ -400,17 +400,29 @@ def settings():
 def user_management():
     if not current_user.admin:
         return redirect("/") 
-    return render_template("user_management.html", users=sort_query(User.query.all(), "name"))
+    registered_users = [ x.name for x in User.query.all()]
+    availible_usernames = [(x, x in registered_users) for x in dmanager.pyrat_usernames()]
+    return render_template(
+        "user_management.html", 
+        users=sort_query(User.query.all(), "name"),
+        availible_usernames=availible_usernames
+    )
+
+@app.route("/user_management/update_username", methods=["POST"])
+@login_required
+def update_use_username():
+    return dmanager.update_responsible(
+        request.form.get('old_username'), request.form.get('new_username')
+    )
 
 @app.route("/account")
 @login_required
 def account():
-    has_sig = has_signature(current_user.name)
     registered_users = [ x.name for x in User.query.all()]
-    users = [(x, x in registered_users) for x in dmanager.users()]
+    availible_usernames= [(x, x in registered_users) for x in dmanager.pyrat_usernames()]
     return render_template(
         "account.html", 
-        users=users, 
+        availible_usernames=availible_usernames, 
         escaped_user=escape(current_user.name),
         has_signature=has_signature(current_user.name),
     )
@@ -904,7 +916,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             procedures=procedures,
             kinds=AKind.query.all(),
             json_definitions=json.dumps([table_to_json(x) for x in definitions]), 
-            users=dmanager.users(), 
+            users=dmanager.pyrat_usernames(), 
             subprotocol_changed=subprotocol_changed,
             protocol_is_setup=dmanager.subprotocol_is_setup(full_protocol),
             has_sacrifice_procedure=dmanager.has_sacrifice_procedure(full_protocol),
