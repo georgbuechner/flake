@@ -29,7 +29,7 @@
           {% if current_user.name == "guest" %}
             <select id="username" onchange="ChangeUsername('{{current_user.email}}', this.value)">
               <option value="{{current_user.name}}">{{current_user.name}}</option>
-              {% for (user, used) in users %}
+              {% for (user, used) in availible_usernames %}
                 <option 
                   value="{{user}}" 
                   {% if used %}

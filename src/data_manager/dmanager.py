@@ -49,7 +49,7 @@ class DManager:
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
 
-    def users(self) -> List[str]: 
+    def pyrat_usernames(self) -> List[str]: 
         """! Gets list of all users (pyrat: 'Responsible') which are currently
         responsible for an animal.
 
@@ -715,6 +715,19 @@ class DManager:
         general.set_start_weight(round(estimated_weights[0], 2))
         db.session.commit()
         return "success", 200
+
+    def update_responsible(self, old: str, new: str) -> Tuple[str, int]: 
+        try:
+            # First chnage the responsible person
+            db.session.query(AnimalData).filter(AnimalData.user == old).update({AnimalData.user: new})
+            db.session.commit()
+            # Then change the user's username
+            db.session.query(User).filter(User.name == old).update({User.name: new})
+            db.session.commit()
+            return "Username update successful!", 200
+        except Exception as e:
+            db.session.rollback()
+            return f"Error updating username: {str(e)}", 500
 
     def __clear_experiment_data(self, animal_id: str) -> int:
         """! Clears experiment-data for animal

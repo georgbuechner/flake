@@ -96,3 +96,19 @@ async function SetAdmin(email, checked) {
     alert("Unkown error. Sorry", e);
   }
 }
+
+function UpdateUsername() {
+  let formData = new FormData();
+  formData.append("old_username", document.getElementById("old_username").value);
+  formData.append("new_username", document.getElementById("new_username").value);
+
+  fetch("/user_management/update_username", {method: "POST", body: formData})
+    .then(response => {
+      if (response.ok)
+        alert("username successfully changed!");
+      else {
+        response.text().then(text => OpenErrorModal(text, response.status));
+      }
+    })
+    .catch(error => OpenErrorModal(error, 500));
+}
