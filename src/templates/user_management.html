@@ -82,6 +82,30 @@
       OpenModel('update_username');"
     >Update Username</button>
 
+    <br><br>
+    <br><br>
+
+    <h2>Verification Codes</h2> 
+    <table class="center">
+      <tr>
+        <th>E-Mail</th>
+        <th>Pubkey</th>
+      </tr>
+      {% for key in keys %}
+      <tr>
+        <td>{{key.email}}</td>
+        <td>{{key.pub}}</td>
+        <td>
+            <i 
+              class="material-icons mini_icon"
+              title="Delete verification code of this user!"
+              onclick="DeleteVerificationKey('{{key.email}}', false);"
+            >delete</i>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
   </div>
 
   <dialog id="update_username" style="height: 300px; width: 50%;" category="">
