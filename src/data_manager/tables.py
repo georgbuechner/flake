@@ -242,8 +242,8 @@ class AProcedure(db.Model):
         self.days_after_start = days_after_start 
         self.duration = duration 
         self.surgery = surgery
-        self.requires_medication = requires_medication
-        self.requires_virus = requires_virus
+        self.requires_medication = requires_medication if type(requires_medication) == int else 0
+        self.requires_virus = requires_virus if type(requires_virus) == int else 0
 
     @classmethod
     def from_json(cls, procedure: Dict[str, any]): 
@@ -446,8 +446,8 @@ class PProcedure(db.Model):
         self.duration = duration
         self.surgery = surgery
         self.optional = optional
-        self.requires_medication = requires_medication
-        self.requires_virus = requires_virus
+        self.requires_medication = requires_medication if type(requires_medication) == int else 0
+        self.requires_virus = requires_virus if type(requires_virus) == int else 0
 
     @classmethod
     def from_form(cls, protocol: str, procedure: Dict[str, any]): 
