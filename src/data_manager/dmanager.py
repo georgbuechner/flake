@@ -105,6 +105,10 @@ class DManager:
             return None
         missing = []
         for procedure in query: 
+            # Fix incorrect type
+            if procedure.requires_medication == '': 
+                procedure.requires_medication = 0
+                db.session.commit()
             if procedure.requires_medication > 0:
                 query = PMedication.query.filter(
                     PMedication.protocol == full_protocol, PMedication.procedure == procedure.name
@@ -121,6 +125,10 @@ class DManager:
             return None
         missing = []
         for procedure in query: 
+            # Fix incorrect type
+            if procedure.requires_virus == '': 
+                procedure.requires_virus = 0
+                db.session.commit()
             if procedure.requires_virus > 0:
                 query = PVirus.query.filter(
                     PVirus.protocol == full_protocol, PVirus.procedure == procedure.name

@@ -134,7 +134,7 @@ def login():
     if request.form["lab_password"] != LAB_PASSWORD:
         return render_template("login.html", msg="Lab password incorrect or missing")
     # Check for fotgot pw request 
-    if request.form["login"] == "forgot-username": 
+    if request.form["login"] == "forgot-password": 
         print(request.form, request.form["email"])
         priv = dmanager.generate_pw_reset_keys(request.form["email"])
         return render_template("login.html", priv=priv)
