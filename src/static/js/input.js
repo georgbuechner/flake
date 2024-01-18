@@ -158,6 +158,17 @@ async function GenerateMainSheet(animal_id, type) {
     .then(response => {
       if (!response.ok)
         throw new Error("Network response was not ok.");
+     
+      // Show message of removed procedures:
+      const filtered_procedures = JSON.parse(response.headers.get('Filtered-Procedures-JSON'));
+      if (filtered_procedures.length > 0) {
+        msg = "The following procedures where removed since they took place after the "
+          + "sacrifice of the animal: \n";
+        filtered_procedures.forEach(p => {
+          msg += "- " + p["name"] + ": " + p["start_date"] + " - " + p["end_date"] + "\n"
+        });
+        alert(msg);
+      }
       return response.blob()
     })
     .then(blob => {

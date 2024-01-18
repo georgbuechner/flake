@@ -1,17 +1,14 @@
 import clevercsv 
 import json
 import os
-import math
 import random
 import re
 import string
-import uuid
 import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
-from datetime import datetime, timedelta
 from flask_sqlalchemy.query import Query
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 from exceptions.exceptions import *
 from utils.parser_weights_and_water import (
     get_water_control_mask, 
@@ -19,7 +16,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import sort, sort_query, escape, get_signature_path
+from utils.utils import has_signature, sort, sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
 
@@ -303,7 +300,7 @@ class DManager:
         return f"AnimalData for {animal_id} not found", 404
 
     def update_experiment_data_entry(
-        self, animal_id: str, category: str, data: Dict[str, any]
+        self, animal_id: str, category: str, data: Dict[str, Any]
     ):
         # Check name:
         if "name" not in data or data["name"] == "---": 
@@ -372,9 +369,8 @@ class DManager:
             db.session.delete(element)
         db.session.commit()
     
-    def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, any]]:
+    def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, Any]]:
         general = General.query.get(animal_id)
-        protocol_general = PGeneral.query.get(general.experiment)
         experiment_data = {"general": table_to_json(general)}
 
         for name, Table in EXPERIMENT_TABLES.items(): 
@@ -382,35 +378,43 @@ class DManager:
             experiment_data[name] = [table_to_json(t) for t in data]
         return experiment_data
 
-    def get_surgery_sheet_data(self, animal_id: str) -> Dict[str, Dict[str, any]]:
+    def get_surgery_sheet_data(
+        self, animal_id: str
+    ) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
         general = General.query.get(animal_id)
-        protocol_general = PGeneral.query.get(general.experiment)
+        animal_data = AnimalData.query.get(general.animal_id)
         data = {"general": table_to_json(general)}
-    
         for name, Table in EXPERIMENT_TABLES_REDUCED.items(): 
             rows = Table.query.filter(Table.animal_id == animal_id)
             data[name] = [table_to_json(row) for row in rows]
+        procedures, filtered_procedures, has_sacrifice = remove_procedures_after_death(
+            data["procedures"], animal_data.death_date
+        )
+        if not has_sacrifice: 
+            procedures.append(table_to_json(Procedure(
+                animal_id, 
+                "Death: unexpected", 
+                animal_data.death_date,
+                animal_data.death_date,
+                animal_data.user,
+                str(uuid.uuid4())
+            )))
         data["death_drugs"] = [
             x for x in data["medication"] if "sacrifice" in x["procedure"].lower()
         ]
-        def get_entries_with_dates(table_name: str) -> List[Dict[str, any]]:
+        def get_entries_with_dates(table_name: str) -> List[Dict[str, Any]]:
             entries_with_date = []
             for x in data[table_name]: 
-                print(f"Searching procedure {x['procedure']} for {x['name']}")
-                # Try Procedures
-                procedures = Procedure.query.filter(
-                    Procedure.animal_id == animal_id, Procedure.name == x["procedure"]
-                ) 
                 # Add entry for each found procedure
-                for procedure in procedures:
-                    for date in daterange_str(procedure.start_date, procedure.end_date):
+                for p in [p for p in procedures if p["name"] == x["procedure"]]:
+                    for date in daterange_str(p["start_date"], p["end_date"]):
                         x["date"] = date
                         entries_with_date.append(deepcopy(x))
             return entries_with_date
         data["medication"] = sort(get_entries_with_dates("medication"), "date")
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
-        data["procedures"] = sort(data["procedures"], "start_date")
-        return data
+        data["procedures"] = sort(procedures, "start_date")
+        return data, filtered_procedures
 
     def get_protocol_data(self, category: str, full_protocol: str): 
         # Get tables which should have only 1 element:
@@ -567,7 +571,7 @@ class DManager:
         self.__update_stored(animal_id)
         return "success", 200
 
-    def update_definitions_entry(self, category: str, data: Dict[str, any]):
+    def update_definitions_entry(self, category: str, data: Dict[str, Any]):
         """! Updates or creates new definition entry. """
         # Check neccesarry fields are included: 
         if "name" not in data or data["name"] == "":
@@ -582,7 +586,7 @@ class DManager:
             db.session.add(definitions_entry)
         db.session.commit()
 
-    def update_protocol_entry(self, category: str, protocol: str, data: Dict[str, any]):
+    def update_protocol_entry(self, category: str, protocol: str, data: Dict[str, Any]):
         """! Updates or creates new definition entry. """
         # Get protocol-entry from table definied by category
         if category == "general": 
@@ -927,7 +931,7 @@ def get_protocol_entry_by_name(Table, protocol: str, name: str):
     return res.first() 
 
 def check_experiment_data_entry_exists(
-    Table, category: str, data: Dict[str, any], animal_id: str
+    Table, category: str, data: Dict[str, Any], animal_id: str
 ) -> bool: 
     if category == "procedures": 
         return True if Table.query.filter(
@@ -950,3 +954,22 @@ def check_experiment_data_entry_exists(
     else: 
         return False
 
+def remove_procedures_after_death(
+    procedures: List[Dict[str, Any]], sacrifice_date: str
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]: 
+    filtered_procedures = []
+    removed_procedures = []
+    has_sacrifice = False;
+    for p in procedures: 
+        if "Sacrifice" in p["name"]: 
+            has_sacrifice = True
+        if p["start_date"] <= sacrifice_date:
+            filtered_procedures.append(p)
+        else:
+            removed_procedures.append({
+                "name": p["name"], 
+                "start_date": p["start_date"], 
+                "end_date": p["end_date"]
+            })
+    # If no sacrice procedure exists, add one: 
+    return filtered_procedures, removed_procedures, has_sacrifice
