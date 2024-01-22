@@ -828,14 +828,21 @@ def generate_surgery_sheet(animal_id: str):
     animal_data = AnimalData.query.get(animal_id)
     if not date_filled(animal_data.death_date): 
         return "Animal is not yet sacrificed", 401
+    surgery_sheet_data, filtered_procedures = dmanager.get_surgery_sheet_data(
+        animal_id
+    )
     dcreator = DCreator(
         template_path="templates/surgery_sheet", 
-        experiment_data=dmanager.get_surgery_sheet_data(animal_id),
+        experiment_data=surgery_sheet_data,
         animal_data=table_to_json(animal_data),
         user_email=current_user.email
     )
     dcreator.create_from_template()
-    return send_file("output/surgery_sheet.docx", as_attachment=True)
+
+    file_response = send_file("output/surgery_sheet.docx", as_attachment=True)
+    response = make_response(file_response)
+    response.headers['Filtered-Procedures-JSON'] = json.dumps(filtered_procedures)
+    return response, 200
 
 @app.route("/generate/score_sheet/<animal_id>")
 @login_required

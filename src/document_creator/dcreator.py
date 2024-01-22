@@ -5,7 +5,7 @@ import re
 import threading
 from docx import Document
 from docx.shared import Cm
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
 from utils.utils import get_signature_path
 
@@ -22,8 +22,8 @@ class DCreator:
     def __init__(
         self, 
         template_path: str, 
-        experiment_data: Dict[str, Dict[str, any]],
-        animal_data: Dict[str, any],
+        experiment_data: Dict[str, Dict[str, Any]],
+        animal_data: Dict[str, Any],
         user_email
     ):
         # Load replacements
@@ -220,6 +220,7 @@ class DCreator:
             return tags
 
         def edit_table(table, tags: List[str], it: str, entry: any):
+            print("DEBUG: ", tags, it, entry)
             # Add row to table with given information
             columns = table.add_row().cells
             for i, tag in enumerate(tags):
