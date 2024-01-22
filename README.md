@@ -2,7 +2,13 @@
 
 ## Installation 
 
+### Prerequisits 
+`python3` and `pip3` should be installed on your computer or server. 
+
+Also 
+
 ### Linux and MacOS
+
 
 #### Using FLAKE locally or in a screen (recommended for private use)
 
@@ -49,3 +55,7 @@ Finally start the server by running:
 ```
 sudo systemctl flake.service 
 ```
+
+
+## Install Latex for 
+
