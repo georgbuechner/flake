@@ -387,21 +387,17 @@ class DManager:
         for name, Table in EXPERIMENT_TABLES_REDUCED.items(): 
             rows = Table.query.filter(Table.animal_id == animal_id)
             data[name] = [table_to_json(row) for row in rows]
-        procedures, filtered_procedures, has_sacrifice = remove_procedures_after_death(
+        procedures, filtered_procedures = remove_procedures_after_death(
             data["procedures"], animal_data.death_date
         )
-        if not has_sacrifice: 
-            procedures.append(table_to_json(Procedure(
-                animal_id, 
-                "Death: unexpected", 
-                animal_data.death_date,
-                animal_data.death_date,
-                animal_data.user,
-                str(uuid.uuid4())
-            )))
         data["death_drugs"] = [
             x for x in data["medication"] if "sacrifice" in x["procedure"].lower()
         ]
+        # Add unexpected_event and clear death drugs, in case of unexpected death.
+        if len(filtered_procedures) > 0: 
+            data["death_drugs"] = []
+            data["general"]["unexpected_events"] = f"Unexpected death on {animal_data.death_date}."
+
         def get_entries_with_dates(table_name: str) -> List[Dict[str, Any]]:
             entries_with_date = []
             for x in data[table_name]: 
@@ -956,14 +952,14 @@ def check_experiment_data_entry_exists(
 
 def remove_procedures_after_death(
     procedures: List[Dict[str, Any]], sacrifice_date: str
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]: 
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: 
+    """
+    Returns: procedures, removed-procedure
+    """
     filtered_procedures = []
     removed_procedures = []
-    has_sacrifice = False;
     for p in procedures: 
-        if "Sacrifice" in p["name"]: 
-            has_sacrifice = True
-        if p["start_date"] <= sacrifice_date:
+        if p["start_date"] < sacrifice_date:
             filtered_procedures.append(p)
         else:
             removed_procedures.append({
@@ -972,4 +968,4 @@ def remove_procedures_after_death(
                 "end_date": p["end_date"]
             })
     # If no sacrice procedure exists, add one: 
-    return filtered_procedures, removed_procedures, has_sacrifice
+    return filtered_procedures, removed_procedures
