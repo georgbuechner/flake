@@ -21,6 +21,7 @@ from utils.dt_utils import *
 from flask import render_template
 
 SACRIFICE_DATE = -1
+UNEXPECTED_DEATH = "Death: unexpected"
 
 class DManager:
     """! The data-manager class.
@@ -384,12 +385,14 @@ class DManager:
         general = General.query.get(animal_id)
         animal_data = AnimalData.query.get(general.animal_id)
         data = {"general": table_to_json(general)}
+        filtered_procedures = []
         for name, Table in EXPERIMENT_TABLES_REDUCED.items(): 
             rows = Table.query.filter(Table.animal_id == animal_id)
+            if name == "procedures":
+                rows, filtered_procedures = remove_procedures_after_death(
+                    rows, animal_data.death_date
+                )
             data[name] = [table_to_json(row) for row in rows]
-        procedures, filtered_procedures = remove_procedures_after_death(
-            data["procedures"], animal_data.death_date
-        )
         data["death_drugs"] = [
             x for x in data["medication"] if "sacrifice" in x["procedure"].lower()
         ]
@@ -402,14 +405,14 @@ class DManager:
             entries_with_date = []
             for x in data[table_name]: 
                 # Add entry for each found procedure
-                for p in [p for p in procedures if p["name"] == x["procedure"]]:
+                for p in [p for p in data["procedures"] if p["name"] == x["procedure"]]:
                     for date in daterange_str(p["start_date"], p["end_date"]):
                         x["date"] = date
                         entries_with_date.append(deepcopy(x))
             return entries_with_date
         data["medication"] = sort(get_entries_with_dates("medication"), "date")
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
-        data["procedures"] = sort(procedures, "start_date")
+        data["procedures"] = sort(data["procedures"], "start_date")
         return data, filtered_procedures
 
     def get_protocol_data(self, category: str, full_protocol: str): 
@@ -435,15 +438,31 @@ class DManager:
             definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
         return protocol_data, definitions
 
-    def get_p9_data(self, escaped_protocol: str, force: bool): 
+    def get_p9_data(self, escaped_protocol: str, use_year: str, force: bool): 
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
         def to_string(elems, procedure): 
             return ", ".join([e.string() for e in elems if e.date in dates])
 
-        def procedures(procedures, medication, viruses):
+        def procedures(procedures, medication, viruses, animal_data):
             procedures = sort_query(procedures, "start_date")
+            # Handle "unexpected death": Remove procedures after animals death
+            procedures, filtered_procedures = remove_procedures_after_death(
+                procedures, animal_data.death_date
+            )
+            # If death seems to be unexpected (t.i. some procedures where
+            # removed), add a new procedure named UNEXPECTED_DEATH
+            if len(filtered_procedures) > 0: 
+                procedures.append(Procedure(
+                    animal_data.mla_num, 
+                    UNEXPECTED_DEATH, 
+                    animal_data.death_date,
+                    animal_data.death_date,
+                    animal_data.user,
+                    str(uuid.uuid4())
+                ))
             data = {}
+
             for p in procedures: 
                 # Skip if date not yet filled.
                 if not date_filled(p.start_date) or not date_filled(p.end_date):
@@ -452,7 +471,7 @@ class DManager:
                     else:
                         raise AnimalDataIncompleteException()
                 default = get_protocol_entry_by_name(PProcedure, general.experiment, p.name)
-                if default is None: 
+                if default is None and p.name != UNEXPECTED_DEATH: 
                     raise MissingEntryException(
                         entry=p.name, msg=f"For animal: <i>{general.animal_id}</i>: no procedure: "
                     )
@@ -469,7 +488,7 @@ class DManager:
 
                 meds = ", ".join([m.string() for m in medication if m.procedure == p.name])
                 virs = ", ".join([v.string() for v in viruses if v.procedure == p.name])
-                data[(p.start_date, p.end_date)]["medication"] += meds
+                data[(p.start_date, p.end_date)]["medication"] += meds 
                 data[(p.start_date, p.end_date)]["viruses"] += virs
             return list(data.values())
 
@@ -480,6 +499,9 @@ class DManager:
             if generals.first():
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
+                    # Take only entries from the given year: 
+                    if use_year not in general.start: 
+                        continue
                     animal_data = AnimalData.query.get(general.animal_id)
                     path, _ = get_signature_path(animal_data.user)
                     signature = "default.png"
@@ -490,6 +512,7 @@ class DManager:
                         Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
                         Medication.query.filter(Medication.animal_id == animal_data.mla_num),
                         Virus.query.filter(Virus.animal_id == animal_data.mla_num),
+                        animal_data
                     )
                     # Skip if start-date is not yet set or procedures are empty.
                     if not date_filled(general.start) or len(all_procedures) == 0:
@@ -951,21 +974,32 @@ def check_experiment_data_entry_exists(
         return False
 
 def remove_procedures_after_death(
-    procedures: List[Dict[str, Any]], sacrifice_date: str
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: 
+    procedures: List[Procedure], sacrifice_date: str
+) -> Tuple[List[Procedure], List[Procedure]]: 
     """
+    Checks if there are procedures *after* the animals death. 
+    If yes, also an existing sacrice procedure es removed. Then: 
+        - for score-sheet: add "unexpected death" to notes 
+        - for paragraph 9: add "unexpected death" as procedure
+
     Returns: procedures, removed-procedure
     """
     filtered_procedures = []
     removed_procedures = []
+    # Removes all procedures *after* death-date
     for p in procedures: 
-        if p["start_date"] < sacrifice_date:
+        if p.start_date <= sacrifice_date:
             filtered_procedures.append(p)
         else:
             removed_procedures.append({
-                "name": p["name"], 
-                "start_date": p["start_date"], 
-                "end_date": p["end_date"]
+                "name": p.name, 
+                "start_date": p.start_date, 
+                "end_date": p.end_date
             })
+    # If procedures where removed, also remove sacrifice procedure.
+    if len(removed_procedures) > 0:
+        filtered_procedures = [
+            p for p in filtered_procedures if "Sacrifice" not in p.name
+        ]
     # If no sacrice procedure exists, add one: 
     return filtered_procedures, removed_procedures

@@ -1,11 +1,11 @@
 <select id="filter_year_{{from_to_range}}" autocomplete="off" class="month_picker_year">
   {% for x in range(10) %}
-    {% set year = 2023 - x %}
-    {% if year|string in curyear %}
-      <option selected>{{year}}</option>
-    {% else %}
-      <option>{{year}}</option>
-    {%- endif -%}
+    {% set year = 2024 - x %}
+      {% if year|string in curyear %}
+        <option selected>{{year}}</option>
+      {% else %}
+        <option>{{year}}</option>
+      {%- endif -%}
   {% endfor %}
 </select>
 <select id="filter_month_{{from_to_range}}" autocomplete="off" class="month_picker_month">

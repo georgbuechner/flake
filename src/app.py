@@ -867,12 +867,12 @@ def generate_score_sheet(animal_id: str):
     del generation_threads[thread_id]
     return send_file("output/score_sheet.docx", as_attachment=True)
 
-@app.route("/generate/paragraph9/<escaped_protocol>", methods=["POST"])
-@app.route("/generate/paragraph9/<escaped_protocol>/<force>", methods=["POST"])
+@app.route("/generate/paragraph9/<escaped_protocol>/<year>", methods=["POST"])
+@app.route("/generate/paragraph9/<escaped_protocol>/<year>/<force>", methods=["POST"])
 @login_required
 @handle_exception
-def generate_paragraph_9(escaped_protocol: str, force: str=""):
-    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol, force == "force")
+def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
+    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol, year, force == "force")
     def safe(txt: str) -> str: 
         for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\{c}")
