@@ -444,6 +444,15 @@ class DManager:
         def procedures(procedures, medication, viruses):
             procedures = sort_query(procedures, "start_date")
             data = {}
+            # procedures.append(table_to_json(Procedure(
+            #     animal_id, 
+            #     "Death: unexpected", 
+            #     animal_data.death_date,
+            #     animal_data.death_date,
+            #     animal_data.user,
+            #     str(uuid.uuid4())
+            # )))
+
             for p in procedures: 
                 # Skip if date not yet filled.
                 if not date_filled(p.start_date) or not date_filled(p.end_date):
@@ -954,12 +963,18 @@ def remove_procedures_after_death(
     procedures: List[Dict[str, Any]], sacrifice_date: str
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: 
     """
+    Checks if there are procedures *after* the animals death. 
+    If yes, also an existing sacrice procedure es removed. Then: 
+        - for score-sheet: add "unexpected death" to notes 
+        - for paragraph 9: add "unexpected death" as procedure
+
     Returns: procedures, removed-procedure
     """
     filtered_procedures = []
     removed_procedures = []
+    # Removes all procedures *after* death-date
     for p in procedures: 
-        if p["start_date"] < sacrifice_date:
+        if p["start_date"] <= sacrifice_date:
             filtered_procedures.append(p)
         else:
             removed_procedures.append({
@@ -967,5 +982,10 @@ def remove_procedures_after_death(
                 "start_date": p["start_date"], 
                 "end_date": p["end_date"]
             })
+    # If procedures where removed, also remove sacrifice procedure.
+    if len(removed_procedures) > 0:
+        filtered_procedures = [
+            p for p in filtered_procedures if "Sacrifice" not in p["name"]
+        ]
     # If no sacrice procedure exists, add one: 
     return filtered_procedures, removed_procedures
