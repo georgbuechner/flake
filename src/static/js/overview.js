@@ -40,8 +40,9 @@ async function UploadPyratData() {
 }
 
 function GenerateP9(protocol, force) {
+  const use_year = document.getElementById("inp_use_year").value;
   var req = new XMLHttpRequest();
-  req.open("POST", "/generate/paragraph9/"+protocol + ((force) ? "/force" : ""), true);
+  req.open("POST", "/generate/paragraph9/"+protocol + "/" + use_year + ((force) ? "/force" : ""), true);
   req.responseType = "blob";
   req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   req.onreadystatechange = function() {
