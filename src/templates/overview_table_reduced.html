@@ -1,6 +1,7 @@
 <table class="center">
     <tr>
       <th>ID</th>
+      <th>Line/ Strain (Name)</th>
       <th>DOB</th>
       <th>Start</th>
       <th>End</th>
@@ -11,6 +12,7 @@
     {% for entry in animal_data %}
       <tr class="{%- if entry.stored == false -%}not_stored{%- else -%}stored{%- endif -%}">
         <td>{{entry.mla_num}}</td>
+        <td>{{entry.line}}</td>
         <td>{{entry.dob}}</td>
         <td>
           <input 
