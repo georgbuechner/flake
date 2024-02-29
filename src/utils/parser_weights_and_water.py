@@ -160,23 +160,19 @@ def apply_water_control_mask(
     return new_weight_list
 
 
-def generate_raw_water_control_mask(start_date, duration_days, free_weekend_chance=0.4,
-                                    consecutive_free_weekends=False, sacrificed=True):
+def generate_raw_water_control_mask(
+    start_date, duration_days, free_weekend_chance=1, consecutive_free_weekends=True):
     # Water Restriction Creating
-    end_date = start_date + pd.Timedelta(duration_days, unit='D')
+    end_date = start_date + pd.Timedelta(duration_days-1, unit='D')
     day_list = pd.date_range(start=start_date, end=end_date).tolist()
 
-    water_control_mask = []
 
     had_a_free_weekend = False
-
-    weekend_counter = 0
     weekend_value = False
 
+    water_control_mask = []
     for date in day_list:
-        if date.weekday() in (4, 5, 6) and weekend_counter == 0:
-            weekend_counter = 7 - date.weekday()
-
+        if date.weekday() in (6, 0):
             if random.uniform(0, 1) <= free_weekend_chance:
                 if had_a_free_weekend and not consecutive_free_weekends:
                     weekend_value = True
@@ -187,25 +183,10 @@ def generate_raw_water_control_mask(start_date, duration_days, free_weekend_chan
             else:
                 weekend_value = True
                 had_a_free_weekend = False
-
-        if weekend_counter > 0:
-            water_control_mask.append(weekend_value)
-            weekend_counter -= 1
+            water_control_mask.append(weekend_value) 
         else:
-            water_control_mask.append(True)
-
-    if sacrificed:
-        final_weekday = end_date.weekday()
-        if final_weekday <= 2:
-            final_weekday += 3
-            # 3 because: we start from 1 and have to go at least to 3 to include the final weekend. Monday = 0
-        for i in range(1, min(len(water_control_mask) + 1, final_weekday + 2)):
-            # +1 to account for weekday shift from 0 to 1 and +1 more to include last value
-            water_control_mask[-i] = False  # During the last week and the previous weekend the mouse receives water
-
-    if (len(water_control_mask) - sum(water_control_mask)) < 7:
-        water_control_mask = [False] * len(water_control_mask)
-
+            water_control_mask.append(True) 
+        # print(date, date.weekday(), " -> ", water_control_mask[-1])
     return water_control_mask
 
 
@@ -260,8 +241,8 @@ def apply_short_control_filter(water_control_mask, min_block_length=4, min_sum=7
     return filtered_water_control_mask
 
 
-def get_water_control_mask(start_date, duration, surgery_dates, sacrificed):
-    water_control_mask = generate_raw_water_control_mask(start_date, duration, sacrificed=sacrificed)
+def get_water_control_mask(start_date, duration, surgery_dates):
+    water_control_mask = generate_raw_water_control_mask(start_date, duration)
     water_control_mask = apply_surgery_periods(start_date, water_control_mask, surgery_dates)
     water_control_mask = apply_short_control_filter(water_control_mask)
     return water_control_mask
