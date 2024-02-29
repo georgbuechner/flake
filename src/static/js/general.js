@@ -32,10 +32,10 @@ function OpenErrorModal(msg, resp_status, previous) {
 async function UpdateAll(td, force) {
   console.log(td);
   let entries = td.children;
-  start = entries[2].children[0].value;
-  end = entries[3].children[0].value;
-  protocol = entries[5].children[0].value;
-  subprotocol = entries[6 ].children[0].value;
+  start = entries[3].children[0].value;
+  end = entries[4].children[0].value;
+  protocol = entries[6].children[0].value;
+  subprotocol = entries[7].children[0].value;
   if (start == "")
     document.getElementById("animal_modal_text_3").innerHTML = "Missing start-date";
   else if (end == "")

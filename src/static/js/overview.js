@@ -173,7 +173,7 @@ async function UpdateProtocolLive(entries, protocol) {
     let r = await fetch('/update/animal_data/protocol/live', {method: "POST", body: formData}); 
     // Handle response:
     if (r.status === 200) {
-      var selectElement = entries[6].children[0];
+      var selectElement = entries[7].children[0];
       var response = await r.json();
       console.log("RESPONSE: ", response);
       var subprotocols = response["subprotocols"]
