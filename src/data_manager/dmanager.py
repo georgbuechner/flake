@@ -723,7 +723,7 @@ class DManager:
                 )
             # Calculate water-control-mask and estimated weights
             water_control_mask = get_water_control_mask(
-                water_restriction_start, duration_water, surgery_dates, sacrificed=True
+                water_restriction_start, duration_water, surgery_dates
             )
             # Add `False`-values for days_after_start  
             water_control_mask = [False for _ in range(days_after_start-1)] + water_control_mask
@@ -733,7 +733,6 @@ class DManager:
         else:
             water_control_mask = [False for _ in range(duration+1)]
         # Generate estimated weights 
-        print(len(water_control_mask), duration)
         estimated_weights = get_estimated_weight_list(
             age_at_start, animal_data.sex, duration, water_control_mask, start_weight
         )
