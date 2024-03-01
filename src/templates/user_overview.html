@@ -42,23 +42,7 @@
     </input>
   </dialog>
 
-  <dialog id="death_edit_modal" style="height: 200px; width: 50%;" category="">
-    <button onclick="Refresh();" style="float: right;">Close</button>
-    <br><br>
-    <p id="set_subprotocol_msg"></p>
-    <br>
-    <p>I understand that I am editing a field that originally comes from pyrat
-    and that editing this field manually causes data here (flake) do diverse 
-    from pyrat as a data source.<p>
-    <form 
-      id="death_date_edit_form" action="/update/animal_data/sacrifice_date" method="POST"
-    >
-      <label for="death_date">Sacrifice Date</label>
-      <input type="date" id="death_date" name="death_date" placeholde="sacrifice date">
-      <br> <br>
-      <input type="submit" value="Yes, manually change sacrifice date."></input>
-    </form>
-  </dialog>
+  {% include "death_date_modal.html" %}
 
   {% include "error_modal.html" %}
 
