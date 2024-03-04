@@ -21,7 +21,7 @@ from utils.dt_utils import *
 
 SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
-SECRET, LAB_PASSWORD = get_keys_from_config(SERVER_CONFIG_PATH)
+SECRET, LAB_PASSWORD, PORT = get_keys_from_config(SERVER_CONFIG_PATH)
 
 REL_BACKUP_PATH = "backups/"
 BACKUP_PATH = f"src/{REL_BACKUP_PATH}/"
@@ -1076,4 +1076,4 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     return redirect("/settings/protocols/" + escaped_protocol)
 
 if __name__=="__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=PORT)
