@@ -1,3 +1,18 @@
+document.addEventListener("DOMContentLoaded", function() {
+  // Check if there is a stored scroll position
+  var scrollPosition = localStorage.getItem('scrollPosition');
+
+  // If there is a stored scroll position, scroll to that position
+  if (scrollPosition !== null) {
+    window.scrollTo(0, parseInt(scrollPosition));
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  localStorage.setItem("scrollPosition", window.scrollY);
+});
+
+
 async function UploadPyratData() {
   const elem = document.getElementById("pyrat_csv");
   if (elem.files.length == 0) {
