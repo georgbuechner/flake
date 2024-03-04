@@ -49,6 +49,16 @@
         {% if entry.stored == false %}
           class="not_stored"
           title="Animal not yet fully stored (not all dates are filled)."
+        {% elif entry.procedures_after_death > 0 or entry.missing_sacrifice == true %}
+          class="error_in_stored"
+          title="Animal data contains errors: 
+            {% if entry.procedures_after_death > 0 %}
+              - {{entry.procedures_after_death}} procedures after animals death. 
+            {% endif %} 
+            {% if entry.missing_sacrifice == true %}
+              - Sacrifice procedure is missing.
+            {% endif %} 
+            "
         {% else %} 
           class="stored"
         {% endif %} 

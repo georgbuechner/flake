@@ -66,7 +66,8 @@ def create_root_user_if_not_exists():
             salt=salt
         )
         db.session.add(user)
-        db.session.commit()
+    # db.engine.execute("DROP TABLE alembic_version;")
+    db.session.commit()
 
 def update_lines():
     # Update availible lines
@@ -806,7 +807,7 @@ def update_experiment_data(animal_id: str, category: str):
 @login_required
 def delete_experiment_data(animal_id: str, category: str, uuid: str): 
     """! Updates an entry in an animals experiment data. """
-    dmanager.delete_experiment_data_entry(category, uuid)
+    dmanager.delete_experiment_data_entry(animal_id, category, uuid)
     return redirect(f"/animal_data/{animal_id}/{category}")
 
 @app.route("/clear/<animal_id>", methods=["POST"])
@@ -872,7 +873,7 @@ def generate_score_sheet(animal_id: str):
 @login_required
 @handle_exception
 def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
-    subprotocols, protocol = dmanager.get_p9_data(escaped_protocol, year, force == "force")
+    subprotocols, protocol, err_msg = dmanager.get_p9_data(escaped_protocol, year, force == "force")
     def safe(txt: str) -> str: 
         for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\{c}")
@@ -902,7 +903,11 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
         # stderr=subprocess.STDOUT
     )
     proc.communicate()
-    return send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+
+    file_response = send_file(f"{tmp_path}/main.pdf", as_attachment=True)
+    response = make_response(file_response)
+    response.headers['Filtered-Procedures-JSON'] = json.dumps(err_msg)
+    return response, 200
     # exception handled
 
 @app.route("/generate/progress/<thread_id>")
