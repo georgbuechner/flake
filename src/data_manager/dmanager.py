@@ -363,12 +363,14 @@ class DManager:
         return response
 
 
-    def delete_experiment_data_entry(self, category: str, uuid: str):
+    def delete_experiment_data_entry(self, animal_id: str, category: str, uuid: str):
         Table = EXPERIMENT_TABLES[category] 
         element = Table.query.get(uuid)
         if element:
             db.session.delete(element)
+        # Update stored? of animal-data
         db.session.commit()
+        self.__update_stored(animal_id)
     
     def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, Any]]:
         general = General.query.get(animal_id)
@@ -386,33 +388,53 @@ class DManager:
         animal_data = AnimalData.query.get(general.animal_id)
         data = {"general": table_to_json(general)}
         filtered_procedures = []
+        # Add information form tables (procedures, viruses etc.)
         for name, Table in EXPERIMENT_TABLES_REDUCED.items(): 
             rows = Table.query.filter(Table.animal_id == animal_id)
+            # For procedures, also filter all procedures after animals sacrifice
             if name == "procedures":
                 rows, filtered_procedures = remove_procedures_after_death(
                     rows, animal_data.death_date
                 )
-            data[name] = [table_to_json(row) for row in rows]
+            # Convert table data to json
+            data[name] = rows
+        # Add death drugs
         data["death_drugs"] = [
-            x for x in data["medication"] if "sacrifice" in x["procedure"].lower()
+            x for x in data["medication"] if "sacrifice" in x.procedure.lower()
         ]
+        print("Death drugs: ", data["death_drugs"])
         # Add unexpected_event and clear death drugs, in case of unexpected death.
-        if len(filtered_procedures) > 0: 
+        if procedures_contains(data["procedures"], UNEXPECTED_DEATH):
             data["death_drugs"] = []
             data["general"]["unexpected_events"] = f"Unexpected death on {animal_data.death_date}."
+        # If not unexpected and sacrifice procedure is missing, add protocol
+        # default sacrifice:
+        # elif not procedures_contains(data["procedures"], "Sacrifice"): 
+        #     full_protocol = f"{animal_data.escaped_protocol}/{animal_data.subprotocol}"
+        #     query = PProcedure.query.filter(
+        #         PProcedure.protocol == general, PProcedure.name.like("Sacrifice%")
+        #     )
+        #     for sacrifice_procedure in query: 
+        #         if not sacrifice_procedure.optional: 
+        #             procedure = Procedure.from_default(
+        #                 animal_id, animal_data.user, sacrifice_procedure
+        #             )
+        #             procedure.set_date(animal_data.death_date)
 
         def get_entries_with_dates(table_name: str) -> List[Dict[str, Any]]:
             entries_with_date = []
             for x in data[table_name]: 
+                json_data = table_to_json(x)
                 # Add entry for each found procedure
-                for p in [p for p in data["procedures"] if p["name"] == x["procedure"]]:
-                    for date in daterange_str(p["start_date"], p["end_date"]):
-                        x["date"] = date
-                        entries_with_date.append(deepcopy(x))
+                for p in [p for p in data["procedures"] if p.name == x.procedure]:
+                    for date in daterange_str(p.start_date, p.end_date):
+                        json_data["date"] = date
+                        entries_with_date.append(deepcopy(json_data))
             return entries_with_date
         data["medication"] = sort(get_entries_with_dates("medication"), "date")
+        data["death_drugs"] = get_entries_with_dates("death_drugs")
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
-        data["procedures"] = sort(data["procedures"], "start_date")
+        data["procedures"] = sort([table_to_json(p) for p in data["procedures"]], "start_date")
         return data, filtered_procedures
 
     def get_protocol_data(self, category: str, full_protocol: str): 
@@ -441,6 +463,7 @@ class DManager:
     def get_p9_data(self, escaped_protocol: str, use_year: str, force: bool): 
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
+        error_json = {}
         def to_string(elems, procedure): 
             return ", ".join([e.string() for e in elems if e.date in dates])
 
@@ -450,17 +473,7 @@ class DManager:
             procedures, filtered_procedures = remove_procedures_after_death(
                 procedures, animal_data.death_date
             )
-            # If death seems to be unexpected (t.i. some procedures where
-            # removed), add a new procedure named UNEXPECTED_DEATH
-            if len(filtered_procedures) > 0: 
-                procedures.append(Procedure(
-                    animal_data.mla_num, 
-                    UNEXPECTED_DEATH, 
-                    animal_data.death_date,
-                    animal_data.death_date,
-                    animal_data.user,
-                    str(uuid.uuid4())
-                ))
+            error_json[animal_data.mla_num] = filtered_procedures
             data = {}
 
             for p in procedures: 
@@ -533,7 +546,7 @@ class DManager:
                 subprotocols[full_protocol] = data
             else: 
                 print("No data for this subprotocol")
-        return subprotocols, protocol.name
+        return subprotocols, protocol.name, error_json
 
     def update_dates(
         self, animal_id: str, start_date_str: str, autofill: bool
@@ -875,6 +888,16 @@ class DManager:
             animal_data.stored = True
         else: 
             animal_data.stored = False
+        if animal_data.stored == True: 
+            procedures = Procedure.query.filter(Procedure.animal_id == animal_id)
+            procedures, filtered_procedures = remove_procedures_after_death(
+                procedures, animal_data.death_date
+            )
+            animal_data.procedures_after_death = len(filtered_procedures)
+            animal_data.missing_sacrifice = (
+                not procedures_contains(procedures, UNEXPECTED_DEATH) and 
+                not procedures_contains(procedures, "Sacrifice")
+            )
         db.session.commit()
 
     def __get_start_end_from_comment(self, comment: str): 
@@ -995,10 +1018,10 @@ def remove_procedures_after_death(
                 "start_date": p.start_date, 
                 "end_date": p.end_date
             })
-    # If procedures where removed, also remove sacrifice procedure.
-    if len(removed_procedures) > 0:
-        filtered_procedures = [
-            p for p in filtered_procedures if "Sacrifice" not in p.name
-        ]
-    # If no sacrice procedure exists, add one: 
     return filtered_procedures, removed_procedures
+
+def procedures_contains(procedures: List[Procedure], name: str) -> bool: 
+    for p in procedures: 
+        if name in p.name: 
+            return True 
+    return False

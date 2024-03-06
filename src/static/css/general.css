@@ -82,6 +82,9 @@ li {
 .not_stored {
   background-color: #992e32;
 }
+.error_in_stored {
+  background-color: purple;
+}
 .no_error {
   background-color: rgb(201, 209, 213);
 }

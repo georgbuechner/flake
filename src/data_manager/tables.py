@@ -79,6 +79,8 @@ class AnimalData(db.Model):
     supplier = db.Column(db.String, primary_key=False)
     subprotocol = db.Column(db.String, primary_key=False)
     stored = db.Column(db.Boolean, primary_key=False)
+    procedures_after_death = db.Column(db.Integer, primary_key=False)
+    missing_sacrifice = db.Column(db.Boolean, primary_key=False)
 
     def __init__(self, data: Dict[str, any]):
         self.mla_num = data["id"]

@@ -87,7 +87,7 @@ def escape(string: str) -> str:
     """
     return string.replace(" ", "").replace("/", "_")
 
-def get_keys_from_config(path: str) -> Tuple[str, str]: 
+def get_keys_from_config(path: str) -> Tuple[str, str, str]: 
     with open(path) as f:
         config = json.load(f)
 
@@ -110,7 +110,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
         if hash_pw(inp, salt)[0] == password:
             encoded_password, _ = encode_password(inp.encode(), salt)
             fernet = Fernet(encoded_password) 
-            return fernet.decrypt(secret).decode(), fernet.decrypt(lab_password).decode()
+            return fernet.decrypt(secret).decode(), fernet.decrypt(lab_password).decode(), config["port"]
         else: 
             exit("wrong password") 
     else: 
@@ -134,7 +134,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str]:
         # Store updated config
         with open(path, "w") as f:
             json.dump(config, f)
-        return secret, lab_password
+        return secret, lab_password, config["port"]
 
 def get_root_user(path):
     # Load config
