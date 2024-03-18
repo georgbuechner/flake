@@ -458,9 +458,12 @@ def delete_verification_code(email: str):
 @app.route("/user_management/update_username", methods=["POST"])
 @login_required
 def update_use_username():
-    return dmanager.update_responsible(
-        request.form.get('old_username'), request.form.get('new_username')
-    )
+    old = request.form.get('old_username')
+    new = request.form.get('new_username')
+    # Include to remove whitespace...
+    if old == new and new[-1] == " ": 
+        new = new.rstrip(" ")
+    return dmanager.update_responsible(old, new)
 
 @app.route("/account")
 @login_required
