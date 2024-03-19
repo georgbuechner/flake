@@ -46,16 +46,49 @@ class DManager:
                 self.mapping.update(fields)
                 self.keys_per_language[language] = fields.keys()
 
-    def pyrat_usernames(self) -> List[str]: 
-        """! Gets list of all users (pyrat: 'Responsible') which are currently
-        responsible for an animal.
-
-        @return List of users.
-        """
+    def pyrat_usernames(self) -> Dict[str, Tuple[int, int]]:
         animal_data = AnimalData.query.all()
-        users = [*set([data.user for data in animal_data])]  # converting to set removes dublicates 
-        users.sort() # sort users alphabetically
+        users = [*set([data.user for data in animal_data])] 
+        return users.sort()
+
+    def pyrat_usernames_with_progress(self, year) -> Dict[str, Tuple[int, int]]:
+        """! Gets dictionary of all users (pyrat: 'Responsible') which are
+        currently responsible for an animal, mapping to a tuple indicating how
+        many animals from all animals of this user are completed (f.e. FLAKE
+        5/10)
+
+        @return Dict of users mapping to tuple.
+        """
+        start_year, end_year = get_reporting_year(int(year))
+        animal_data = AnimalData.query.all()
+        users = {}
+        for data in animal_data: 
+            if data.user not in users: 
+                users[data.user] = (0, 0)
+            progress = users[data.user]
+            # Update only if data matches with the current reporting year.
+            if in_reporting_year(start_year, end_year, data.death_date):
+                progress = (progress[0]+data.stored, progress[1]+1)
+            users[data.user] = progress
+        users = OrderedDict(sorted(users.items()))
         return users
+
+    def completed_for_year(self, year: str) -> Tuple[int, int]: 
+        """! Returns tuple indicating how many animals in the current year have
+        been completed" 
+
+        @returns Tuple of two ints (completed/ total)
+        """
+        start_year, end_year = get_reporting_year(int(year))
+        animal_data = AnimalData.query.all()
+        total = 0 
+        completed = 0
+        for data in animal_data: 
+            if not in_reporting_year(start_year, end_year, data.death_date):
+                continue 
+            total += 1 
+            completed += data.stored
+        return completed, total
 
     def protocols(self) -> Dict[str, str]:
         """! Gets list of all protocols which are currently

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Tuple
 from exceptions.exceptions import InvalidDateException, ParserException
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
@@ -64,3 +64,18 @@ def today() -> datetime:
 
 def date_filled(date_str: str) -> bool: 
     return date_str and len(date_str) == 10
+
+def get_reporting_year(year: int) -> Tuple[datetime, datetime]: 
+    start = datetime(year, 4, 1)
+    end = datetime(year+1, 3, 31)
+    return start, end
+
+def in_reporting_year(start: datetime, end: datetime, date_str: str) -> bool: 
+    if not date_filled(date_str): 
+        return False
+    date = strtodate(date_str) 
+    return start <= date <= end 
+
+def get_cur_year(): 
+    x = datetime.now()
+    return x.year

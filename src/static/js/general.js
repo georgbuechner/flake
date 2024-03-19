@@ -108,3 +108,11 @@ function OpenDeleteAllAnimalsModal() {
   }
   OpenModel("confirm_delete_animal_modal");
 }
+
+function UpdateReportingYear(year) {
+  console.log("New reporting year: ", year)
+  var url = new URL(window.location.href);
+  url.searchParams.set('reporting_year', year);
+  console.log("New url: ", url)
+  window.location = url.href;
+}

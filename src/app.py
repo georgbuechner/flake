@@ -117,9 +117,16 @@ def main():
 
     @return Rendered html main-page from jinja2-template.
     """
+
+    reporting_year = request.args.get(
+        "reporting_year", default=str(get_cur_year()-1), type=str
+    )
+    print("Got reporting_year: ", reporting_year)
     return render_template(
         "index.html", 
-        users=dmanager.pyrat_usernames(), 
+        reporting_year=reporting_year,
+        completed_in=dmanager.completed_for_year(reporting_year),
+        users=dmanager.pyrat_usernames_with_progress(reporting_year), 
         protocols=dmanager.protocols(),
     )
 
@@ -462,7 +469,7 @@ def update_use_username():
     new = request.form.get('new_username')
     # Include to remove whitespace...
     if old == new and new[-1] == " ": 
-        new = new.rstrip(" ")
+        new = new.strip(" ")
     return dmanager.update_responsible(old, new)
 
 @app.route("/account")
