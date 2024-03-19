@@ -33,7 +33,7 @@
 
     <h3>Go to overview:</h3>
     <p>
-      Animals completed in reporting year 
+      For reporting year 
       <select id="cur_reporting_year" onchange='UpdateReportingYear(this.value)'>
         {% for x in range(10) %}
           {% set year = 2024 - x %}
@@ -43,7 +43,7 @@
               <option>{{year}}</option>
             {%- endif -%}
         {% endfor %}
-      </select>: {{completed_in[0]}} / {{completed_in[1]}}.
+      </select>: {{completed_in[0]}} / {{completed_in[1]}} animals completed.
     </p>
     <a href="/overview">Overview</a>
 
@@ -54,7 +54,8 @@
     <ul>
     {% for user, completed in users.items() %}
       <li>
-        <a href="/users/{{user}}">{{user}}: <i>{{completed[0]}}/{{completed[1]}}</i></a>
+        <a href="/users/{{user}}">{{user}}</a>: 
+        (<i>{{completed[0]}}/{{completed[1]}})</i>
       </li>
       {% endfor %}
     </ul>
