@@ -23,3 +23,4 @@ update:
 	cp -f -r src /usr/bin/larkum/flake/ 
 	cp -f -r templates /usr/bin/larkum/flake/ 
 	cd /usr/bin/larkum/flake/ && source .venv/bin/activate && pip install -r requirements.txt 
+	systemctl restart flake.service
