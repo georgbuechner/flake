@@ -49,7 +49,8 @@ class DManager:
     def pyrat_usernames(self) -> Dict[str, Tuple[int, int]]:
         animal_data = AnimalData.query.all()
         users = [*set([data.user for data in animal_data])] 
-        return users.sort()
+        users.sort()
+        return users
 
     def pyrat_usernames_with_progress(self, year) -> Dict[str, Tuple[int, int]]:
         """! Gets dictionary of all users (pyrat: 'Responsible') which are
