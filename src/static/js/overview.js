@@ -71,18 +71,20 @@ function GenerateP9(protocol, force) {
     if (this.readyState == 4 && this.status == 200) {
       // Print potential errors:
       const error_json = JSON.parse(req.getResponseHeader('filtered-procedures-json'));
-      console.log(error_json);
-      msg = "The following procedures where removed since they took place after the "
-        + "sacrifice of the animals: \n";
-      Object.keys(error_json).forEach(function(key) {
-        if (error_json[key].length > 0) {
-          msg += "- " + key + ": \n";
-          error_json[key].forEach(p => {
-            msg += "  + " + p["name"] + ": " + p["start_date"] + " - " + p["end_date"] + "\n"
-          });
-        }
-      });
-      alert(msg);
+      if (error_json) {
+        console.log(error_json);
+        msg = "The following procedures where removed since they took place after the "
+          + "sacrifice of the animals: \n";
+        Object.keys(error_json).forEach(function(key) {
+          if (error_json[key].length > 0) {
+            msg += "- " + key + ": \n";
+            error_json[key].forEach(p => {
+              msg += "  + " + p["name"] + ": " + p["start_date"] + " - " + p["end_date"] + "\n"
+            });
+          }
+        });
+        alert(msg);
+      }
 
       // Get pdf
       var blob = new Blob([this.response], {"type": "application/pdf"});

@@ -498,16 +498,19 @@ class DManager:
         protocol = Protocol.query.get(escaped_protocol)
         subprotocols = {}
         error_json = {}
+        num_errors = 0
         def to_string(elems, procedure): 
             return ", ".join([e.string() for e in elems if e.date in dates])
 
-        def procedures(procedures, medication, viruses, animal_data):
+        def procedures(procedures, medication, viruses, animal_data, num_errors):
             procedures = sort_query(procedures, "start_date")
             # Handle "unexpected death": Remove procedures after animals death
             procedures, filtered_procedures = remove_procedures_after_death(
                 procedures, animal_data.death_date
             )
             error_json[animal_data.mla_num] = filtered_procedures
+            if len(filtered_procedures) > 0: 
+                num_errors += 1
             data = {}
 
             for p in procedures: 
@@ -546,10 +549,10 @@ class DManager:
             if generals.first():
                 data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
                 for general in generals:
-                    # Take only entries from the given year: 
-                    if use_year not in general.start: 
-                        continue
                     animal_data = AnimalData.query.get(general.animal_id)
+                    # Take only entries from the given year: 
+                    if use_year not in animal_data.death_date: 
+                        continue
                     path, _ = get_signature_path(animal_data.user)
                     signature = "default.png"
                     if path: 
@@ -559,7 +562,8 @@ class DManager:
                         Procedure.query.filter(Procedure.animal_id == animal_data.mla_num),
                         Medication.query.filter(Medication.animal_id == animal_data.mla_num),
                         Virus.query.filter(Virus.animal_id == animal_data.mla_num),
-                        animal_data
+                        animal_data, 
+                        num_errors
                     )
                     # Skip if start-date is not yet set or procedures are empty.
                     if not date_filled(general.start) or len(all_procedures) == 0:
@@ -580,7 +584,7 @@ class DManager:
                 subprotocols[full_protocol] = data
             else: 
                 print("No data for this subprotocol")
-        return subprotocols, protocol.name, error_json
+        return subprotocols, protocol.name, error_json, num_errors
 
     def update_dates(
         self, animal_id: str, start_date_str: str, autofill: bool
@@ -773,7 +777,9 @@ class DManager:
                 water_restriction_start, duration_water, surgery_dates
             )
             # Add `False`-values for days_after_start  
+            days_after_start = min(duration-len(water_control_mask), days_after_start)
             water_control_mask = [False for _ in range(days_after_start-1)] + water_control_mask
+            # Fill up with false values
             water_control_mask = water_control_mask + [
                 False for _ in range(duration-(len(water_control_mask)-1))
             ]
