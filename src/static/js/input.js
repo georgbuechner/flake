@@ -286,7 +286,7 @@ function EditWeightList(category, note) {
     var inp = document.createElement("input");
     inp.setAttribute("type", "number");
     inp.step = 0.1;
-    inp.value = weights[i].toFixed(2);
+    inp.value = (weights[i] !== null) ? weights[i].toFixed(2) : 0;
     if ((weights[0]-weights[i])/weights[0]> 0.2)
       inp.style.borderColor = "red";
     inp.onchange = CheckWeightLimit;

@@ -883,7 +883,9 @@ def generate_score_sheet(animal_id: str):
 @login_required
 @handle_exception
 def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
-    subprotocols, protocol, err_msg = dmanager.get_p9_data(escaped_protocol, year, force == "force")
+    subprotocols, protocol, err_msg, num_errors = dmanager.get_p9_data(
+        escaped_protocol, year, force == "force"
+    )
     def safe(txt: str) -> str: 
         for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\{c}")
@@ -916,7 +918,8 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
 
     file_response = send_file(f"{tmp_path}/main.pdf", as_attachment=True)
     response = make_response(file_response)
-    response.headers['Filtered-Procedures-JSON'] = json.dumps(err_msg)
+    if num_errors > 0:
+        response.headers['Filtered-Procedures-JSON'] = json.dumps(err_msg)
     return response, 200
     # exception handled
 

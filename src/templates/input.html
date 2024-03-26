@@ -99,13 +99,13 @@
           <td>
             <form id="start_date_form">
               <input 
-                id="start"
-                name="start"
-                type="date"
-                value="{{ general.start if general.start != '' else dob}}"
-                min="{{dob}}"
-                {%- if general.start == '' -%}class="date_suggest"{%- endif -%}
-                {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%}
+                id="start" 
+                name="start" 
+                type="date" 
+                value="{{ general.start if general.start != '' else dob}}" 
+                min="{{dob}}" 
+                {%- if general.start == '' -%} class="date_suggest" {%- endif -%} 
+                {%- if death_date is not none -%} max="{{death_date}}" {%- endif -%} 
               >
             </form>
           </td>
