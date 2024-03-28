@@ -74,7 +74,7 @@
     {% if category=="" %}
       <h3>General 
         <button class="pure_btn" onclick="OpenModalNotes('general', '{{notes.general}}')">
-          <i class="fas fa-file-alt"></i>
+          <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
 
@@ -157,7 +157,7 @@
     {% elif category=="procedures" %}
       <h3>Conducted Procedures
         <button class="pure_btn" onclick="OpenModalNotes('procedures', '{{notes.procedures}}')">
-          <i class="fas fa-file-alt"></i>
+          <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
       <table class="center" id="procedures">
@@ -189,7 +189,7 @@
     {% elif category=="viruses" %}
       <h3>Viruses
         <button class="pure_btn" onclick="OpenModalNotes('viruses', '{{notes.viruses}}')">
-          <i class="fas fa-file-alt"></i>
+          <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
       <table class="center" id="viruses">
@@ -218,7 +218,7 @@
     {% elif category=="medication" %}
       <h3>Medication
         <button class="pure_btn" onclick="OpenModalNotes('medication', '{{notes.medication}}')">
-          <i class="fas fa-file-alt"></i>
+          <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
       <p>For weight-dependant amounts the amount defined here is 
