@@ -197,6 +197,14 @@ class DManager:
             sorted_query.reverse()
         return sorted_query 
 
+    def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool]: 
+        comment_infos = {} 
+        for animal in animal_data: 
+            comment_backup = CommentBackup.query.get(animal.mla_num)
+            comment_infos[animal.mla_num] = comment_backup and comment_backup.comment != ""
+        return comment_infos
+
+
     def extract_animal_data(self, file, ignore_comment: bool) -> Tuple[str, int]:
         """! Extracts and stores animal-data from csv file.
 
@@ -209,7 +217,7 @@ class DManager:
         # temporarily store file
         file.save(tmp_path)
         # Load file and delete tmp-file afterwards
-        updated, total, mlas_with_date = self.__load_animal_data_from_csv(tmp_path, ignore_comment)
+        all_mlas, updated, = self.__load_animal_data_from_csv(tmp_path)
         os.remove(tmp_path)
         # If none, send user information on which fields where missing.
         response = {"text":"", "animal_data": ""}
@@ -219,12 +227,20 @@ class DManager:
                 + f"or: <br><i>{', '.join(x for x in self.keys_per_language['de'])}</i>")
             return response, 400
         # If success, update protocols (since new protocols might have been added)
-        response["text"] = f"{total-len(updated)} inserted."
+        response["text"] = f"{len(all_mlas)-len(updated)} inserted."
         if len(updated) > 0:
             response["text"] += f" {len(updated)} updated ({' '.join(x for x in updated)})"
-        if len(mlas_with_date) > 0: 
-            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date)
+        if len(all_mlas) > 0: 
+            comment_data = self.__get_parsed_comments_data(all_mlas)
+            response["animal_data"] = self.get_quick_apply_animal_data(
+                comment_data, ignore_comment=ignore_comment
+            )
         return response, 200
+
+    def get_comment_data_html(self, animal_ids: List[str]) -> str: 
+        """! Creates a reduceded_overview-html-table for given animals."""
+        comment_data = self.__get_parsed_comments_data(animal_ids)
+        return self.get_quick_apply_animal_data(comment_data)
 
     def get_start_dates(self, animals) -> Dict[str, str]: 
         start_dates = {}
@@ -233,17 +249,34 @@ class DManager:
             start_dates[x.mla_num] = general.start if general else "---"
         return start_dates
 
-    def get_quick_apply_animal_data(self, mlas_with_date, set_stored: bool = None):
+    def __get_parsed_comments_data(
+        self, animal_ids: List[str]
+    ) -> Dict[str, CommentData]:
+        parsed_comments = {}
+        for mla_num in animal_ids: 
+            comment = CommentBackup.query.get(mla_num)
+            parsed_comments[mla_num] = CommentData(comment.comment) 
+        return parsed_comments
+
+    def get_quick_apply_animal_data(
+        self, 
+        comment_data: Dict[str, CommentData], 
+        set_stored: bool = None, 
+        ignore_comment: bool = None
+    ):
+        # Get animal data
         animal_data = []
-        for mla, _ in mlas_with_date.items(): 
+        for mla, _ in comment_data.items(): 
             animal = AnimalData.query.get(mla)
             if set_stored != None:
                 animal.stored = set_stored
+            if ignore_comment: 
+                comment_data[mla] = CommentData("") # Use empty comment
             animal_data.append(animal) 
         return render_template(
             "overview_table_reduced.html", 
             animal_data=animal_data,
-            mlas_with_date=mlas_with_date,
+            comment_data=comment_data,
             protocols=self.protocols_and_subprotocols(),
         )
 
@@ -382,15 +415,24 @@ class DManager:
 
     def reload_animal_data(self, experiment): 
         query = General.query.filter(General.experiment == experiment)
-        mlas_with_date = {}
+        saved_data = {}
         response = {"text": "reaload animals"}
         if query.first():
             # Build response
             for general in query: 
-                mlas_with_date[general.animal_id] = {
-                    "start": general.start, "end": general.end
-                }
-            response["animal_data"] = self.get_quick_apply_animal_data(mlas_with_date, False)
+                # First generate saved-data from comment
+                comment = CommentBackup.query.get(general.animal_id)
+                comment_str = comment.comment if comment else ""
+                comment_data = CommentData(comment_str) 
+                # if either start or end are already defined, use them
+                if general.start != "": 
+                    comment_data.start_date = general.start 
+                if general.end != "": 
+                    comment_data.end_date = general.end
+                saved_data[general.animal_id] = comment_data
+            response["animal_data"] = self.get_quick_apply_animal_data(
+                saved_data, set_stored=False
+            )
             # Set stored to false 
             # reset data: 
             _ = self.reset_animal_data(experiment)
@@ -841,12 +883,13 @@ class DManager:
         self.__update_stored(animal_id)
         return 200
 
-    def __load_animal_data_from_csv(self, path: str, ignore_comment: bool):
+    def __load_animal_data_from_csv(
+        self, path: str
+    ) -> Tuple[List[str], List[str]]:
         """! Loads animal-data from CSV file.
 
         @param path  Path to CSV. 
-        @return List of animal-ids which where updated, and total number of
-            animal-ids in dataframe.
+        @return List of all animal-ids and list of those which where updated
         """
         # Checks whether all neccesarry keys are included.
         def check_all_keys(df: pd.DataFrame) -> bool: 
@@ -857,14 +900,13 @@ class DManager:
         # Load csv
         df = clevercsv.read_dataframe(path)
         if check_all_keys(df) == False: 
-            return None, None, None
+            return None, None
         # Iterate over keys and add to data using mapping.
         updated = []
-        mlas_with_date = {}
+        mlas = []
         for _, row in df.iterrows():
             data = {}
-            start = ""
-            end = ""
+            comment = ""
             for key in df.keys():
                 value = row[key]
                 if key in self.mapping:
@@ -874,12 +916,20 @@ class DManager:
                             if str(value) in protocol.name:
                                 data["protocol"] = protocol.name
                                 data["protocol_escaped"] = escape(str(protocol.name))
-                    if self.mapping[key] == "comments" and not ignore_comment:
-                        start, end = self.__get_start_end_from_comment(value)
 
             # Create or update animal-data
             animal_id = data["id"]
-            mlas_with_date[animal_id] = {"start":start, "end":end}
+            mlas.append(animal_id)
+            # Get comment from data and if comment should not be ignored parse it
+            comment = data["comments"] if "comments" in data else ""
+            # Store comment 
+            comment_backup = CommentBackup.query.get(animal_id)
+            if comment_backup:
+                comment_backup.update(comment) 
+            else: 
+                comment_backup = CommentBackup(animal_id, comment)
+                db.session.add(comment_backup)
+            # Create animal data
             animal_data = AnimalData.query.get(animal_id)
             if animal_data:
                 animal_data.update(data)
@@ -892,7 +942,7 @@ class DManager:
                 animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
             )
             self.__update_stored(animal_id)
-        return updated, len(df), mlas_with_date
+        return mlas, updated
 
 
     def __is_stored(self, animal_id: str, ignore_death_date: bool = False) -> bool:
@@ -939,35 +989,6 @@ class DManager:
                 not procedures_contains(procedures, "Sacrifice")
             )
         db.session.commit()
-
-    def __get_start_end_from_comment(self, comment: str): 
-        def parse_date(date_str: str):
-            x = re.search("(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
-            return x.group(1)
-
-        def extract(name: str, parts: List[str]):
-            for part in parts: 
-                if name in part: 
-                    try: 
-                        index = part.find(":")+1
-                        date = parse_date(part[index:index+11])
-                        return unify_date(date)
-                    except Exception as err: 
-                        print("  Could not parse: ", name, part, err)
-                        return ""
-            return ""
-        # If return empty start and end date if anything should go wrong
-        # (invalid comments should not block importing)
-        try: 
-            parts = comment.split(";")
-        except Exception as err: 
-            print("Failed parsing dates: ", err)
-            return "", ""
-        start = extract("start:", parts)
-        if start == "": 
-            start = extract("start", parts)
-        end = extract("end", parts)
-        return start, end
 
 def get_surgery_start(protocol: str):
     procedures = PProcedure.query.filter(PProcedure.protocol == protocol)

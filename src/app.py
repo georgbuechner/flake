@@ -240,6 +240,7 @@ def overview():
         "overview.html", 
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
@@ -269,6 +270,7 @@ def user_overview(user: str):
         "user_overview.html", 
         user=user, 
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
@@ -300,6 +302,7 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
@@ -1087,6 +1090,12 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
+
+@app.route("/comments/apply/", methods=["POST"]) 
+@login_required 
+def apply_comments():
+    mlas = json.loads(request.form["mlas"]) 
+    return dmanager.get_comment_data_html(mlas)
 
 if __name__=="__main__":
     app.run(debug=True, port=PORT)
