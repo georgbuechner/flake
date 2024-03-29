@@ -16,14 +16,14 @@
         <td>{{entry.dob}}</td>
         <td>
           <input 
-            type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].start}}"
+            type="date" min="{{entry.dob}}" value="{{comment_data[entry.mla_num].start_date}}"
           ></input>
         </td>
         <td>
           <input 
             type="date" min="{{entry.dob}}" 
-            {% if mlas_with_date[entry.mla_num].end|length > 0 %}
-              value="{{mlas_with_date[entry.mla_num].end}}"
+            {% if comment_data[entry.mla_num].end_date|length > 0 %}
+              value="{{comment_data[entry.mla_num].end_date}}"
             {% elif entry.death_date|length > 0 %}
               value="{{entry.death_date}}"
             {% endif %}

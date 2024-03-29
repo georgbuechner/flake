@@ -2,9 +2,10 @@ import json
 import math
 import uuid
 import random
+import re
 from exceptions.exceptions import ParserException
 from flask_sqlalchemy import SQLAlchemy
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from utils.dt_utils import date_filled, unify_date, daterange_str
 
 db = SQLAlchemy()
@@ -110,6 +111,25 @@ class AnimalData(db.Model):
         self.protocol_pyrat = data["protocol_pyrat"]
         # Don't update protocol.
         self.supplier = data["supplier"]
+
+class CommentBackup(db.Model): 
+    __tablename__ = "comment_backup" 
+
+    animal_id = db.Column(db.String, primary_key=True)
+    comment = db.Column(db.String, primary_key=False)
+
+    def __init__(self, animal_id: str, comment: str): 
+        self.animal_id = animal_id
+        self.comment = comment
+
+    def update(self, comment: str):
+        self.comment = comment
+
+class CommentData(): 
+    def __init__(self, comment: str):
+        start, end = parse_comment(comment) 
+        self.start_date = start
+        self.end_date = end
 
 class Note(db.Model):
     __tablename__ = "notes" 
@@ -934,3 +954,33 @@ def get_float(text: str) -> float:
         return float(text)
     except:
         return -1
+
+def parse_comment(comment: str) -> Tuple[str, str]: 
+    """! Gets start and end date from comment"""
+    def parse_date(date_str: str):
+        x = re.search("(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
+        return x.group(1)
+
+    def extract(name: str, parts: List[str]):
+        for part in parts: 
+            if name in part: 
+                try: 
+                    index = part.find(":")+1
+                    date = parse_date(part[index:index+11])
+                    return unify_date(date)
+                except Exception as err: 
+                    print("  Could not parse: ", name, part, err)
+                    return ""
+        return ""
+    # If return empty start and end date if anything should go wrong
+    # (invalid comments should not block importing)
+    try: 
+        parts = comment.split(";")
+    except Exception as err: 
+        print("Failed parsing dates: ", err)
+        return "", ""
+    start = extract("start:", parts)
+    if start == "": 
+        start = extract("start", parts)
+    end = extract("end", parts)
+    return start, end

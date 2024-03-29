@@ -54,6 +54,48 @@ async function UploadPyratData() {
   }
 }
 
+function ApplyAllSelectedComments() {
+  // Get all selected animals
+  var checkboxes = document.getElementsByName("mark_animal");
+  var mlas = [];
+  for (var i=0; i<checkboxes.length; i++) {
+    if (checkboxes[i].checked)
+      mlas.push(checkboxes[i].getAttribute("animal_id"));
+  }
+  console.log("Got mlas to delete: ", mlas);
+  ApplyComments(mlas);
+}
+
+async function ApplyComments(animal_ids) {
+  let formData = new FormData();
+  formData.append("mlas", JSON.stringify(animal_ids));
+  
+  const ctrl = new AbortController();    // timeout
+  setTimeout(() => ctrl.abort(), 5000);
+  
+  // Send request to server.
+  try {
+    // Send request:
+    let r = await fetch('/comments/apply', 
+     {method: "POST", body: formData, signal: ctrl.signal}); 
+    // Handle response:
+      if (r.status != 200) {
+        r.text().then(text => OpenErrorModal(text, r.status, "upload_modal"));
+      }
+      else {
+        r.text().then(text => {
+          document.getElementById("animal_modal_text").innerHTML = "Apply pirate comments";
+          document.getElementById("animal_modal_text_2").style.display = "block";
+          document.getElementById("animal_modal").style.height = "400px";
+          document.getElementById("animal_modal").style.width = "70%";
+          document.getElementById("animal_modal_table").innerHTML = text;
+          OpenModel("animal_modal");
+        });
+      }
+  } catch(e) {
+    alert("Something went wrong: " + e);
+  }
+}
 function parseHttpHeaders(httpHeaders) {
     return httpHeaders.split("\n")
      .map(x=>x.split(/: */,2))
