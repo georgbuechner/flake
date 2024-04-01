@@ -37,6 +37,12 @@ python3 src/app.py
 Execute the steps above to run the server once and create all the passwords,
 then: 
 
+Set up the server.config
+``` 
+cp server.config.example server.config
+``` 
+You need not change any values. You may however change the PORT.
+
 Set up the environment-file by first copying the template: 
 ```
 cp example.env .env 
