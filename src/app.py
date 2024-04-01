@@ -641,11 +641,21 @@ def update_animal_all():
     status = 400
     try:
         animal_id = request.form.get("animal_id")
+        # Apply protocol and subprotocol
         txt, status, _ = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
         txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
+        # Apply dates
         txt, status = dmanager.update_dates(animal_id, request.form.get("start"), True)
         if date_filled(request.form.get("end")):
             txt, status = dmanager.set_death_date(animal_id, request.form.get("end"))
+        # Apply start weight (if set)
+        try: 
+            start_weight = float(request.form.get("start_weight"))
+            print ("GOT START WEIGHT: ", start_weight)
+            if start_weight > 5 and start_weight < 50: 
+                txt, status = dmanager.generate_weight_list(animal_id, start_weight)
+        except: 
+            pass
         return txt, status
     except Exception as err: 
         return txt + repr(err), status
