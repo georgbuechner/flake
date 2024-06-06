@@ -29,7 +29,7 @@
 
   </div>
 
-  <dialog id="confirm_modal" style="height: 150px; width: 50%;" category="">
+  <dialog id="confirm_modal" style="height: 200px; width: 50%;" category="">
     <button onclick="Refresh()" style="float: right;">Close</button>
     <br><br>
     <p id="set_subprotocol_msg"></p>
@@ -47,6 +47,20 @@
   {% include "error_modal.html" %}
 
   {% include "confirm_delete_animal_dialog.html" %}
+
+  <dialog id="animal_modal" style="height: 200px; width: 50%;" category="">
+    <button onclick="Refresh();" style="float: right;">Close</button>
+    <br><br>
+    <p id="animal_modal_text"></p>
+    <p id="animal_modal_text_2" style="display: none;">
+      Select protocol and subprotocol to directly apply data. If the start- or 
+      end-date is already filled, then it was parsed from the pyrat comment. 
+      Otherwise you may select the dates now, or later.
+    </p>
+    <p id="animal_modal_table"></p>
+    <p id="animal_modal_text_3"></p>
+  </dialog>
+
 
 </body>
 

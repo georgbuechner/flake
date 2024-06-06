@@ -1,5 +1,6 @@
 .env
 .venv/
+server.config
 **/__pycache__
 src/output/*
 !src/output/.keep

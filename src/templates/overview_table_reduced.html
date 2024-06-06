@@ -5,6 +5,7 @@
       <th>DOB</th>
       <th>Start</th>
       <th>End</th>
+      <th>Start Weight</th>
       <th>Protocol (pyrat)</th>
       <th>Protocol (flake)</th>
       <th>Sub Protocol</th>
@@ -16,18 +17,25 @@
         <td>{{entry.dob}}</td>
         <td>
           <input 
-            type="date" min="{{entry.dob}}" value="{{mlas_with_date[entry.mla_num].start}}"
+            type="date" min="{{entry.dob}}" value="{{comment_data[entry.mla_num].start_date}}"
           ></input>
         </td>
         <td>
           <input 
             type="date" min="{{entry.dob}}" 
-            {% if mlas_with_date[entry.mla_num].end|length > 0 %}
-              value="{{mlas_with_date[entry.mla_num].end}}"
+            {% if comment_data[entry.mla_num].end_date|length > 0 %}
+              value="{{comment_data[entry.mla_num].end_date}}"
             {% elif entry.death_date|length > 0 %}
               value="{{entry.death_date}}"
             {% endif %}
           ></input>
+        </td>
+        <td>
+          <input 
+            type="number" min=0 max=100 step=0.1 
+            style="width: 5em; margin-right: 0.5em;"
+            value="{{comment_data[entry.mla_num].start_weight}}"
+          >g
         </td>
         <td>{{entry.protocol_pyrat}}</td>
         <td>

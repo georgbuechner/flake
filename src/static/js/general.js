@@ -34,8 +34,9 @@ async function UpdateAll(td, force) {
   let entries = td.children;
   start = entries[3].children[0].value;
   end = entries[4].children[0].value;
-  protocol = entries[6].children[0].value;
-  subprotocol = entries[7].children[0].value;
+  weight = entries[5].children[0].value;
+  protocol = entries[7].children[0].value;
+  subprotocol = entries[8].children[0].value;
   if (start == "")
     document.getElementById("animal_modal_text_3").innerHTML = "Missing start-date";
   else if (end == "")
@@ -49,6 +50,7 @@ async function UpdateAll(td, force) {
     // Add extracted data to form.
     formData.append("start", start);
     formData.append("end", end);
+    formData.append("start_weight", weight);
     formData.append("protocol", protocol);
     formData.append("subprotocol", subprotocol);
     formData.append("animal_id", entries[0].innerHTML);

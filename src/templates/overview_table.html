@@ -4,14 +4,22 @@
 
   <table class="center">
     <tr>
-      {%- if not animal_id -%}<th>Select All:<input type="checkbox" onclick="SelectAll(this.checked);"></th>{%- endif -%}
+      {%- if not animal_id -%}<th>Select All<br><input type="checkbox" onclick="SelectAll(this.checked);"></th>{%- endif -%}
       {% if not animal_id %}
-        <th>
+        <th title="Delete All Selected Animals.">
           Delete All
           <i 
             class="material-icons mini_icon"
             onclick="OpenDeleteAllAnimalsModal();"
           >delete</i>
+        </th>
+      {%- endif -%}
+      {% if not animal_id %}
+        <th title="Reset To/ Apply Comment to all Selected Animals.">
+          <i 
+            class="material-icons mini_icon"
+            onclick="ApplyAllSelectedComments();"
+          >ac_unit</i>
         </th>
       {%- endif -%}
       <th><i class="mod u" onclick="ApplySorting('mla_num', '{{reverse}}');">ID</i></th>
@@ -81,6 +89,20 @@
             {% endif %}
           </td>
         {% endif %}
+        {% if not animal_id %}
+          <td>
+            {% if entry.user == current_user.name or current_user.admin == True %}
+              <i 
+                class="material-icons mini_icon"
+                {% if not comments or entry.mla_num not in comments or not comments[entry.mla_num] %}
+                  style="color: grey;"
+                {% else %}
+                  onclick="ApplyComments(['{{entry.mla_num}}']);"
+                {%- endif -%}
+              >ac_unit</i>
+            {% endif %}
+          </td>
+        {% endif %}
         <td>{{entry.mla_num}}</td>
         <td><a href="/users/{{entry.user}}">{{entry.user}}</a></td>
         <td>{{entry.sex}}</td>
@@ -105,8 +127,7 @@
           {% else %}
             <select 
               id="protocol_flake" autocomplete="off" 
-              onchange="UpdateProtocol(this.value,
-              this.parentNode.parentNode.children[2].innerHTML, false)"
+              onchange="UpdateProtocol(this.value, '{{entry.mla_num}}' , false)"
             >
               <option value="---">---</option>
               {% for protocol in protocols.keys() %}
@@ -122,8 +143,9 @@
             {{entry.subprotocol}}
           {% else %}
             <select 
-              id="subprotocol" autocomplete="off" 
-              onchange="UpdateSubprotocol(this.value, this.parentNode.parentNode.children[2].innerHTML, false)"
+              id="subprotocol" 
+              autocomplete="off" 
+              onchange="UpdateSubprotocol(this.value, '{{entry.mla_num}}', false)"
             >
               <option value="---" selected>---</option>
               {% for sub in protocols[entry.protocol] %}

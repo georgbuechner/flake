@@ -240,6 +240,7 @@ def overview():
         "overview.html", 
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
@@ -269,6 +270,7 @@ def user_overview(user: str):
         "user_overview.html", 
         user=user, 
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
@@ -300,6 +302,7 @@ def protocol_overview(protocol: str):
         protocol=protocol,
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         reverse="True" if reverse == "False" else "False"
@@ -638,11 +641,21 @@ def update_animal_all():
     status = 400
     try:
         animal_id = request.form.get("animal_id")
+        # Apply protocol and subprotocol
         txt, status, _ = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
         txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
+        # Apply dates
         txt, status = dmanager.update_dates(animal_id, request.form.get("start"), True)
         if date_filled(request.form.get("end")):
             txt, status = dmanager.set_death_date(animal_id, request.form.get("end"))
+        # Apply start weight (if set)
+        try: 
+            start_weight = float(request.form.get("start_weight"))
+            print ("GOT START WEIGHT: ", start_weight)
+            if start_weight > 5 and start_weight < 50: 
+                txt, status = dmanager.generate_weight_list(animal_id, start_weight)
+        except: 
+            pass
         return txt, status
     except Exception as err: 
         return txt + repr(err), status
@@ -1087,6 +1100,12 @@ def remove_subprotocol(escaped_protocol, subprotocol):
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
+
+@app.route("/comments/apply/", methods=["POST"]) 
+@login_required 
+def apply_comments():
+    mlas = json.loads(request.form["mlas"]) 
+    return dmanager.get_comment_data_html(mlas)
 
 if __name__=="__main__":
     app.run(debug=True, port=PORT)
