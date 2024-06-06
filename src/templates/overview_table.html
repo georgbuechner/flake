@@ -2,7 +2,7 @@
   <p><i>Showing {{animal_data|length}} animals.</i></p>
 {% endif %}
 
-  <table class="center">
+  <table class="center" id="overview-table">
     <tr>
       {%- if not animal_id -%}<th>Select All<br><input type="checkbox" onclick="SelectAll(this.checked);"></th>{%- endif -%}
       {% if not animal_id %}
@@ -50,6 +50,9 @@
         <i class="mod u" onclick="ApplySorting('subprotocol', '{{reverse}}');">
           Sub Protocol
         </i>
+      </th>
+      <th>
+        <i class="mod u" onclick="OpenModel('select_expand_dialog');">Expand</i>
       </th>
     </tr>
     {% for entry in animal_data %}

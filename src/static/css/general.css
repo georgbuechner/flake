@@ -161,3 +161,7 @@ dialog {
   margin-left: -0.2rem;
   border: 0;
 }
+
+.hide-column {
+  display: none;
+}
