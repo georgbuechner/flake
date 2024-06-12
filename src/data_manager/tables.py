@@ -127,9 +127,10 @@ class CommentBackup(db.Model):
 
 class CommentData(): 
     def __init__(self, comment: str):
-        start, end = parse_comment(comment) 
+        start, end, start_weight = parse_comment(comment) 
         self.start_date = start
         self.end_date = end
+        self.start_weight = start_weight
 
 class Note(db.Model):
     __tablename__ = "notes" 
@@ -960,10 +961,14 @@ def get_float(text: str) -> float:
     except:
         return -1
 
-def parse_comment(comment: str) -> Tuple[str, str]: 
+def parse_comment(comment: str) -> Tuple[str, str, float]: 
     """! Gets start and end date from comment"""
-    def parse_date(date_str: str):
+    def parse_date(date_str: str) -> str:
         x = re.search("(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
+        return x.group(1)
+    
+    def parse_weight(weight_str: str) -> str: 
+        x = re.search("(\d{1,2}(\.\d{1,2})?)g?", weight_str)
         return x.group(1)
 
     def extract(name: str, parts: List[str]):
@@ -975,7 +980,11 @@ def parse_comment(comment: str) -> Tuple[str, str]:
                     return unify_date(date)
                 except Exception as err: 
                     print("  Could not parse: ", name, part, err)
-                    return ""
+                    try:
+                        index = part.find(":")+1
+                        return float(parse_weight(part[index:index+7]))
+                    except Exception as err: 
+                        print("  Could not parse: ", name, part, err)
         return ""
     # If return empty start and end date if anything should go wrong
     # (invalid comments should not block importing)
@@ -983,9 +992,10 @@ def parse_comment(comment: str) -> Tuple[str, str]:
         parts = comment.split(";")
     except Exception as err: 
         print("Failed parsing dates: ", err)
-        return "", ""
+        return "", "", 0
     start = extract("start:", parts)
     if start == "": 
         start = extract("start", parts)
     end = extract("end", parts)
-    return start, end
+    weight = extract("start weight", parts)
+    return start, end, weight

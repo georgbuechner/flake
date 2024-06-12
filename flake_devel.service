@@ -1,0 +1,13 @@
+[Unit]
+Description=FLAKE Development Server
+After=network.target
+
+[Service]
+WorkingDirectory=/usr/bin/larkum/flake_devel
+ExecStart=/bin/bash -c 'cd /usr/bin/larkum/flake_devel/ && source .venv/bin/activate && .venv/bin/python3 src/app.py' 
+EnvironmentFile=/usr/bin/larkum/flake_devel/.env
+Type=simple 
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
