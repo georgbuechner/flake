@@ -191,7 +191,7 @@ def register():
     """
     if request.method == "GET":
         return render_template("register.html", msg="")
-    if not re.match("[^@]+@[^@]+\.[^@]+", request.form["email"]):
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", request.form["email"]):
         return render_template("register.html", msg="Not a valid E-Mail adress!")
     if User.query.get(request.form["email"]):
         return render_template("register.html", msg="User with this email already exists!")
@@ -424,7 +424,7 @@ def input(animal_id: str, category: str):
         death_date=death_date,
         dob=animal_data.dob,
         protocols=dmanager.protocols_and_subprotocols(),
-        notes={note.category:note.note for note in Note.query.filter(Note.animal_id == animal_id)},
+        notes=dmanager.get_notes(animal_id),
         age=age,
         last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
         category=category,
@@ -801,8 +801,10 @@ def store_notes(animal_id: str, category: str):
     @param animal_id  ID of animal for which to add data.
     @return error-/ success-message and status code.
     """
-    note_txt = request.form.get("note")
-    if dmanager.store_note(animal_id, category, note_txt):
+    print("store_notes: ", request.form.get("apply_note"))
+    note_txt = request.form.get("note") or ""
+    apply_note = request.form.get("apply_note") == "true";
+    if dmanager.store_note(animal_id, category, apply_note, note_txt):
         return "Success", 200
     return "Something went wrong", 500
     # exception handled
@@ -891,7 +893,7 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
     )
     def safe(txt: str) -> str: 
         for c in ["#", "$", "%", "~", "_", "^"]:
-            txt = txt.replace(c, f"\{c}")
+            txt = txt.replace(c, f"\\{c}")
         return txt
     txt = render_template(
         "main.tex", subprotocols=subprotocols, protocol=protocol, safe=safe

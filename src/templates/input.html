@@ -73,7 +73,10 @@
 
     {% if category=="" %}
       <h3>General 
-        <button class="pure_btn" onclick="OpenModalNotes('general', '{{notes.general}}')">
+        <button 
+          class="pure_btn" 
+          onclick="OpenModalNotes('general', '{{notes.general.0}}', '{{notes.general.1}}')"
+        >
           <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
@@ -156,7 +159,10 @@
     
     {% elif category=="procedures" %}
       <h3>Conducted Procedures
-        <button class="pure_btn" onclick="OpenModalNotes('procedures', '{{notes.procedures}}')">
+        <button 
+          class="pure_btn" 
+          onclick="OpenModalNotes('procedures', '{{notes.procedures.0}}', '{{notes.procedures.1}}')"
+        >
           <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
@@ -188,7 +194,10 @@
 
     {% elif category=="viruses" %}
       <h3>Viruses
-        <button class="pure_btn" onclick="OpenModalNotes('viruses', '{{notes.viruses}}')">
+        <button 
+          class="pure_btn" 
+          onclick="OpenModalNotes('viruses', '{{notes.viruses.0}}', '{{notes.viruses.1}}')"
+        >
           <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
@@ -217,7 +226,10 @@
 
     {% elif category=="medication" %}
       <h3>Medication
-        <button class="pure_btn" onclick="OpenModalNotes('medication', '{{notes.medication}}')">
+        <button 
+          class="pure_btn" 
+          onclick="OpenModalNotes('medication', '{{notes.medication.0}}', '{{notes.medication.1}}')"
+        >
           <i style="margin-left: 2px;" class="material-icons mini_icon">comment</i>
         </button>
       </h3>
@@ -283,6 +295,9 @@
   <dialog id="notes_modal" style="height: 250px; width: 80%;" category="">
     <h2>Notes</h2>
     <textarea class="notes_txt" id="notes_txt" rows="4" cols="50"></textarea>
+    <br>
+    <label>Apply notes to Surgery Sheet?</label>
+    <input type="checkbox" id="notes_apply"></input>
     <br>
     <label id="save_notes_error" class="err"></label><br>
     <button onclick="CloseModalNotes('{{animal_id}}', true)" class="right">Close and Save</button>
