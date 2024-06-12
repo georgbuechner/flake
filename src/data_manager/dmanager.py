@@ -1,8 +1,8 @@
+from urllib.parse import unquote
 import clevercsv 
 import json
 import os
 import random
-import re
 import string
 import pandas as pd
 from copy import deepcopy
@@ -16,7 +16,7 @@ from utils.parser_weights_and_water import (
     apply_noise
 )
 from data_manager.tables import * 
-from utils.utils import has_signature, sort, sort_query, escape, get_signature_path
+from utils.utils import sort, sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
 
@@ -103,6 +103,18 @@ class DManager:
         }
         ordered_protocols = OrderedDict(sorted(protocols.items()))
         return ordered_protocols
+
+    def get_notes(self, animal_id: str) -> Dict[str, Tuple[str, bool]]: 
+        notes = Note.query.filter(Note.animal_id == animal_id)
+        notes_dict = {
+            "general":("", False), 
+            "viruses":("", False), 
+            "medication":("", False), 
+            "procedures":("", False)
+        }
+        for note in notes:
+            notes_dict[note.category] = (note.note, note.surgery_sheet)
+        return notes_dict
 
     def protocols_and_subprotocols(self) -> Dict[str, List[str]]: 
         """! Gets all protocols with list of their subprotocols. """
@@ -457,12 +469,17 @@ class DManager:
             experiment_data[name] = [table_to_json(t) for t in data]
         return experiment_data
 
+
+
     def get_surgery_sheet_data(
         self, animal_id: str
     ) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
         general = General.query.get(animal_id)
         animal_data = AnimalData.query.get(general.animal_id)
         data = {"general": table_to_json(general)}
+        table_notes = Note.query.filter(Note.animal_id == animal_id, Note.surgery_sheet)
+        data["general"]["notes"] = "\n".join([unquote(note.note) for note in table_notes])
+        print("NOTES: ", data["general"]["notes"])
         filtered_procedures = []
         # Add information form tables (procedures, viruses etc.)
         for name, Table in EXPERIMENT_TABLES_REDUCED.items(): 
@@ -478,24 +495,10 @@ class DManager:
         data["death_drugs"] = [
             x for x in data["medication"] if "sacrifice" in x.procedure.lower()
         ]
-        print("Death drugs: ", data["death_drugs"])
         # Add unexpected_event and clear death drugs, in case of unexpected death.
         if procedures_contains(data["procedures"], UNEXPECTED_DEATH):
             data["death_drugs"] = []
             data["general"]["unexpected_events"] = f"Unexpected death on {animal_data.death_date}."
-        # If not unexpected and sacrifice procedure is missing, add protocol
-        # default sacrifice:
-        # elif not procedures_contains(data["procedures"], "Sacrifice"): 
-        #     full_protocol = f"{animal_data.escaped_protocol}/{animal_data.subprotocol}"
-        #     query = PProcedure.query.filter(
-        #         PProcedure.protocol == general, PProcedure.name.like("Sacrifice%")
-        #     )
-        #     for sacrifice_procedure in query: 
-        #         if not sacrifice_procedure.optional: 
-        #             procedure = Procedure.from_default(
-        #                 animal_id, animal_data.user, sacrifice_procedure
-        #             )
-        #             procedure.set_date(animal_data.death_date)
 
         def get_entries_with_dates(table_name: str) -> List[Dict[str, Any]]:
             entries_with_date = []
@@ -511,6 +514,7 @@ class DManager:
         data["death_drugs"] = get_entries_with_dates("death_drugs")
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
         data["procedures"] = sort([table_to_json(p) for p in data["procedures"]], "start_date")
+
         return data, filtered_procedures
 
     def get_protocol_data(self, category: str, full_protocol: str): 
@@ -752,19 +756,23 @@ class DManager:
             db.session.delete(definition_entry)
         db.session.commit()
 
-    def store_note(self, animal_id: str, category: str, text: str) -> bool: 
+    def store_note(
+        self, animal_id: str, category: str, apply_note: bool, text: str
+    ) -> bool: 
         """! Stores a given note under animal_id and category in database. 
 
         @param animal_id  ID of animal 
         @param category  Category (like general, procedures, ...)
+        @param apply_note  Apply note to surgery sheet.
         @param note  The actual note
         @return Boolean indicating success/ failure.
         """
         note = Note.query.get((animal_id, category))
         if note:
             note.note = text
+            note.surgery_sheet = apply_note
         else:
-            note = Note(animal_id, category, text) 
+            note = Note(animal_id, category, apply_note, text) 
             db.session.add(note)
         db.session.commit()
         return True

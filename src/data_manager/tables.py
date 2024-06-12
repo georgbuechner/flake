@@ -138,18 +138,23 @@ class Note(db.Model):
     animal_id = db.Column(db.String, primary_key=True)
     category = db.Column(db.String, primary_key=True)
     note = db.Column(db.String, primary_key=False)
+    surgery_sheet = db.Column(db.Boolean, primary_key=False)
 
-    def __init__(self, animal_id: str, category: str, note: str):
+    def __init__(
+        self, animal_id: str, category: str, surgery_sheet: bool, note: str
+    ):
         self.animal_id = animal_id
         self.category = category
         self.note = note
+        self.surgery_sheet = surgery_sheet
 
     @classmethod 
     def from_json(cls, note: Dict[str, any]): 
-        return cls(note["animal_id"], note["category"], note["note"])
+        return cls(note["animal_id"], note["category"], note["surgery_sheet"], note["note"]) 
 
-    def update(self, note: str):
+    def update(self, note: str, surgery_sheet: bool):
         self.note = note
+        self.surgery_sheet = surgery_sheet
  
 class AKind(db.Model): 
     __tablename__ = "availible_kinds" 

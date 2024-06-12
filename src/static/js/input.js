@@ -223,10 +223,12 @@ async function Clear(animal_id) {
 
 // Modal //
 
-function OpenModalNotes(category, note) { 
+function OpenModalNotes(category, note, apply_note) { 
+  console.log("OpenModalNotes: ", apply_note, apply_note === "True");
   var dialog = document.getElementById("notes_modal"); 
   dialog.setAttribute("category", category);
-  document.getElementById("notes_txt").value = unescape(note);
+  document.getElementById("notes_txt").value = decodeURI(note);
+  document.getElementById("notes_apply").checked = (apply_note === "True");
   // dailog.show(); 
   dialog.showModal();
 } 
@@ -242,7 +244,8 @@ async function CloseModalNotes(animal_id, save) {
     const category = dialog.getAttribute("category");
     let formData = new FormData();
     let txt = document.getElementById("notes_txt").value;
-    formData.append("note", escape(txt)); 
+    formData.append("note", encodeURI(txt)); 
+    formData.append("apply_note", document.getElementById("notes_apply").checked); 
     try {
       // Send request:
       let r = await fetch('/store/notes/'+animal_id+'/'+category, {method: "POST", body: formData}); 
