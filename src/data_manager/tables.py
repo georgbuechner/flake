@@ -964,28 +964,29 @@ def get_float(text: str) -> float:
 def parse_comment(comment: str) -> Tuple[str, str, float]: 
     """! Gets start and end date from comment"""
     def parse_date(date_str: str) -> str:
-        x = re.search("(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
-        return x.group(1)
+        x = re.search(r"(\d{1,4}(/|.|-)\d{1,2}(/|.|-)\d{1,4})", date_str)
+        return unify_date(x.group(1))
     
     def parse_weight(weight_str: str) -> str: 
         x = re.search("(\d{1,2}(\.\d{1,2})?)g?", weight_str)
-        return x.group(1)
+        return float(x.group(1))
 
-    def extract(name: str, parts: List[str]):
+    def extract(name: str, parts: List[str], expected_length, parse):
         for part in parts: 
             if name in part: 
                 try: 
                     index = part.find(":")+1
-                    date = parse_date(part[index:index+11])
-                    return unify_date(date)
+                    return parse(part[index:index+expected_length])
                 except Exception as err: 
                     print("  Could not parse: ", name, part, err)
-                    try:
-                        index = part.find(":")+1
-                        return float(parse_weight(part[index:index+7]))
-                    except Exception as err: 
-                        print("  Could not parse: ", name, part, err)
-        return ""
+        return None
+
+    def extract_date(name, parts): 
+        return extract(name, parts, 11, parse_date)
+
+    def extract_weight(name, parts): 
+        return extract(name, parts, 7, parse_weight)
+
     # If return empty start and end date if anything should go wrong
     # (invalid comments should not block importing)
     try: 
@@ -993,9 +994,7 @@ def parse_comment(comment: str) -> Tuple[str, str, float]:
     except Exception as err: 
         print("Failed parsing dates: ", err)
         return "", "", 0
-    start = extract("start:", parts)
-    if start == "": 
-        start = extract("start", parts)
-    end = extract("end", parts)
-    weight = extract("start weight", parts)
+    start = extract_date("start:", parts) or extract_date("start", parts) or ""
+    end = extract_date("end", parts) or ""
+    weight = extract_weight("start weight", parts) or 0
     return start, end, weight
