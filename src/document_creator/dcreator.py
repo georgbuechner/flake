@@ -5,6 +5,8 @@ import re
 import threading
 from docx import Document
 from docx.shared import Cm
+from docx.text.paragraph import Paragraph
+from docx.enum.text import WD_BREAK
 from typing import Any, Dict, List, Tuple
 from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
 from utils.utils import get_signature_path
@@ -31,9 +33,13 @@ class DCreator:
             self.replacements = json.load(f)
         # Try to load protocol-specific template, otherwise use default.
         protocol = experiment_data["general"]["experiment"]
-        if os.path.exists(os.path.join(template_path, protocol)):
-            self.doc = Document(os.path.join(template_path, f"{protocol}.docx"))
+        protocol_specific = os.path.join(
+            template_path, f"{protocol[:protocol.find('/')]}.docx"
+        )
+        if os.path.exists(protocol_specific):
+            self.doc = Document(protocol_specific)
         else: 
+            print(f"{protocol_specific} does not seem to exist. Using default.")
             self.doc = Document(os.path.join(template_path, "default.docx"))
         # Data
         self.fields = experiment_data
@@ -59,6 +65,8 @@ class DCreator:
         weights = json.loads(self.fields["general"]["weights"])
         start_weight = weights[0]
         watercontrols = json.loads(self.fields["general"]["watercontrol_mask"])
+
+        # Prepare data ordered by months
         monthly_weights = []
         data = {
             "data": {"weights": [], "watercontrol": [], "sig": [], ">20": [], ">10":[]}, 
@@ -83,14 +91,28 @@ class DCreator:
                 }
             last_date = cur_date
         monthly_weights.append(data)
+
+        # Create extra tables for each month
+        def table_insert_paragraph_after(table):
+            """Return new `Paragraph` object inserted directly after `table`.
+
+            `table` must already be immediately followed by a paragraph. So
+            This won't work for a table followed by another table or a table
+            at the end of the document.
+            """
+            p = table._tbl.getnext()
+            paragraph = Paragraph(p, table._parent)
+            return paragraph.insert_paragraph_before()
         def copy_table_after(table, paragraph):
             tbl, p = table._tbl, paragraph._p
             new_tbl = copy.deepcopy(tbl)
             p.addnext(new_tbl)
-            self.doc.add_page_break()
+            run = paragraph.add_run()
+            run.add_break(WD_BREAK.PAGE)
+            # self.doc.add_page_break()
         tbl = self.doc.tables[0]
         for x in range(len(monthly_weights)-1): 
-            paragraph = self.doc.add_paragraph()
+            paragraph = table_insert_paragraph_after(tbl)
             copy_table_after(tbl, paragraph)
             
         def do_update(cells, cell, data, cat): 
