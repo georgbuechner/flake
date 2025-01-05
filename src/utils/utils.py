@@ -149,4 +149,8 @@ def get_root_user(path):
         json.dump(config, f)
     return root_email
 
-
+def remove_if_exists(filename: str) -> None: 
+    try: 
+        os.remove(filename) 
+    except OSError: 
+        pass 

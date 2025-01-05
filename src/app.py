@@ -27,6 +27,8 @@ REL_BACKUP_PATH = "backups/"
 BACKUP_PATH = f"src/{REL_BACKUP_PATH}/"
 DB_PATH = "instance/larkum.db"
 
+ML_SIGNATURE = "ml-signature"
+
 generation_threads = {}
 
 # Create global instance of sql-connector, data-manager and flask-app.
@@ -541,14 +543,16 @@ def change_admin_status(email):
 @app.route("/signature/<user>")
 @login_required 
 def get_signature(user: str):
-    path, mimetype = get_signature_path(current_user.name)
+    path, mimetype = get_signature_path(user)
+    if path is None:
+        path, mimetype = get_signature_path(current_user.name)
     return send_file(path, mimetype = mimetype)
 
 @app.route("/delete/signature/<escaped_user>", methods=["POST"])
 @login_required 
 def remove_signature(escaped_user: str):
     if has_signature(current_user.name):
-        path, mimetype = get_signature_path(current_user.name)
+        path, _ = get_signature_path(current_user.name)
         os.remove(f"src/{path}")
         return "", 200
     else: 
@@ -561,11 +565,12 @@ def upload_signature(escaped_user: str):
     content = request.files
     file = content.get("sig")
     if file.mimetype == "image/jpeg":
+        remove_if_exists(f"src/signatures/{escaped_user}.png")
         file.save(f"src/signatures/{escaped_user}.jpg")
     else:
+        remove_if_exists(f"src/signatures/{escaped_user}.jpg")
         file.save(f"src/signatures/{escaped_user}.png")
     return "", 200
-
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
@@ -905,8 +910,16 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
         for c in ["#", "$", "%", "~", "_", "^"]:
             txt = txt.replace(c, f"\\{c}")
         return txt
+
+    # get current ml signature
+    ml_signature, _ = get_signature_path(ML_SIGNATURE)
+                        
     txt = render_template(
-        "main.tex", subprotocols=subprotocols, protocol=protocol, safe=safe
+        "main.tex", 
+        subprotocols=subprotocols, 
+        protocol=protocol, 
+        safe=safe,
+        ml_signature=ml_signature[ml_signature.index("/")+1:]
     )
     tmp_path = tempfile.mkdtemp() 
     full_path = f"{tmp_path}/main.tex"
