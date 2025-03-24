@@ -945,6 +945,10 @@ class DManager:
             else: 
                 animal_data = AnimalData(data)
                 db.session.add(animal_data)
+            # Add potentially new lines
+            if not ALine.query.get(animal_data.line): 
+                line = ALine(animal_data.line)
+                db.session.add(line)
             db.session.commit()
             fill_sacrifice_date(
                 animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
