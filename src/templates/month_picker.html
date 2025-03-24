@@ -1,7 +1,7 @@
 <select id="filter_year_{{from_to_range}}" autocomplete="off" class="month_picker_year">
   {% for x in range(10) %}
-    {% set year = 2024 - x %}
-      {% if year|string in curyear %}
+    {% set year = max_year - x %}
+      {% if year|string in selected_year or year|string == current_year %}
         <option selected>{{year}}</option>
       {% else %}
         <option>{{year}}</option>

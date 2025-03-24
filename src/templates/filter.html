@@ -8,17 +8,17 @@
     <select id="filter_month_what" autocomplete="off" class="month_picker_year">
       <option value=""></option>
       <option {% if args.range == "DOB" %} selected {%endif%}>DOB</option>
-      <option {% if args.range == "Sacrifice date" %} selected {%endif%}>Sacrifice date</option>
+      <option {% if not args.range or args.range == "Sacrifice date" %} selected {%endif%}>Sacrifice date</option>
       <option {% if args.range == "start date" %} selected {%endif%}>start date</option>
     </select>
     <label >from: </label>
     {% set from_to_range = "from" %}
-    {% set curyear = args["from"] %}
+    {% set selected_year = args["from"] %}
     {% set curmonth = args["from"][5:] if "from" in args %}
     {% include "month_picker.html" %}
     <label>to: </label>
     {% set from_to_range = "to" %}
-    {% set curyear = args["to"] %}
+    {% set selected_year = args["to"] %}
     {% set curmonth = args["to"][5:] if "to" in args %}
     {% include "month_picker.html" %}
     <label>Animal ID:</label> 

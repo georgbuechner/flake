@@ -184,8 +184,16 @@ class DManager:
         return ", ".join(missing) if len(missing) > 1 else None
 
     def get_overview_table(
-        self, initial_query: Query, sort_by: str, reverse: bool, filter_date: str, start: str, end: str, mla_num: str
+        self, 
+        initial_query: Query, 
+        sort_by: str, 
+        reverse: bool, 
+        filter_date: str, 
+        start: str, 
+        end: str, 
+        mla_num: str
     ) -> List: 
+        print("FILTER: ", filter_date, start, end)
         # Apply filter 
         if mla_num != "":  
             filtered_query = initial_query.filter(AnimalData.mla_num.like(f"%{mla_num}%"))
@@ -208,6 +216,13 @@ class DManager:
         if reverse != "True":
             sorted_query.reverse()
         return sorted_query 
+
+    def get_current_year(self) -> str: 
+        """! Gets current reporting year (the current year, or the last, if it's
+        before the 31. of March) """
+        if f"{datetime.now().month}-{datetime.now().day}" < "3-31": 
+            return str(datetime.now().year-1)
+        return str(datetime.now().year)
 
     def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool]: 
         comment_infos = {} 
