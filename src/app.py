@@ -1095,23 +1095,24 @@ def remove_protocol(escaped_protocol):
 
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
-def remove_subprotocol(escaped_protocol, subprotocol):
+def remove_subprotocol(escaped_protocol: str, subprotocol: str):
     protocol = Protocol.query.get(escaped_protocol)
     if not protocol:
+        print("protocol not found")
         return render_template(
             "protocols.html", 
             protocols=Protocol.query.all(),
             is_setup=dmanager.protocol_is_setup,
-            msg="Matching protocol does not exist!"
+            msg=f"Matching protocol {escaped_protocol} does not exist!"
         )
     if subprotocol not in protocol.get_subprotocols(): 
-        return render_template(
-            "protocol.html", 
-            protocol=protocol,
-            is_setup=dmanager.subprotocol_is_setup,
-            msg="Subprotocol does not exists!"
-        )
+        # Check again with _ replaced by / (this is relevant for corrupted
+        # subprotocols)
+        subprotocol = subprotocol.replace("_", "/");
+        if subprotocol not in protocol.get_subprotocols(): 
+            return f"Subprotocol {subprotocol} does not exists!", 404
 
+    print("removing subprotocol: ", subprotocol)
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
