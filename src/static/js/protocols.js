@@ -22,23 +22,27 @@ function Close(modal_name) {
   dialog.close();
 }
 
-async function DelSub(protocol, subprotocol) {
+function DelSub(protocol, subprotocol) {
   let params = protocol 
-  if (subprotocol != "") 
+  if (subprotocol != "") {
+    // Check for corrupted subprotocols (if they include the protocal again)
+    // In that case, replace the "/" by "_" so that the path is correct
+    // (protocol/subprotocol and not protocol/protocol/subprotocol) but the
+    // original can still be found (instead of f.e. removing the protocol from
+    // the subprotocol)
+    if (subprotocol.includes("/"))
+      subprotocol = subprotocol.replace("/", "_")
     params +="/" + subprotocol;
-  console.log(protocol, subprotocol, params);
-  try {
-    // Send request:
-    let r = await fetch("/settings/protocols/remove/" + params, {
-      method: "POST", body: new FormData}); 
-    // Handle response:
-    if (r.status === 200)
-      window.location=window.location;
-    else 
-      alert("Unkown error. Sorry " + r.status);
-  } catch(e) {
-    console.log(e);
-    alert("Unkown error. Sorry", e);
   }
-
+  console.log(protocol, subprotocol, params);
+  // Send request:
+  fetch("/settings/protocols/remove/" + params, 
+    {method: "POST", body: new FormData})
+  .then((response) => {
+    if (response.ok)
+      window.location=window.location;
+    else
+      response.text().then(text => OpenErrorModal(text, response.status));
+  })
+  .catch((error) => OpenErrorModal("Unkown Error.", response.status));
 }
