@@ -13,12 +13,12 @@
     </select>
     <label >from: </label>
     {% set from_to_range = "from" %}
-    {% set curyear = args["from"] %}
+    {% set selected_year = args["from"] %}
     {% set curmonth = args["from"][5:] if "from" in args %}
     {% include "month_picker.html" %}
     <label>to: </label>
     {% set from_to_range = "to" %}
-    {% set curyear = args["to"] %}
+    {% set selected_year = args["to"] %}
     {% set curmonth = args["to"][5:] if "to" in args %}
     {% include "month_picker.html" %}
     <label>Animal ID:</label> 
