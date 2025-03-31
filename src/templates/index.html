@@ -36,7 +36,7 @@
       For reporting year 
       <select id="cur_reporting_year" onchange='UpdateReportingYear(this.value)'>
         {% for x in range(10) %}
-          {% set year = 2024 - x %}
+          {% set year = max_year - x %}
             {% if year|string in reporting_year %}
               <option selected>{{year}}</option>
             {% else %}

@@ -220,8 +220,12 @@ class DManager:
     def get_current_year(self) -> str: 
         """! Gets current reporting year (the current year, or the last, if it's
         before the 31. of March) """
-        if f"{datetime.now().month}-{datetime.now().day}" < "3-31": 
+        print(f"{datetime.now().month}-{datetime.now().day} <= 3-31")
+        if f"{datetime.now().month}-{datetime.now().day}" <= "3-31": 
+            print("-> ", datetime.now().year-1)
             return str(datetime.now().year-1)
+        else: 
+            print("-> ", datetime.now())
         return str(datetime.now().year)
 
     def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool]: 

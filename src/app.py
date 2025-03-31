@@ -121,7 +121,7 @@ def main():
     """
 
     reporting_year = request.args.get(
-        "reporting_year", default=str(get_cur_year()-1), type=str
+        "reporting_year", default=str(dmanager.get_current_year()), type=str
     )
     print("Got reporting_year: ", reporting_year)
     return render_template(
@@ -130,6 +130,7 @@ def main():
         completed_in=dmanager.completed_for_year(reporting_year),
         users=dmanager.pyrat_usernames_with_progress(reporting_year), 
         protocols=dmanager.protocols(),
+        max_year=datetime.now().year,
     )
 
 @app.route("/login", methods=["GET", "POST"])
@@ -229,14 +230,13 @@ def overview():
     """
     # Apply filter,  sort (and reverse)
     reverse = request.args.get("reverse", default="False", type=str)
-    current_year = dmanager.get_current_year()
     animal_data = dmanager.get_overview_table(
         initial_query=AnimalData.query,
         sort_by=request.args.get("sort_by", default="dob", type=str),
         reverse=reverse,
-        filter_date=request.args.get("range", default="Sacrifice date", type=str),
-        start=request.args.get("from", default=f"{current_year}-01", type=str),
-        end=request.args.get("to", default=f"{current_year}-31", type=str),
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
         mla_num=request.args.get("id", default="", type=str),
     )
     return render_template(
@@ -246,7 +246,6 @@ def overview():
         comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
-        current_year=current_year,
         max_year=datetime.now().year,
         reverse="True" if reverse == "False" else "False"
     )
@@ -262,14 +261,13 @@ def user_overview(user: str):
     """
     # Apply filter,  sort (and reverse)
     reverse = request.args.get("reverse", default="False", type=str)
-    current_year = dmanager.get_current_year()
     animal_data = dmanager.get_overview_table(
         initial_query=AnimalData.query.filter(AnimalData.user == user),
         sort_by=request.args.get("sort_by", default="dob", type=str),
         reverse=reverse,
-        filter_date=request.args.get("range", default="Sacrifice date", type=str),
-        start=request.args.get("from", default=f"{current_year}-01", type=str),
-        end=request.args.get("to", default=f"{current_year}-31", type=str),
+        filter_date=request.args.get("range", default="", type=str),
+        start=request.args.get("from", default="", type=str),
+        end=request.args.get("to", default="", type=str),
         mla_num=request.args.get("id", default="", type=str),
     )
     return render_template(
@@ -280,7 +278,6 @@ def user_overview(user: str):
         animal_data=animal_data,
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
-        current_year=current_year,
         max_year=datetime.now().year,
         reverse="True" if reverse == "False" else "False"
     )
