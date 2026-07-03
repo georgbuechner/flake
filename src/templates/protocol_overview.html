@@ -36,8 +36,8 @@
     <input type="submit" id="submit" value="generate" onclick="GenerateP9('{{protocol}}')">
     <select id="inp_use_year" autocomplete="off">
       {% for x in range(10) %}
-        {% set year = 2024 - x %}
-        <option {{ "selected" if year|string == "2023" }}>{{year}}</option>
+        {% set year = 2026 - x %}
+        <option {{ "selected" if year|string == "2026" }}>{{year}}</option>
       {% endfor %}
     </select>
 
