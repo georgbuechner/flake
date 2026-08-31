@@ -913,7 +913,7 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
         escaped_protocol, year, force == "force"
     )
     def safe(txt: str) -> str: 
-        for c in ["#", "$", "%", "~", "_", "^"]:
+        for c in ["#", "$", "%", "~", "_", "^", "&"]:
             txt = txt.replace(c, f"\\{c}")
         return txt
 
