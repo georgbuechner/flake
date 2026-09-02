@@ -1,5 +1,18 @@
+{% set overview_offset = overview_offset | default(0) | int %}
+{% set overview_limit = overview_limit | default(animal_data | length) | int %}
+{% set overview_total = overview_total | default(animal_data | length) | int %}
+{% set overview_shown = overview_shown | default(overview_limit) | int %}
+{% if overview_shown > overview_total %}
+  {% set overview_shown = overview_total %}
+{% endif %}
+
 {% if not animal_id %}
-  <p><i>Showing {{animal_data|length}} animals.</i></p>
+  <p>
+    <i>
+      Showing <span id="overview-shown-count">{{overview_shown}}</span>
+      of <span id="overview-total-count">{{overview_total}}</span> animals.
+    </i>
+  </p>
 {% endif %}
 
   <table class="center" id="overview-table">
@@ -55,7 +68,7 @@
         <i class="mod u" onclick="OpenModel('select_expand_dialog');">Expand</i>
       </th>
     </tr>
-    {% for entry in animal_data %}
+    {% for entry in animal_data[overview_offset:overview_offset + overview_limit] %}
       <tr 
         {% if entry.stored == false %}
           class="not_stored"

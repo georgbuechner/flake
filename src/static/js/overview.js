@@ -335,12 +335,69 @@ function TypeaheadFilter() {
       if (response.ok) {
         response.text().then(text => {
           document.getElementById("overview_table").innerHTML = text;
+          ApplyReducedOverviewFields();
+          ResetLoadMoreOverview(response.headers.get("X-Overview-Has-More"));
         });
       }
     })
     .catch(error => {
       OpenErrorModal(error);
     })
+}
+
+function ResetLoadMoreOverview(hasMore) {
+  const button = document.getElementById("load-more-overview");
+  if (!button) return;
+
+  const rows = document.querySelectorAll("#overview-table tr");
+  button.dataset.offset = Math.max(rows.length - 1, 0);
+  button.style.display = hasMore === "true" ? "" : "none";
+  button.disabled = false;
+}
+
+async function LoadMoreOverview() {
+  const button = document.getElementById("load-more-overview");
+  button.disabled = true;
+
+  const url = new URL("/table/overview/", window.location.origin);
+  const activeFilters = BuildFilter();
+  activeFilters.searchParams.forEach(
+    (value, key) => url.searchParams.set(key, value)
+  );
+  url.searchParams.set("offset", button.dataset.offset);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Error code: ${response.status}`);
+
+    const documentFragment = new DOMParser().parseFromString(
+      await response.text(),
+      "text/html"
+    );
+    const newRows = Array.from(
+      documentFragment.querySelectorAll("#overview-table tr")
+    ).slice(1);
+    const tableBody = document.querySelector("#overview-table tbody");
+    newRows.forEach(row => tableBody.appendChild(document.importNode(row, true)));
+    ApplyReducedOverviewFields();
+
+    button.dataset.offset = Number(button.dataset.offset) + newRows.length;
+    const shownCount = document.getElementById("overview-shown-count");
+    if (shownCount) shownCount.textContent = button.dataset.offset;
+    const hasMore = response.headers.get("X-Overview-Has-More") === "true";
+    button.style.display = hasMore ? "" : "none";
+  } catch (error) {
+    OpenErrorModal(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function ApplyReducedOverviewFields() {
+  const reducedFields = JSON.parse(
+    localStorage.getItem("reduced_fields") || "[]"
+  );
+  reducedFields.forEach(columnIndex => Reduce(columnIndex));
 }
 
 function RemoveFilter() {

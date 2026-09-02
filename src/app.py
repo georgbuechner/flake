@@ -26,6 +26,7 @@ SECRET, LAB_PASSWORD, PORT = get_keys_from_config(SERVER_CONFIG_PATH)
 REL_BACKUP_PATH = "backups/"
 BACKUP_PATH = f"src/{REL_BACKUP_PATH}/"
 DB_PATH = "instance/larkum.db"
+OVERVIEW_BATCH_SIZE = 50
 
 ML_SIGNATURE = "ml-signature"
 
@@ -247,6 +248,9 @@ def overview():
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
         max_year=datetime.now().year,
+        overview_offset=0,
+        overview_limit=OVERVIEW_BATCH_SIZE,
+        overview_total=len(animal_data),
         reverse="True" if reverse == "False" else "False"
     )
 
@@ -338,15 +342,30 @@ def overview_table(area: str, what: str):
         end=request.args.get("to", default="", type=str),
         mla_num=request.args.get("id", default="", type=str),
     )
-    return render_template(
+    total_entries = len(animal_data)
+    overview_offset = 0
+    if area == "overview":
+        overview_offset = max(request.args.get("offset", default=0, type=int), 0)
+        animal_data = animal_data[
+            overview_offset:overview_offset + OVERVIEW_BATCH_SIZE
+        ]
+
+    response = make_response(render_template(
         "overview_table.html", 
         protocol=protocol,
         animal_data=animal_data,
         start_dates=dmanager.get_start_dates(animal_data),
+        comments=dmanager.get_comment_infos(animal_data),
         protocols=dmanager.protocols_and_subprotocols(),
         args=request.args,
+        overview_shown=overview_offset + len(animal_data),
+        overview_total=total_entries,
         reverse="True" if reverse == "False" else "False"
-    )
+    ))
+    response.headers["X-Overview-Has-More"] = str(
+        area == "overview" and overview_offset + len(animal_data) < total_entries
+    ).lower()
+    return response
 
 @app.route("/animal_data/delete/<animal_id>", methods=["POST"])
 @login_required

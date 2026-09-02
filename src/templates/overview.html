@@ -28,6 +28,15 @@
     <div id="overview_table">
       {% include "overview_table.html" %}
     </div>
+    <br>
+    <input
+      type="button"
+      id="load-more-overview"
+      data-offset="{{overview_limit}}"
+      onclick="LoadMoreOverview();"
+      {% if animal_data|length <= overview_limit %}style="display: none;"{% endif %}
+      value="Load more"
+    >
 
     <br><br>
     <input type="submit" id="submit" value="Upload pyrat data" onclick="OpenModel('upload_modal')">
