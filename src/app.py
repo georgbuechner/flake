@@ -15,6 +15,7 @@ import re
 import tempfile
 import traceback
 import shutil
+import urllib.parse
 from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
@@ -423,8 +424,11 @@ def input(animal_id: str, category: str):
     # Create ref to previous page
     ref = False
     if "/users/" in request.referrer or "/protocols/" in request.referrer: 
-        ref_name = html.unescape(request.referrer[request.referrer.rfind("/")+1:])
-        ref = {"name": ref_name, "link": request.referrer}
+        ref_name = request.referrer[request.referrer.rfind("/")+1:]
+        ref = {
+            "name": urllib.parse.unquote(ref_name), 
+            "link": request.referrer
+        }
 
     durations = {str(p.uuid):p.get_duration() for p in availible_procedures}
 

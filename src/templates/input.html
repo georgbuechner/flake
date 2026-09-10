@@ -18,7 +18,7 @@
     <a href="/">FLAKE</a>
     <a href="/overview">Overview</a>
     {% if ref %}
-      <a href="{{ref.link}}">{{ref.name}}</a>
+      <a href="{{ref.link}}">{{ref.name|safe}}</a>
     {% endif %}
     <a class="active" href="/animal_data/{{animal_id}}">{{animal_id}}</a>
   </div>
