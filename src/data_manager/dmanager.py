@@ -711,6 +711,10 @@ class DManager:
         # Check neccesarry fields are included: 
         if "name" not in data or data["name"] == "":
             raise MissingEntryException(entry="name")
+        if "/" in data["name"]: 
+            raise InvalidNameException(
+                name=data["name"], msg="'/' not allowed for definition names!"
+            )
         # Create or update entry
         Table = DEFINITION_TABLES[category] 
         definitions_entry = Table.query.get(data["name"])

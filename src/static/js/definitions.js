@@ -100,7 +100,7 @@ async function DelADEntry(animal_id, category, uuid) {
 
 
 async function Del(category, name, type, identifier, protocol) {
-  const escaped_name = escape(name).replace("/", "_");
+  const escaped_name = encodeURIComponent(name);
   let base_url = "";
   if (type === "protocol") 
     base_url = "/settings/protocols/" + identifier;
