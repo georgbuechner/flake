@@ -26,6 +26,12 @@ class InvalidTypeException(ParserException):
     def __init__(self, msg: str):
         super().__init__(msg, 400)
 
+class InvalidNameException(ParserException): 
+    def __init__(self, name: str, msg: str):
+        self.msg = f"Invalid name: <i>{name}</i>. {msg}"
+        self.status = 406
+        super().__init__(self.msg, self.status)
+
 class MissingEntryException(ParserException):
     def __init__(self, entry: str, msg: str = None):
         self.msg = "Missing entry: "
