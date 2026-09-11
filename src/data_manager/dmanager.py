@@ -15,7 +15,30 @@ from utils.parser_weights_and_water import (
     get_estimated_weight_list,
     apply_noise
 )
-from data_manager.tables import * 
+from data_manager.tables import (
+    ALine,
+    AnimalData,
+    CommentBackup,
+    DEFINITION_TABLES,
+    EXPERIMENT_TABLES,
+    EXPERIMENT_TABLES_REDUCED,
+    General,
+    Medication,
+    Note,
+    PGeneral,
+    PMedication,
+    PProcedure,
+    PROTOCOL_TABLES,
+    PVirus,
+    PWatercontrol,
+    Procedure,
+    Protocol,
+    User,
+    VerificationCode,
+    Virus,
+    db,
+    table_to_json,
+)
 from utils.utils import sort, sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
@@ -34,8 +57,6 @@ class DManager:
 
     def __init__(self):
         """! The DManager class initializer. 
-
-        @param sql_connector  sql-connector-class.
         """
         print(f"Initializing DManager...")
         self.mapping = {}
@@ -124,7 +145,7 @@ class DManager:
         return protocols
 
     def protocol_is_setup(self, escaped_protocol: str) -> bool: 
-        protocol = Protocol.query.get(escaped_protocol)
+        protocol = db.session.get(Protocol, escaped_protocol)
         for subprotocol in protocol.get_subprotocols(): 
             if not self.subprotocol_is_setup(f"{escaped_protocol}/{subprotocol}"):
                 return False
@@ -193,7 +214,6 @@ class DManager:
         end: str, 
         mla_num: str
     ) -> List: 
-        print("FILTER: ", filter_date, start, end)
         # Apply filter 
         if mla_num != "":  
             filtered_query = initial_query.filter(AnimalData.mla_num.like(f"%{mla_num}%"))
@@ -231,7 +251,7 @@ class DManager:
     def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool]: 
         comment_infos = {} 
         for animal in animal_data: 
-            comment_backup = CommentBackup.query.get(animal.mla_num)
+            comment_backup = db.session.get(CommentBackup, animal.mla_num)
             comment_infos[animal.mla_num] = comment_backup and comment_backup.comment != ""
         return comment_infos
 
@@ -243,7 +263,7 @@ class DManager:
         @return status code: 409 if data for animal_id already exists 200 otherwise.
         """
         # Genrate temporary path
-        tmp_path = "".join(random.choice(string.ascii_letters) for x in range(10))
+        tmp_path = "".join(random.choice(string.ascii_letters) for _ in range(10))
         tmp_path += ".csv"
         # temporarily store file
         file.save(tmp_path)
@@ -276,7 +296,7 @@ class DManager:
     def get_start_dates(self, animals) -> Dict[str, str]: 
         start_dates = {}
         for x in animals: 
-            general = General.query.get(x.mla_num)
+            general = db.session.get(General, x.mla_num)
             start_dates[x.mla_num] = general.start if general else "---"
         return start_dates
 
@@ -285,7 +305,7 @@ class DManager:
     ) -> Dict[str, CommentData]:
         parsed_comments = {}
         for mla_num in animal_ids: 
-            comment = CommentBackup.query.get(mla_num)
+            comment = db.session.get(CommentBackup, mla_num)
             parsed_comments[mla_num] = CommentData(comment.comment) 
         return parsed_comments
 
@@ -298,7 +318,7 @@ class DManager:
         # Get animal data
         animal_data = []
         for mla, _ in comment_data.items(): 
-            animal = AnimalData.query.get(mla)
+            animal = db.session.get(AnimalData, mla)
             if set_stored != None:
                 animal.stored = set_stored
             if ignore_comment: 
@@ -314,7 +334,7 @@ class DManager:
     def set_protocol(
         self, animal_id: str, protocol: str, force: bool
     ) -> Tuple[str, int]:
-        x, of = self.__is_stored(animal_id, ignore_death_date=True)
+        x, _ = self.__is_stored(animal_id, ignore_death_date=True)
         if x > 0 and force is False: 
             return (
                 f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 
@@ -322,7 +342,7 @@ class DManager:
                 None
             )
         escaped_protocol = escape(protocol)
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         animal_data.protocol = protocol
         animal_data.protocol_escaped = escaped_protocol
         animal_data.subprotocol = "---"
@@ -347,7 +367,7 @@ class DManager:
         if x > 0 and force is False: 
             return f"{round((x/33)*100, 2)}% of data already filled. Sure you want proceed?", 409
         print("set_subprotocol for: ", animal_id)
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         animal_data.subprotocol = subprotocol
         if subprotocol == "---":
             self.__clear_experiment_data(animal_id)
@@ -376,20 +396,20 @@ class DManager:
                 db.session.add(entry)
         db.session.commit()
         # If sacrifice-date already exists, set sacrifice-date for procedures referencing sacrifice-date
-        fill_sacrifice_date(animal_id, full_protocol)
+        fill_sacrifice_date(animal_id)
         return "", 200
 
     def set_death_date(self, animal_id, death_date):
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         if animal_data: 
             animal_data.death_date = death_date
             db.session.commit()
             # Update medication/ procedures referencing sacrifice date (-1)
             if animal_data.protocol_escaped != "---" and animal_data.subprotocol != "---":
                 full_protocol = f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
-                fill_sacrifice_date(animal_id, full_protocol)
+                fill_sacrifice_date(animal_id)
                 # If experiment-data already exists, re-generate weights.
-                general = General.query.get(animal_id)
+                general = db.session.get(General, animal_id)
                 if general:
                     start_weight = general.start_weight if general.start_weight > 0 else -1
                     print(f"generating weights: {animal_id}, {start_weight}")
@@ -408,7 +428,7 @@ class DManager:
             raise MissingEntryException(entry="experimenter")
         # Update or add element:
         Table = EXPERIMENT_TABLES[category] 
-        element = Table.query.get(data["uuid"])
+        element = db.session.get(Table, data["uuid"])
         if element:
             element.update(data)
         else: 
@@ -423,7 +443,7 @@ class DManager:
     def delete_animal_data(self, animal_id): 
         tables_to_delete = list(EXPERIMENT_TABLES.values())
         tables_to_delete.append(General)
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         if animal_data:
             for Table in tables_to_delete: 
                 rows = Table.query.filter(Table.animal_id == animal_id)
@@ -452,7 +472,7 @@ class DManager:
             # Build response
             for general in query: 
                 # First generate saved-data from comment
-                comment = CommentBackup.query.get(general.animal_id)
+                comment = db.session.get(CommentBackup, general.animal_id)
                 comment_str = comment.comment if comment else ""
                 comment_data = CommentData(comment_str) 
                 # if either start or end are already defined, use them
@@ -472,7 +492,7 @@ class DManager:
 
     def delete_experiment_data_entry(self, animal_id: str, category: str, uuid: str):
         Table = EXPERIMENT_TABLES[category] 
-        element = Table.query.get(uuid)
+        element = db.session.get(Table, uuid)
         if element:
             db.session.delete(element)
         # Update stored? of animal-data
@@ -480,7 +500,7 @@ class DManager:
         self.__update_stored(animal_id)
     
     def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, Any]]:
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         experiment_data = {"general": table_to_json(general)}
 
         for name, Table in EXPERIMENT_TABLES.items(): 
@@ -493,8 +513,8 @@ class DManager:
     def get_surgery_sheet_data(
         self, animal_id: str
     ) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
-        general = General.query.get(animal_id)
-        animal_data = AnimalData.query.get(general.animal_id)
+        general = db.session.get(General, animal_id)
+        animal_data = db.session.get(AnimalData, general.animal_id)
         data = {"general": table_to_json(general)}
         table_notes = Note.query.filter(Note.animal_id == animal_id, Note.surgery_sheet)
         data["general"]["notes"] = "\n".join([unquote(note.note) for note in table_notes])
@@ -560,7 +580,7 @@ class DManager:
         return protocol_data, definitions
 
     def get_p9_data(self, escaped_protocol: str, use_year: str, force: bool): 
-        protocol = Protocol.query.get(escaped_protocol)
+        protocol = db.session.get(Protocol, escaped_protocol)
         subprotocols = {}
         error_json = {}
         num_errors = 0
@@ -612,9 +632,14 @@ class DManager:
             generals = General.query.filter(General.experiment == full_protocol)
             data = {"animals": [], "experiment": sub}
             if generals.first():
-                data["subprotocol"] = PGeneral.query.get(generals.first().experiment)
+                data["subprotocol"] = db.session.scalars(
+                    db.select(PGeneral).where(
+                        PGeneral.protocol == generals.first().experiment
+                    )
+                ).first()
+
                 for general in generals:
-                    animal_data = AnimalData.query.get(general.animal_id)
+                    animal_data = db.session.get(AnimalData, general.animal_id)
                     # Take only entries from the given year: 
                     if use_year not in animal_data.death_date: 
                         continue
@@ -663,20 +688,20 @@ class DManager:
         """
         start_date = strtodate(start_date_str)
         # Update start-date in General
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         old_start_date = general.start
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
         if autofill is False: 
             db.session.commit()
             return "Start date updated without updating other dates.", 200
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         surgery_start = get_surgery_start(general.experiment)
         not_updated = []
         def get_date(inc):
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
         # Update procedures: 
         for x in Procedure.query.filter(Procedure.animal_id == animal_id): 
-            default = PProcedure.query.get(x.protocol_entry_uuid)
+            default = db.session.get(PProcedure, x.protocol_entry_uuid)
             if not default:
                 raise EntryNotFound(
                     f"For procedure \"{x.name}\", no matching protocol-entry. "
@@ -688,7 +713,7 @@ class DManager:
             x.start_date = get_date(int(default.days_after_start))
             x.end_date = get_date(int(default.days_after_start)+int(default.get_duration())-1)
         db.session.commit()
-        fill_sacrifice_date(animal_id, general.experiment)
+        fill_sacrifice_date(animal_id)
         self.__update_stored(animal_id)
         if not date_filled(old_start_date):
             self.generate_weight_list(animal_id, -1)
@@ -698,7 +723,7 @@ class DManager:
         self, animal_id: str, weights: str, water_control_mask: str
     ) -> Tuple[str, int]:
         """! Updates a field of in an animal entry. """
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         general.watercontrol_mask = water_control_mask
         general.weights = weights
         general.set_start_weight(json.loads(weights)[0])
@@ -717,7 +742,7 @@ class DManager:
             )
         # Create or update entry
         Table = DEFINITION_TABLES[category] 
-        definitions_entry = Table.query.get(data["name"])
+        definitions_entry = db.session.get(Table, data["name"])
         if definitions_entry:
             definitions_entry.update(data)
         else: 
@@ -729,16 +754,16 @@ class DManager:
         """! Updates or creates new definition entry. """
         # Get protocol-entry from table definied by category
         if category == "general": 
-            protocol_entry = PGeneral.query.get(data["uuid"]) 
+            protocol_entry = db.session.get(PGeneral, data["uuid"]) 
             Table = PGeneral
         elif category == "watercontrol": 
-            protocol_entry = PWatercontrol.query.get(data["uuid"]) 
+            protocol_entry = db.session.get(PWatercontrol, data["uuid"]) 
             Table = PWatercontrol
         else: 
             if "name" not in data or data["name"] == "---": 
                 raise MissingEntryException(entry="name")
             Table = PROTOCOL_TABLES[category] 
-            protocol_entry = Table.query.get(data["uuid"]) 
+            protocol_entry = db.session.get(Table, data["uuid"]) 
         # Update or add new protocol entry depending on wether it existed before.
         if protocol_entry:
             protocol_entry.update(data)
@@ -767,14 +792,14 @@ class DManager:
 
     def delete_protocol_entry(self, category: str, uuid: str):
         Table = PROTOCOL_TABLES[category] 
-        protocol_entry = Table.query.get(uuid)
+        protocol_entry = db.session.get(Table, uuid)
         if protocol_entry:
             db.session.delete(protocol_entry)
         db.session.commit()
 
     def delete_definitions_entry(self, category: str, name: str):
         Table = DEFINITION_TABLES[category] 
-        definition_entry = Table.query.get(name)
+        definition_entry = db.session.get(Table, name)
         if definition_entry:
             db.session.delete(definition_entry)
         db.session.commit()
@@ -790,7 +815,7 @@ class DManager:
         @param note  The actual note
         @return Boolean indicating success/ failure.
         """
-        note = Note.query.get((animal_id, category))
+        note = db.session.get(Note, (animal_id, category))
         if note:
             note.note = text
             note.surgery_sheet = apply_note
@@ -802,13 +827,13 @@ class DManager:
 
     def generate_weight_list(self, animal_id: str, start_weight: int) -> Tuple[str, int]:
         # Update start weight:
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         general.set_start_weight(start_weight)
         db.session.commit()
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
 
         # Get animal data and watercontrol infos:
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         start_date = general.start
         if not date_filled(start_date): 
             return "Missing start-date", 401
@@ -954,14 +979,14 @@ class DManager:
             # Get comment from data and if comment should not be ignored parse it
             comment = data["comments"] if "comments" in data else ""
             # Store comment 
-            comment_backup = CommentBackup.query.get(animal_id)
+            comment_backup = db.session.get(CommentBackup, animal_id)
             if comment_backup:
                 comment_backup.update(comment) 
             else: 
                 comment_backup = CommentBackup(animal_id, comment)
                 db.session.add(comment_backup)
             # Create animal data
-            animal_data = AnimalData.query.get(animal_id)
+            animal_data = db.session.get(AnimalData, animal_id)
             if animal_data:
                 animal_data.update(data)
                 updated.append(animal_id)
@@ -969,13 +994,11 @@ class DManager:
                 animal_data = AnimalData(data)
                 db.session.add(animal_data)
             # Add potentially new lines
-            if not ALine.query.get(animal_data.line): 
+            if not db.session.get(ALine, animal_data.line): 
                 line = ALine(animal_data.line)
                 db.session.add(line)
             db.session.commit()
-            fill_sacrifice_date(
-                animal_id, f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
-            )
+            fill_sacrifice_date(animal_id)
             self.__update_stored(animal_id)
         return mlas, updated
 
@@ -992,11 +1015,11 @@ class DManager:
         @return Boolean indicating whether data is stored or not.
         """
         dates_counter = [0, 2 if not ignore_death_date else 1] # start (and death_date)
-        general = General.query.get(animal_id)
+        general = db.session.get(General, animal_id)
         if general is None: 
             return 0, 100
         dates_counter[0] += 1 if date_filled(general.start) else 0
-        animal_data = AnimalData.query.get(animal_id)
+        animal_data = db.session.get(AnimalData, animal_id)
         if not ignore_death_date:
             dates_counter[0] += 1 if date_filled(animal_data.death_date) else 0
         # Check procedures for dates
@@ -1008,7 +1031,7 @@ class DManager:
 
     def __update_stored(self, animal_id): 
         x, of = self.__is_stored(animal_id)
-        animal_data = AnimalData.query.get(animal_id) 
+        animal_data = db.session.get(AnimalData, animal_id) 
         if x == of:
             animal_data.stored = True
         else: 
@@ -1046,14 +1069,14 @@ def get_surgery_dates(animal_id: str, protocol: str):
                     surgery_dates.append(date)
     return surgery_dates
 
-def fill_sacrifice_date(animal_id: str, protocol: str):
-    animal_data = AnimalData.query.get(animal_id)
+def fill_sacrifice_date(animal_id: str):
+    animal_data = db.session.get(AnimalData, animal_id)
     if not date_filled(animal_data.death_date):
         return
     entries = Procedure.query.filter(Procedure.animal_id == animal_id) 
     if entries.first():
         for entry in entries: 
-            template = PProcedure.query.get(entry.protocol_entry_uuid)
+            template = db.session.get(PProcedure, entry.protocol_entry_uuid)
             if not template: 
                 continue
             if template and template.days_after_start == str(SACRIFICE_DATE):

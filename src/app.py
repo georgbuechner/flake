@@ -34,13 +34,13 @@ ML_SIGNATURE = "ml-signature"
 generation_threads = {}
 
 # Create global instance of sql-connector, data-manager and flask-app.
-dmanager = DManager()
 app = Flask(__name__)
 app.secret_key = SECRET
 login_manager = LoginManager()
 login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
+dmanager = DManager()
 
 def handle_exception(func): 
     @wraps(func)
@@ -57,7 +57,7 @@ def handle_exception(func):
 
 def create_root_user_if_not_exists():
     root_email = get_root_user(SERVER_CONFIG_PATH)
-    root = User.query.get(root_email)
+    root = db.session.get(User, root_email)
     if not root: 
         root_password = getpass.getpass("Create admin user password: ")
         hashed_password, salt = hash_pw(root_password)
@@ -78,7 +78,7 @@ def update_lines():
     with open("resources/lines.json") as f:
         lines = json.load(f)
         for line in lines: 
-            if not ALine.query.get(line): 
+            if not db.session.get(ALine, line): 
                 line = ALine(line)
                 db.session.add(line)
         db.session.commit()
@@ -98,7 +98,7 @@ with app.app_context():
     create_root_user_if_not_exists()
     update_lines()
     # Remove invalid subprotocols
-    # Protocol.query.get("G0278_16").remove_subprotocol("G 0278/16 4.3")
+    # db.session.get(Protocol, "G0278_16").remove_subprotocol("G 0278/16 4.3")
     db.session.commit()
 
 
@@ -108,7 +108,7 @@ def user_loader(user_id):
 
     @param user_id  user_id (email) user to retrieve
     """
-    return User.query.get(user_id)
+    return db.session.get(User, user_id)
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
@@ -152,7 +152,7 @@ def login():
         priv = dmanager.generate_pw_reset_keys(request.form["email"])
         return render_template("login.html", priv=priv)
     # Get user
-    user = User.query.get(request.form["email"])
+    user = db.session.get(User, request.form["email"])
     if user:
         # Get hashed password and check password.
         hashed_password, _ = hash_pw(request.form["password"], user.salt)
@@ -176,7 +176,7 @@ def reset_pw():
     verykey = VerificationCode.query.filter_by(
         priv=request.form["priv"], pub=request.form["pub"]
     ).first()
-    user = User.query.get(verykey.email)
+    user = db.session.get(User, verykey.email)
     if user:
         # Get hashed password and check password.
         hashed_password, salt = hash_pw(request.form["password"])
@@ -198,7 +198,7 @@ def register():
         return render_template("register.html", msg="")
     if not re.match(r"[^@]+@[^@]+\.[^@]+", request.form["email"]):
         return render_template("register.html", msg="Not a valid E-Mail adress!")
-    if User.query.get(request.form["email"]):
+    if db.session.get(User, request.form["email"]):
         return render_template("register.html", msg="User with this email already exists!")
     if request.form["password"] != request.form["password2"]:
         return render_template("register.html", msg="Passwords don't match!")
@@ -403,12 +403,12 @@ def input(animal_id: str, category: str):
     
     @return Rendered html experiment-data input page from jinja2-template.
     """
-    animal_data = AnimalData.query.get(animal_id)
+    animal_data = db.session.get(AnimalData, animal_id)
     # Redirect 
     if animal_data.user != current_user.name and not current_user.admin:
         return redirect("/")
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
-    general = General.query.get(animal_id)
+    general = db.session.get(General, animal_id)
     availible_viruses = sort_query(PVirus.query.filter(PVirus.protocol == general.experiment), "name")
     availible_medication= sort_query(
         PMedication.query.filter(PMedication.protocol == general.experiment), "name"
@@ -534,7 +534,7 @@ def backup():
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
 @login_required 
 def update_username(email, username):
-    user = User.query.get(email)
+    user = db.session.get(User, email)
     if user:
         user.name = html.unescape(username)
         db.session.commit()
@@ -546,7 +546,7 @@ def update_username(email, username):
 def delete_username(email):
     if not current_user.admin and email != current_user.email:
         return "Only admins can delete accounts of other users", 403
-    user = User.query.get(email)
+    user = db.session.get(User, email)
     if user:
         db.session.delete(user)
         db.session.commit()
@@ -560,7 +560,7 @@ def delete_username(email):
 def change_admin_status(email):
     if not current_user.admin:
         return "Only admins can change admin status of other users", 403
-    user = User.query.get(email)
+    user = db.session.get(User, email)
     if user:
         is_admin = request.args.get("admin")
         user.admin = request.args.get("admin") == "True"
@@ -628,7 +628,7 @@ def protocols():
 @app.route("/settings/protocols/<escaped_protocol>", methods=["GET"])
 @login_required
 def protocol(escaped_protocol: str):
-    protocol = Protocol.query.get(escaped_protocol)
+    protocol = db.session.get(Protocol, escaped_protocol)
     if protocol:
         return render_template(
             "protocol.html", 
@@ -750,7 +750,7 @@ def update_animal_protocol_live():
     animal_id = request.form.get("animal_id")
     txt, status, escaped_protocol = dmanager.set_protocol(animal_id, protocol, False) 
     if status == 200:
-        protocol = Protocol.query.get(escaped_protocol)
+        protocol = db.session.get(Protocol, escaped_protocol)
         if protocol:
             response = {"subprotocols": protocol.get_subprotocols()}
             return make_response(jsonify(response), status)
@@ -793,7 +793,7 @@ def update_suffering(animal_id: str, suffering: str):
 
     @return error-/ success-message and status code.
     """
-    general = General.query.get(animal_id)
+    general = db.session.get(General, animal_id)
     general.suffering = suffering 
     db.session.commit()
     return "", 200
@@ -878,14 +878,14 @@ def clear_experiment_data(animal_id: str):
 
     @return error-/ success-message and status code.
     """
-    animal_data = AnimalData.query.get(animal_id)
+    animal_data = db.session.get(AnimalData, animal_id)
     dmanager.set_subprotocol(animal_id, animal_data.subprotocol, True)
     return "Success", 200
 
 @app.route("/generate/surgery_sheet/<animal_id>")
 @login_required
 def generate_surgery_sheet(animal_id: str):
-    animal_data = AnimalData.query.get(animal_id)
+    animal_data = db.session.get(AnimalData, animal_id)
     if not date_filled(animal_data.death_date): 
         return "Animal is not yet sacrificed", 401
     surgery_sheet_data, filtered_procedures = dmanager.get_surgery_sheet_data(
@@ -907,7 +907,7 @@ def generate_surgery_sheet(animal_id: str):
 @app.route("/generate/score_sheet/<animal_id>")
 @login_required
 def generate_score_sheet(animal_id: str):
-    animal_data = AnimalData.query.get(animal_id)
+    animal_data = db.session.get(AnimalData, animal_id)
     if not date_filled(animal_data.death_date): 
         return "Animal is not yet sacrificed", 401
 
@@ -1025,7 +1025,7 @@ def delete_protocol_entry(category: str, uuid: str):
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
 def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
-    protocol = Protocol.query.get(escaped_protocol)
+    protocol = db.session.get(Protocol, escaped_protocol)
     full_protocol = f"{escaped_protocol}/{subprotocol}"
     data, definitions = dmanager.get_protocol_data(category, full_protocol)
     procedures = PProcedure.query.filter(PProcedure.protocol == full_protocol)
@@ -1057,7 +1057,7 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
 @login_required 
 def add_protocal():
     escaped_name = escape(request.form["name"]).strip()
-    protocol = Protocol.query.get(escaped_name)
+    protocol = db.session.get(Protocol, escaped_name)
     if protocol:
         return render_template(
             "protocols.html", 
@@ -1078,7 +1078,7 @@ def add_protocal():
 @app.route("/settings/protocols/<escaped_protocol>/add_protocol", methods=["POST"]) 
 @login_required 
 def add_subprotocal(escaped_protocol):
-    protocol = Protocol.query.get(escaped_protocol)
+    protocol = db.session.get(Protocol, escaped_protocol)
     subprotocol = request.form["name"]
     if not protocol:
         return render_template(
@@ -1106,17 +1106,19 @@ def add_subprotocal(escaped_protocol):
 @app.route("/settings/protocols/remove/<escaped_protocol>", methods=["POST"]) 
 @login_required 
 def remove_protocol(escaped_protocol):
-    protocol = Protocol.query.get(escaped_protocol)
+    protocol = db.session.get(Protocol, escaped_protocol)
 
-    # Delete all data matchin protocol:
-    general = PGeneral.query.get(escaped_protocol)
+    # Delete all data matching protocol:
+    general = db.session.scalars(
+        db.select(PGeneral).where(PGeneral.protocol == escaped_protocol)
+    ).first()
     if general: 
         db.session.delete(general)
     for Table in PROTOCOL_TABLES.values(): 
         entries = Table.query.filter(Table.protocol == escaped_protocol)
         if entries.first(): 
             for entry in entries:
-                db.session.delete(Table.query.get((escaped_protocol, entry.name)))
+                db.session.delete(entry)
     # Remove protocol.
     db.session.delete(protocol)
     db.session.commit()
@@ -1125,7 +1127,7 @@ def remove_protocol(escaped_protocol):
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
 def remove_subprotocol(escaped_protocol: str, subprotocol: str):
-    protocol = Protocol.query.get(escaped_protocol)
+    protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
         print("protocol not found")
         return render_template(

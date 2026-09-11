@@ -479,7 +479,7 @@ class PProcedure(db.Model):
 
     @classmethod
     def from_form(cls, protocol: str, procedure: Dict[str, any]): 
-        surgery = AProcedure.query.get(procedure["name"]).surgery
+        surgery = db.session.get(AProcedure, procedure["name"]).surgery
         optional = "optional" in procedure
         return cls(
             protocol, 
@@ -500,7 +500,7 @@ class PProcedure(db.Model):
         self.name = procedure["name"] 
         self.days_after_start = procedure["days_after_start"] 
         self.duration = procedure["duration"] 
-        self.surgery = AProcedure.query.get(procedure["name"]).surgery
+        self.surgery = db.session.get(AProcedure, procedure["name"]).surgery
         self.optional = "optional" in procedure
         self.requires_medication = procedure["requires_medication"] 
         self.requires_virus = procedure["requires_virus"] 
@@ -771,7 +771,7 @@ class Medication(db.Model):
             return general.start_weight if general.start_weight > 0 else 30
 
         def get_cur_weight() -> int: 
-            general = General.query.get(self.animal_id) 
+            general = db.session.get(General, self.animal_id) 
             print("general start: ", general.start)
             procedure = Procedure.query.filter(
                 Procedure.animal_id==self.animal_id,
