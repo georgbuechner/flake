@@ -9,4 +9,4 @@ src/signatures/*
 src/backups/*
 !src/backups/.keep
 **/.\~lock*
-
+instance/
