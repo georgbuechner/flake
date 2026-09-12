@@ -732,84 +732,102 @@ class DManager:
 
     def update_definitions_entry(self, category: str, data: Dict[str, Any]):
         """! Updates or creates new definition entry. """
-        # Check neccesarry fields are included: 
+        # Check neccesarry fields are included:
         if "name" not in data or data["name"] == "":
             raise MissingEntryException(entry="name")
-        if "/" in data["name"]: 
+        if "/" in data["name"]:
             raise InvalidNameException(
                 name=data["name"], msg="'/' not allowed for definition names!"
             )
         # Create or update entry
-        Table = DEFINITION_TABLES[category] 
+        Table = DEFINITION_TABLES[category]
         definitions_entry = db.session.get(Table, data["name"])
         if definitions_entry:
             definitions_entry.update(data)
-        else: 
+        else:
             definitions_entry = Table.from_json(data)
             db.session.add(definitions_entry)
         db.session.commit()
 
     def update_protocol_entry(self, category: str, protocol: str, data: Dict[str, Any]):
         """! Updates or creates new definition entry. """
-        # Get protocol-entry from table definied by category
-        if category == "general": 
-            protocol_entry = db.session.get(PGeneral, data["uuid"]) 
-            Table = PGeneral
-        elif category == "watercontrol": 
-            protocol_entry = db.session.get(PWatercontrol, data["uuid"]) 
-            Table = PWatercontrol
-        else: 
-            if "name" not in data or data["name"] == "---": 
-                raise MissingEntryException(entry="name")
-            Table = PROTOCOL_TABLES[category] 
-            protocol_entry = db.session.get(Table, data["uuid"]) 
-        # Update or add new protocol entry depending on wether it existed before.
-        if protocol_entry:
+
+        def update(protocol_entry):
             protocol_entry.update(data)
-        else: 
-            # Make sure element does not already exist.
-            if category != "general" and category != "watercontrol":
-                if category == "medication":
-                    query = Table.query.filter(
-                        Table.protocol==protocol, 
-                        Table.name==data["name"], 
-                        Table.procedure==data["procedure"]
-                    )
-                elif category == "procedures":
-                    query = Table.query.filter(
-                        Table.protocol==protocol, 
-                        Table.name==data["name"], 
-                        Table.days_after_start==data["days_after_start"]
-                    )
-                else:
-                    query = Table.query.filter(Table.protocol==protocol, Table.name==data["name"])
-                if query.first():
-                    raise DublicateEntry("A entry with the same name already exists!")
-            protocol_entry = Table.from_form(protocol, data)
-            db.session.add(protocol_entry)
+            db.session.commit()
+
+        # Get protocol-entry from table definied by category
+        if category == "general":
+            protocol_entry = db.session.get(PGeneral, data["uuid"])
+            if protocol_entry is None or protocol_entry.protocol != protocol:
+                raise EntryNotFound(
+                    f"No general configuration found for \"{protocol}\".", 404
+                )
+            update(protocol_entry)
+            return
+        if category == "watercontrol":
+            protocol_entry = db.session.get(PWatercontrol, data["uuid"])
+            if protocol_entry is None or protocol_entry.protocol != protocol:
+                raise EntryNotFound(
+                    f"No watercontrol found for \"{protocol}\".", 404
+                )
+            update(protocol_entry)
+            return
+
+        if "name" not in data or data["name"] == "---":
+            raise MissingEntryException(entry="name")
+        Table = PROTOCOL_TABLES[category]
+        protocol_entry = db.session.get(Table, data["uuid"])
+        if protocol_entry is not None:
+            update(protocol_entry)
+            return
+
+        # otherwise, create new if not exists (not for general and watercontrol)
+        if category == "medication":
+            if "procedure" not in data: 
+                raise MissingEntryException(entry="procedure")
+            query = Table.query.filter(
+                Table.protocol==protocol,
+                Table.name==data["name"],
+                Table.procedure==data["procedure"]
+            )
+        elif category == "procedures":
+            if "days_after_start" not in data: 
+                raise MissingEntryException(entry="days_after_start")
+            query = Table.query.filter(
+                Table.protocol==protocol,
+                Table.name==data["name"],
+                Table.days_after_start==data["days_after_start"]
+            )
+        else:
+            query = Table.query.filter(Table.protocol==protocol, Table.name==data["name"])
+        if query.first():
+            raise DublicateEntry("A entry with the same name already exists!")
+        protocol_entry = Table.from_form(protocol, data)
+        db.session.add(protocol_entry)
         db.session.commit()
 
     def delete_protocol_entry(self, category: str, uuid: str):
-        Table = PROTOCOL_TABLES[category] 
+        Table = PROTOCOL_TABLES[category]
         protocol_entry = db.session.get(Table, uuid)
         if protocol_entry:
             db.session.delete(protocol_entry)
         db.session.commit()
 
     def delete_definitions_entry(self, category: str, name: str):
-        Table = DEFINITION_TABLES[category] 
+        Table = DEFINITION_TABLES[category]
         definition_entry = db.session.get(Table, name)
         if definition_entry:
             db.session.delete(definition_entry)
         db.session.commit()
 
-    def delete_protocol_data(self, protocol: str): 
+    def delete_protocol_data(self, protocol: str):
         tables = [
-            PGeneral, 
-            PWatercontrol, 
+            PGeneral,
+            PWatercontrol,
             *PROTOCOL_TABLES.values()
         ]
-        for Table in tables: 
+        for Table in tables:
             entries = Table.query.filter(Table.protocol == protocol)
             # TODO (check whether entries are empty)
             for entry in entries:
