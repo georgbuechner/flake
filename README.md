@@ -62,6 +62,33 @@ Finally start the server by running:
 sudo systemctl flake.service 
 ```
 
-
 ## Install Latex for 
 
+
+## Database migrations with Alembic
+
+Alembic updates an existing database when the SQLAlchemy models or stored data
+need to change. By default it operates on `instance/larkum.db`; set
+`FLAKE_DATABASE_URL` to target a different database.
+
+Before applying migrations, stop the application and create a database backup.
+Then inspect the current and pending revisions and upgrade to the latest one:
+
+```sh
+alembic current
+alembic history
+alembic upgrade head
+```
+
+When changing the database schema, update the models first and generate a new
+revision:
+
+```sh
+alembic revision --autogenerate -m "short description"
+```
+
+Always review the generated file in `alembic/versions/`. Autogeneration detects
+schema changes, but data cleanup or transformation must be written manually in
+`upgrade()`. Test the migration against a database copy before committing the
+model and revision together. Do not use `alembic stamp` unless intentionally
+baselining a database, because it records revisions without running them.

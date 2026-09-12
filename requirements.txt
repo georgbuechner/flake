@@ -1,3 +1,4 @@
+alembic
 bcrypt
 clevercsv
 cryptography

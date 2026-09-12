@@ -318,7 +318,7 @@ class PGeneral(db.Model):
     __tablename__ = "protocol_general"
 
     uuid = db.Column(db.String, primary_key=True)
-    protocol = db.Column(db.String, primary_key=False) 
+    protocol = db.Column(db.String, primary_key=False, unique=True)
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
     allowed_users = db.Column(db.String, primary_key=False)
     suffering = db.Column(db.String, primary_key=False)
@@ -555,7 +555,7 @@ class PWatercontrol(db.Model):
     __tablename__ = "protocol_watercontrol"
 
     uuid = db.Column(db.String, primary_key=True)
-    protocol = db.Column(db.String, primary_key=False) 
+    protocol = db.Column(db.String, primary_key=False, unique=True)
     allowed = db.Column(db.Boolean, primary_key=False) 
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
