@@ -1107,18 +1107,19 @@ def add_subprotocal(escaped_protocol):
 @login_required 
 def remove_protocol(escaped_protocol):
     protocol = db.session.get(Protocol, escaped_protocol)
+    if not protocol:
+        return render_template(
+            "protocols.html", 
+            protocols=Protocol.query.all(),
+            is_setup=dmanager.protocol_is_setup,
+            msg=f"Matching protocol \"{escaped_protocol}\" does not exist!"
+        )
 
-    # Delete all data matching protocol:
-    general = db.session.scalars(
-        db.select(PGeneral).where(PGeneral.protocol == escaped_protocol)
-    ).first()
-    if general: 
-        db.session.delete(general)
-    for Table in PROTOCOL_TABLES.values(): 
-        entries = Table.query.filter(Table.protocol == escaped_protocol)
-        if entries.first(): 
-            for entry in entries:
-                db.session.delete(entry)
+    # Remove data matching this excact protocol
+    dmanager.delete_protocol_data(escaped_protocol)
+    for subprotocol in list(protocol.get_subprotocols()): 
+        dmanager.delete_protocol_data(f"{escaped_protocol}/{subprotocol}")
+
     # Remove protocol.
     db.session.delete(protocol)
     db.session.commit()
@@ -1129,7 +1130,6 @@ def remove_protocol(escaped_protocol):
 def remove_subprotocol(escaped_protocol: str, subprotocol: str):
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
-        print("protocol not found")
         return render_template(
             "protocols.html", 
             protocols=Protocol.query.all(),
@@ -1137,13 +1137,14 @@ def remove_subprotocol(escaped_protocol: str, subprotocol: str):
             msg=f"Matching protocol {escaped_protocol} does not exist!"
         )
     if subprotocol not in protocol.get_subprotocols(): 
-        # Check again with _ replaced by / (this is relevant for corrupted
-        # subprotocols)
+        # Check again with '_' replaced by '/' (for corrupted subprotocols)
         subprotocol = subprotocol.replace("_", "/");
         if subprotocol not in protocol.get_subprotocols(): 
             return f"Subprotocol {subprotocol} does not exists!", 404
 
-    print("removing subprotocol: ", subprotocol)
+    # Remove data related to subprotocol
+    dmanager.delete_protocol_data(f"{escaped_protocol}/{subprotocol}")
+    # Remove subprotocol from protocol
     protocol.remove_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)

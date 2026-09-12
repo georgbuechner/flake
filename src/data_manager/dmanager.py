@@ -509,7 +509,6 @@ class DManager:
         return experiment_data
 
 
-
     def get_surgery_sheet_data(
         self, animal_id: str
     ) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
@@ -803,6 +802,18 @@ class DManager:
         if definition_entry:
             db.session.delete(definition_entry)
         db.session.commit()
+
+    def delete_protocol_data(self, protocol: str): 
+        tables = [
+            PGeneral, 
+            PWatercontrol, 
+            *PROTOCOL_TABLES.values()
+        ]
+        for Table in tables: 
+            entries = Table.query.filter(Table.protocol == protocol)
+            # TODO (check whether entries are empty)
+            for entry in entries:
+                db.session.delete(entry)
 
     def store_note(
         self, animal_id: str, category: str, apply_note: bool, text: str
