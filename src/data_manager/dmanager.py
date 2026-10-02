@@ -574,6 +574,13 @@ class DManager:
         # Get definitions:
         if category == "allowed_animals":
             definitions = sort_query(ALine.query.all(), "name")
+            escaped_protocol, subprotocol = full_protocol.split("/", 1)
+            for line in protocol_data: 
+                line.used = AnimalData.query.filter(
+                    AnimalData.protocol_escaped == escaped_protocol,
+                    AnimalData.subprotocol == subprotocol,
+                    AnimalData.line == line.name,
+                ).count()
         else:
             definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
         return protocol_data, definitions
