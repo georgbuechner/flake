@@ -126,33 +126,35 @@
         <tr>
           <th>Line</th> 
           <th colspan="2">Number</th> 
-          <th></td> 
-          <th></td> 
+          <th></th>
+          <th></th>
         </tr>
         <tr>
           <th></th>
           <th>used</th>
           <th>allowed</th>
-          <th></td> 
-          <th></td> 
-        </tr>
-        </tr>
+          <th></th>
+          <th></th>
         </tr>
         {% for line in data %}
-          <tr {{ "class=err" if line.used > line.num_availible_animals else ""}}>
+          <tr {{ "class=err" if line.num_availible_animals is not none and line.used > line.num_availible_animals else ""}}>
              <td name="uuid" style="display:none">{{line.uuid}}</td> 
              <td name="name">{{line.name}}</td> 
-             <td name="num_used_animals">{{line.used}}</td> 
-             <td name="num_availible_animals">{{line.num_availible_animals}}</td> 
-             <td onclick="DelProtocolEntry('{{category}}', '{{line.uuid}}');">
-               <a class="mod thick" title="Remove entry.">-</a>
+             <td>{{line.used}}</td>
+             <td name="num_availible_animals" data-value="{{line.num_availible_animals if line.num_availible_animals is not none else ''}}">{{line.num_availible_animals if line.num_availible_animals is not none else 'Not configured'}}</td>
+             <td>
+               {% if line.uuid %}
+                 <i 
+                    class="mod u" title="Remove entry."
+                    onclick="DelProtocolEntry('{{category}}', '{{line.uuid}}');"
+                >remove</i>
+               {% endif %}
              </td>
              <td onclick="Add(this.parentNode);">
-               <i class="mod u" title="Edit this entry.">edit</i>
+               <i class="mod u" title="{{'Edit allowance.' if line.uuid else 'Configure allowance.'}}">{{'edit' if line.uuid else 'configure'}}</i>
              </td>
           </tr>
         {% endfor %}
-      </table>
       </table>
       <br>
       <br>
@@ -184,7 +186,7 @@
              <td name="dosis">{{medication.dosis}}</td> 
              <td name="weight_independant">{{medication.weight_independant }}</td> 
              <td onclick="DelProtocolEntry('{{category}}', '{{medication.uuid}}');">
-               <a class="mod thick" title="Remove entry.">-</a>
+               <i class="mod u" title="Remove entry.">remove</i>
              </td>
              <td onclick="Add(this.parentNode);">
                <i class="mod u" title="Edit this entry.">edit</i>
@@ -225,7 +227,7 @@
              <td name="requires_medication" style="display: none">{{procedure.requires_medication}}</td> 
              <td name="requires_virus" style="display: none">{{procedure.requires_virus}}</td> 
              <td onclick="DelProtocolEntry('procedures', '{{procedure.uuid}}');">
-               <a class="mod thick" title="Remove entry.">-</a>
+               <i class="mod u" title="Remove entry.">remove</i>
              </td>
              <td onclick="Add(this.parentNode);">
                <i class="mod u" title="Edit this entry.">edit</i>
@@ -256,7 +258,7 @@
              <td name="amount">{{virus.amount}}</td> 
              <td name="optional">{{virus.optional}}</td> 
              <td onclick="DelProtocolEntry('viruses', '{{virus.uuid}}');">
-               <a class="mod thick" title="Remove entry.">-</a>
+               <i class="mod u" title="Remove entry.">remove</i>
              </td>
              <td onclick="Add(this.parentNode);">
                <i class="mod u" title="Edit this entry.">edit</i>

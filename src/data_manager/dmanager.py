@@ -7,6 +7,7 @@ import string
 import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
+from types import SimpleNamespace
 from flask_sqlalchemy.query import Query
 from typing import Dict, List, Tuple, Any
 from exceptions.exceptions import *
@@ -429,7 +430,10 @@ class DManager:
         # Update or add element:
         Table = EXPERIMENT_TABLES[category] 
         element = db.session.get(Table, data["uuid"])
+        if data["uuid"] and (element is None or element.animal_id != animal_id):
+            raise EntryNotFound("No entry found for this animal.", 404)
         if element:
+            validate_unchanged_name(element, data["name"])
             element.update(data)
         else: 
             if check_experiment_data_entry_exists(Table, category, data, animal_id): 
@@ -573,14 +577,22 @@ class DManager:
             protocol_data = sort_query(protocol_data, "name")
         # Get definitions:
         if category == "allowed_animals":
-            definitions = sort_query(ALine.query.all(), "name")
             escaped_protocol, subprotocol = full_protocol.split("/", 1)
-            for line in protocol_data: 
-                line.used = AnimalData.query.filter(
-                    AnimalData.protocol_escaped == escaped_protocol,
-                    AnimalData.subprotocol == subprotocol,
-                    AnimalData.line == line.name,
-                ).count()
+            counts = dict(db.session.query(AnimalData.line, db.func.count()).filter(
+                AnimalData.protocol_escaped == escaped_protocol,
+                AnimalData.subprotocol == subprotocol,
+            ).group_by(AnimalData.line).all())
+            configured_names = {line.name for line in protocol_data}
+            for line in protocol_data:
+                line.used = counts.get(line.name, 0)
+            # Display missing allowances without creating database records on GET.
+            for name in counts.keys() - configured_names:
+                protocol_data.append(SimpleNamespace(
+                    uuid="", name=name, used=counts[name], num_availible_animals=None,
+                ))
+            protocol_data.sort(key=lambda line: line.name)
+            available_names = {line.name for line in ALine.query.all()} | counts.keys()
+            definitions = [ALine(name) for name in sorted(available_names - configured_names)]
         else:
             definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
         return protocol_data, definitions
@@ -748,10 +760,16 @@ class DManager:
             )
         # Create or update entry
         Table = DEFINITION_TABLES[category]
-        definitions_entry = db.session.get(Table, data["name"])
-        if definitions_entry:
+        original_name = data.get("original_name")
+        if original_name:
+            definitions_entry = db.session.get(Table, original_name)
+            if definitions_entry is None:
+                raise EntryNotFound("No definition found with the original name.", 404)
+            validate_unchanged_name(definitions_entry, data["name"])
             definitions_entry.update(data)
         else:
+            if db.session.get(Table, data["name"]) is not None:
+                raise DublicateEntry("A definition with the same name already exists!")
             definitions_entry = Table.from_json(data)
             db.session.add(definitions_entry)
         db.session.commit()
@@ -785,7 +803,19 @@ class DManager:
             raise MissingEntryException(entry="name")
         Table = PROTOCOL_TABLES[category]
         protocol_entry = db.session.get(Table, data["uuid"])
+        if data["uuid"]:
+            if protocol_entry is None or protocol_entry.protocol != protocol:
+                raise EntryNotFound("No entry found for this subprotocol.", 404)
         if protocol_entry is not None:
+            if category == "allowed_animals":
+                duplicate = Table.query.filter(
+                    Table.protocol == protocol_entry.protocol,
+                    Table.name == data["name"],
+                    Table.uuid != protocol_entry.uuid,
+                ).first()
+                if duplicate is not None:
+                    raise DublicateEntry("A entry with the same name already exists!")
+            validate_unchanged_name(protocol_entry, data["name"])
             update(protocol_entry)
             return
 
@@ -1118,6 +1148,13 @@ def fill_sacrifice_date(animal_id: str):
             if template and template.days_after_start == str(SACRIFICE_DATE):
                 entry.set_date(animal_data.death_date)
     db.session.commit()
+
+
+def validate_unchanged_name(entry, name: str):
+    if name != entry.name:
+        raise InvalidNameException(
+            name=name, msg="The name of an existing entry cannot be changed."
+        )
 
 
 def get_protocol_entry_by_name(Table, protocol: str, name: str):

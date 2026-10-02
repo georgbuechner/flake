@@ -18,34 +18,73 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function Add(entry) { 
-  console.log(entry);
+function SetEditName(form, value) {
+  const field = form.querySelector("#name");
+  let display = form.querySelector("[data-edit-name]");
+  let submittedName = form.querySelector("[data-edit-name-value]");
+  let originalName = form.querySelector('[name="original_name"]');
+  if (!display) {
+    display = document.createElement("span");
+    display.setAttribute("data-edit-name", "");
+    field.after(display);
+    submittedName = document.createElement("input");
+    submittedName.type = "hidden";
+    submittedName.name = "name";
+    submittedName.setAttribute("data-edit-name-value", "");
+    form.append(submittedName);
+    originalName = document.createElement("input");
+    originalName.type = "hidden";
+    originalName.name = "original_name";
+    form.append(originalName);
+  }
+  const locked = value !== null;
+  field.hidden = locked;
+  field.disabled = locked;
+  display.hidden = !locked;
+  display.textContent = value ?? "";
+  submittedName.disabled = !locked;
+  submittedName.value = value ?? "";
+  // Definitions use their original name as identity; other entries have UUIDs.
+  originalName.disabled = !locked || form.elements.namedItem("uuid") !== null;
+  originalName.value = value ?? "";
+}
+
+function Add(entry) {
+  const form = document.querySelector("#edit_modal form");
+  form.reset();
+  SetEditName(form, null);
+  for (const field of form.querySelectorAll(".date_suggest")) {
+    field.classList.remove("date_suggest");
+  }
   if (entry !== undefined) {
-    for (var i=0; i<entry.children.length; i++) {
-      if (entry.children[i].hasAttribute("name")) {
-        const cur_name = entry.children[i].getAttribute("name");
-        var elem = document.getElementById(cur_name);
-        if (elem.type == "checkbox") {
-          elem.checked = entry.children[i].innerHTML === "True" || entry.children[i].innerHTML === "yes";
-          if (entry.children[i].innerHTML === "True" && cur_name === "weight_independant")
-            BlockDosis();
-          else if (cur_name == "weight_independant")
-            BlockAmount();
+    for (const cell of entry.children) {
+      const name = cell.getAttribute("name");
+      if (!name) continue;
+      const value = cell.getAttribute("data-value") ??
+        (name === "name" ? cell.textContent : cell.textContent.trim());
+      if (name === "name") {
+        SetEditName(form, value);
+        continue;
+      }
+      const field = form.elements.namedItem(name);
+      if (!field) continue;
+      if (field.type === "checkbox") {
+        field.checked = value === "True" || value === "yes";
+      } else {
+        const start = document.getElementById("start");
+        if (name.includes("date") && value === "---" && start) {
+          field.value = start.value;
+          field.classList.add("date_suggest");
+        } else {
+          field.value = value;
         }
-        else if (entry.children[i].getAttribute("name").indexOf("date") !== -1 
-          && entry.children[i].innerHTML == "---" 
-          && document.getElementById("start") !== undefined) {
-          elem.value=document.getElementById("start").value;
-          elem.classList.add("date_suggest");
-        }
-        else 
-          elem.value=entry.children[i].innerHTML;
       }
     }
   }
-  // open add-/edit-modal
-  OpenModel("edit_modal"); 
-} 
+  const weightIndependent = form.elements.namedItem("weight_independant");
+  if (weightIndependent) SwitchWeightDependant(weightIndependent.checked);
+  OpenModel("edit_modal");
+}
 
 function BlockAmount() {
   document.getElementById("dosis").removeAttribute("readonly");
@@ -242,4 +281,3 @@ function ReloadSubprotocols(protocol) {
       OpenErrorModal(error);
     });
 }
-
