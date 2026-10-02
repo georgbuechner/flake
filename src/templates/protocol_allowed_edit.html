@@ -16,12 +16,14 @@
       <td><label for="num_availible_animals">Number:</label></td>
       <td>
         <input 
-          type="text" 
+          type="number"
+          min="0"
+          step="1"
           name="num_availible_animals" 
           id="num_availible_animals" 
-          placeholder="number of availible animals"
-          required
+          placeholder="Not configured"
         />
+        <small>Leave blank if the allowance is unspecified; enter 0 if none are allowed.</small>
       </td>
     </tr>
   </table>

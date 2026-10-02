@@ -3,8 +3,9 @@ import math
 import uuid
 import random
 import re
-from exceptions.exceptions import ParserException
+from exceptions.exceptions import ParserException, InvalidTypeException
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import validates
 from typing import Dict, List, Tuple
 from utils.dt_utils import date_filled, unify_date, daterange_str
 
@@ -347,11 +348,31 @@ class PGeneral(db.Model):
 
 class PAllowedMice(db.Model):
     __tablename__ = "protocol_allowed_mice"
+    __table_args__ = (
+        db.UniqueConstraint("protocol", "name", name="uq_protocol_allowed_mice_protocol_name"),
+        db.CheckConstraint(
+            "num_availible_animals IS NULL OR "
+            "(typeof(num_availible_animals) = 'integer' AND num_availible_animals >= 0)",
+            name="ck_protocol_allowed_mice_allowance",
+        ),
+    )
 
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
     name = db.Column(db.Integer, primary_key=False) 
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
+
+    @validates("num_availible_animals")
+    def validate_num_availible_animals(self, key, value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, str) and re.fullmatch(r"[0-9]+", value.strip()):
+            value = int(value.strip())
+        if type(value) is not int or value < 0:
+            raise InvalidTypeException(
+                "Number of allowed animals must be a non-negative integer or left blank."
+            )
+        return value
 
     def __init__(
         self, protocol: str, name: str, num_availible_animals: int, 
