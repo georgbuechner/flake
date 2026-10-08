@@ -1,4 +1,4 @@
-class ParserException(Exception):
+class FlakeError(Exception):
     """! Base class for all exception """
     def __init__(self, msg: str, status: int):
         """! initiales exception 
@@ -10,29 +10,29 @@ class ParserException(Exception):
         self.status = status
         super().__init__(msg)
 
-class EntryNotFound(ParserException):
+class EntryNotFound(FlakeError):
+    def __init__(self, msg: str, status: int = 404):
+        super().__init__(msg, status)
+
+class QueryEmpty(FlakeError):
     def __init__(self, msg: str, status: int):
         super().__init__(msg, status)
 
-class QueryEmpty(ParserException):
-    def __init__(self, msg: str, status: int):
-        super().__init__(msg, status)
-
-class DublicateEntry(ParserException):
+class DublicateEntry(FlakeError):
     def __init__(self, msg: str):
         super().__init__(msg, 409)
 
-class InvalidTypeException(ParserException): 
+class InvalidTypeException(FlakeError): 
     def __init__(self, msg: str):
         super().__init__(msg, 400)
 
-class InvalidNameException(ParserException): 
+class InvalidNameException(FlakeError): 
     def __init__(self, name: str, msg: str):
         self.msg = f"Invalid name: <i>{name}</i>. {msg}"
         self.status = 406
         super().__init__(self.msg, self.status)
 
-class MissingEntryException(ParserException):
+class MissingEntryException(FlakeError):
     def __init__(self, entry: str, msg: str = None):
         self.msg = "Missing entry: "
         if msg != None:
@@ -41,18 +41,18 @@ class MissingEntryException(ParserException):
         self.status = 406
         super().__init__(self.msg, self.status)
 
-class AnimalDataIncompleteException(ParserException):
+class AnimalDataIncompleteException(FlakeError):
     def __init__(self):
         self.msg = "Animal Data incomplete. Can't generate p9"
         self.status = 409
         super().__init__(self.msg, self.status)
 
-class ParseException(ParserException): 
-    def __init__(self, value: str):
-        self.msg = f"Could not parse start-/ end-date from comment: \"<i>{value}</i>\""
+class ParseException(FlakeError): 
+    def __init__(self, msg: str):
+        self.msg = msg
         super().__init__(self.msg, 400)
 
-class InvalidDateException(ParserException): 
+class InvalidDateException(FlakeError): 
     def __init__(self, date_str: str, formats: str):
         self.msg = (
             f"The date \"{date_str}\" did not match any of the following"
@@ -60,4 +60,14 @@ class InvalidDateException(ParserException):
         )
         super().__init__(self.msg, 400)
 
+class ConfirmationRequired(FlakeError): 
+    def __init__(self, msg: str, status: int = 409):
+        super().__init__(msg, status)
 
+class AnimalNotSacrificed(FlakeError):
+    def __init__(self):
+        super().__init__("Animal is not yet sacrificed", 409)
+
+class WeighGenerationUnavailible(FlakeError): 
+    def __init__(self, msg: str, status: int = 409):
+        super().__init__(msg, status)

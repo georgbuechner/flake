@@ -3,7 +3,7 @@ import math
 import uuid
 import random
 import re
-from exceptions.exceptions import ParserException, InvalidTypeException
+from exceptions.exceptions import FlakeError, InvalidDateException, InvalidTypeException
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
 from typing import Dict, List, Tuple
@@ -528,14 +528,18 @@ class PProcedure(db.Model):
 
     def get_duration(self) -> int: 
         """ Gets duration or random duration between min and max """
-        if isinstance(self.duration, str): 
-            min_max = self.duration.split("-")
-            if len(min_max) > 1: 
-                return random.randint(int(min_max[0]), int(min_max[1])) 
-            return int(min_max[0])
-        elif isinstance(self.duration, int):
-            return self.duration 
-        raise ParserException(f"Invalid duration: {self.duration}!", 404)
+        try:
+            if isinstance(self.duration, str):
+                min_max = self.duration.split("-")
+                if len(min_max) == 2:
+                    return random.randint(int(min_max[0]), int(min_max[1]))
+                if len(min_max) == 1:
+                    return int(min_max[0])
+            elif isinstance(self.duration, int):
+                return self.duration
+        except ValueError as error:
+            raise InvalidTypeException(f"Invalid duration: {self.duration}!") from error
+        raise InvalidTypeException(f"Invalid duration: {self.duration}!")
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
@@ -637,7 +641,6 @@ class Protocol(db.Model):
         db.session.add(watercontrol)
         general = PGeneral(full_protocol, 10, "", "Leicht")
         db.session.add(general)
-        db.session.commit()
 
     def remove_subprotocol(self, subprotocol):
         subprotocols = self.get_subprotocols() 
@@ -651,7 +654,7 @@ class General(db.Model):
     start = db.Column(db.String, primary_key=False) 
     end = db.Column(db.String, primary_key=False)
     experiment = db.Column(db.String, primary_key=False)
-    start_weight = db.Column(db.Integer, primary_key=False) 
+    start_weight = db.Column(db.Float, primary_key=False)
     watercontrol = db.Column(db.Boolean, primary_key=False) 
     weights = db.Column(db.String, primary_key=False)
     watercontrol_mask = db.Column(db.String, primary_key=False)
@@ -682,14 +685,13 @@ class General(db.Model):
             general["suffering"],
         )
 
-    def set_start_weight(self, start_weight: int): 
-        self.start_weight = float(start_weight)
-        if float(start_weight) > 0:
-            rows = Medication.query.filter(Medication.animal_id == self.animal_id)
+    def set_start_weight(self, start_weight: float): 
+        self.start_weight = start_weight
+        if start_weight > 0:
+            rows = db.session.query(Medication).filter_by(animal_id=self.animal_id)
             if rows.first(): 
                 for row in rows: 
                     row.update_amount()
-                db.session.commit()
 
 
 class Medication(db.Model): 
