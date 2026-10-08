@@ -68,6 +68,6 @@ class AnimalNotSacrificed(FlakeError):
     def __init__(self):
         super().__init__("Animal is not yet sacrificed", 409)
 
-class WeighGenerationUnavailible(FlakeError): 
+class WeightGenerationUnavailable(FlakeError):
     def __init__(self, msg: str, status: int = 409):
         super().__init__(msg, status)

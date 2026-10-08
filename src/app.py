@@ -727,25 +727,22 @@ def update_animal_all():
     animal_id = request.form.get("animal_id") or ""
     protocol = request.form.get("protocol") or ""
     subprotocol = request.form.get("subprotocol") or ""
+    start_weight_text = request.form.get("start_weight")
+    start_weight = parse_weight(start_weight_text) if start_weight_text else -1
+    if start_weight_text and not 5 < start_weight < 50:
+        raise InvalidTypeException("start_weight must be > 5 and < 50")
     # Apply protocol and subprotocol
     _ = dmanager.set_protocol(animal_id, protocol, False) 
     dmanager.set_subprotocol(animal_id, subprotocol, False)
     # Apply dates
     start_date = request.form.get("start") or ""
     end_date = request.form.get("end") or ""
-    txt = dmanager.update_dates(animal_id, start_date, True)
+    dmanager.update_dates(animal_id, start_date, True, regenerate_weights=False)
     if date_filled(end_date):
-        dmanager.set_death_date(animal_id, end_date)
-    # Apply start weight (if set)
-    start_weight = request.form.get("start_weight")
-    if start_weight:
-        start_weight = parse_weight(start_weight)
-        if start_weight > 5 and start_weight < 50: 
-            dmanager.generate_weight_list(animal_id, start_weight)
-        else: 
-            raise InvalidTypeException("start_weight musst be > 5 and < 50")
+        dmanager.set_death_date(animal_id, end_date, regenerate_weights=False)
+    warning = dmanager.try_generate_weight_list(animal_id, start_weight)
     db.session.commit()
-    return "", 200
+    return warning or "", 200
 
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
@@ -827,8 +824,10 @@ def update_animal_death_date(animal_id):
     @return error-/ success-message and status code.
     """
     death_date = request.form.get("death_date")
-    dmanager.set_death_date(animal_id, death_date) 
+    warning = dmanager.set_death_date(animal_id, death_date)
     db.session.commit()
+    if warning:
+        return warning, 200
     return redirect(request.referrer)
 
 

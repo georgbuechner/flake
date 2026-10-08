@@ -19,7 +19,8 @@ from exceptions.exceptions import (
     InvalidTypeException, 
     MissingEntryException,
     ParseException, 
-    WeighGenerationUnavailible,
+    WeightGenerationUnavailable,
+    InvalidDateException,
 )
 from utils.parser_weights_and_water import (
     get_water_control_mask, 
@@ -429,23 +430,29 @@ class DManager:
         # If sacrifice-date already exists, set sacrifice-date for procedures referencing sacrifice-date
         fill_sacrifice_date(animal_id)
 
-    def set_death_date(self, animal_id: str, death_date: str) -> None:
+    def set_death_date(
+        self, animal_id: str, death_date: str, *, regenerate_weights: bool = True
+    ) -> str | None:
+        if death_date not in (None, "", "---"):
+            strtodate(death_date)
         animal_data = db.session.get(AnimalData, animal_id)
         if animal_data is None: 
             raise EntryNotFound(f"AnimalData for {animal_id} not found")
 
         animal_data.death_date = death_date
+        warning = None
         # Update medication/ procedures referencing sacrifice date (-1)
         if animal_data.protocol_escaped != "---" and animal_data.subprotocol != "---":
             full_protocol = f"{animal_data.protocol_escaped}/{animal_data.subprotocol}"
             fill_sacrifice_date(animal_id)
             # If experiment-data already exists, re-generate weights.
             general = db.session.get(General, animal_id)
-            if general:
+            if general and regenerate_weights:
                 start_weight = general.start_weight if general.start_weight > 0 else -1
                 print(f"generating weights: {animal_id}, {start_weight}")
-                self.generate_weight_list(animal_id, start_weight)
+                warning = self.try_generate_weight_list(animal_id, start_weight)
             self.__update_stored(animal_id)
+        return warning
 
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, Any]
@@ -720,7 +727,8 @@ class DManager:
         return subprotocols, protocol.name, error_json, num_errors
 
     def update_dates(
-        self, animal_id: str, start_date_str: str, autofill: bool
+        self, animal_id: str, start_date_str: str, autofill: bool,
+        *, regenerate_weights: bool = True,
     ) -> str:
         """! Updates dates of experiment-data according to protocol-data. 
 
@@ -758,8 +766,10 @@ class DManager:
             x.end_date = get_date(int(default.days_after_start)+int(default.get_duration())-1)
         fill_sacrifice_date(animal_id)
         self.__update_stored(animal_id)
-        if not date_filled(old_start_date):
-            self.generate_weight_list(animal_id, -1)
+        if regenerate_weights and not date_filled(old_start_date):
+            warning = self.try_generate_weight_list(animal_id, -1)
+            if warning:
+                return warning
         return "Dates where updated. Make sure to double check! " \
                 f"{len(not_updated)} dates where not updated: " \
                 f"{json.dumps(not_updated)}"
@@ -924,46 +934,57 @@ class DManager:
             note = Note(animal_id, category, apply_note, text) 
             db.session.add(note)
 
+    def try_generate_weight_list(self, animal_id: str, start_weight: float) -> str | None:
+        """Skip automatic generation only for known unmet prerequisites.
+
+        The caller must commit before returning this warning as a success response.
+        Unexpected failures propagate so the whole operation can roll back.
+        """
+        try:
+            self.generate_weight_list(animal_id, start_weight)
+        except WeightGenerationUnavailable as error:
+            return f"Dates saved; weights were not regenerated: {error.msg}"
+        return None
+
     def generate_weight_list(self, animal_id: str, start_weight: float) -> None:
-        # Update start weight:
+        # Validate and calculate before changing any weight-related fields.
         general = db.session.get(General, animal_id) 
         if general is None: 
             raise EntryNotFound(f"Animal not found + {animal_id}")
-        general.set_start_weight(start_weight)
 
         # Get animal data and watercontrol infos:
         animal_data = db.session.get(AnimalData, animal_id)
         if animal_data is None:
-            raise EntryNotFound(
-                "start-weight saved but weights could not be re-generated: " \
-                f"Animal not found + {animal_id}"
-            )
+            raise EntryNotFound(f"Animal not found + {animal_id}")
         start_date = general.start
         if not date_filled(start_date): 
-            raise MissingEntryException("start-date")
+            raise WeightGenerationUnavailable("Missing start date")
         watercontrol_infos = (
             db.session.query(PWatercontrol)
             .filter_by(protocol=general.experiment)
             .first()
         )
         if watercontrol_infos is None: 
-            raise EntryNotFound(
-                "start-weight saved but weights could not be re-generated: " \
-                f"no watercontrol found: {general.experiment}"
+            raise WeightGenerationUnavailable(
+                f"No watercontrol configuration found: {general.experiment}"
             )
 
         # Get some values 
         start_weight = float(start_weight) if start_weight != "" else -1
-        sacrifice_date = today()
-        if date_filled(animal_data.death_date): 
-            sacrifice_date = strtodate(animal_data.death_date)
-        start_date = strtodate(start_date) 
-        dob = strtodate(animal_data.dob)
+        try:
+            sacrifice_date = today()
+            if animal_data.death_date not in (None, "", "---"):
+                sacrifice_date = strtodate(animal_data.death_date)
+            start_date = strtodate(start_date)
+            dob = strtodate(animal_data.dob)
+        except InvalidDateException as error:
+            raise WeightGenerationUnavailable(error.msg) from error
         age_at_start = (start_date - dob).days
+        if age_at_start <= 0:
+            raise WeightGenerationUnavailable("Start date must be after the date of birth")
         if start_date > sacrifice_date:
-            raise InvalidTypeException(
-                "start-weight saved but weights could not be re-generated: " \
-                f"start '{start_date}' after sacrifice_date '{sacrifice_date}'"
+            raise WeightGenerationUnavailable(
+                f"Start '{start_date}' is after the end date '{sacrifice_date}'"
             )
         duration = len(daterange(start_date, sacrifice_date))-1
 
@@ -971,18 +992,25 @@ class DManager:
         if watercontrol_infos.allowed:
             try:
                 days_after_start = int(watercontrol_infos.days_after_start)
+                water_duration = int(watercontrol_infos.duration)
+            except (ValueError, TypeError) as error:
+                raise WeightGenerationUnavailable(
+                    "Watercontrol start and duration must be integers"
+                ) from error
+            if days_after_start < 0 or water_duration < 0:
+                raise WeightGenerationUnavailable(
+                    "Watercontrol start and duration must not be negative"
+                )
+            try:
                 water_restriction_start = incdate(start_date, days_after_start)
                 surgery_dates = get_surgery_dates(animal_id, general.experiment)
                 duration_water = len(daterange(water_restriction_start, sacrifice_date))
-                if duration_water > int(watercontrol_infos.duration):
-                    duration_water = int(watercontrol_infos.duration)
+                if duration_water > water_duration:
+                    duration_water = water_duration
                 if duration_water > duration:
                     duration_water = duration
-            except ValueError: 
-                raise MissingEntryException(
-                    "start-weight saved but weights could not be re-generated: " \
-                    "The matching protocol has invalid entries for watercontrol."
-                )
+            except InvalidDateException as error:
+                raise WeightGenerationUnavailable(error.msg) from error
             # Calculate water-control-mask and estimated weights
             water_control_mask = get_water_control_mask(
                 water_restriction_start, duration_water, surgery_dates
