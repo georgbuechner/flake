@@ -25,42 +25,37 @@ window.addEventListener("beforeunload", () => {
 
 async function UploadPyratData() {
   const elem = document.getElementById("pyrat_csv");
-  if (elem.files.length == 0) {
+  if (elem.files.length === 0) {
     alert("No file selected!");
     return;
   }
-  let pyrat_csv = elem.files[0];
-  console.log(pyrat_csv);
-  let formData = new FormData();
-
-  formData.append("csv", pyrat_csv);
+  const formData = new FormData();
+  formData.append("csv", elem.files[0]);
   formData.append("ignore_comment", document.getElementById("ignore_comment").checked);
-  
-  const ctrl = new AbortController();    // timeout
-  setTimeout(() => ctrl.abort(), 5000);
-  
-  // Send request to server.
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 5000);
   try {
-    // Send request:
-    let r = await fetch('/upload/pyrat_csv', 
-     {method: "POST", body: formData, signal: ctrl.signal}); 
-    // Handle response:
-      if (r.status != 200) {
-        r.text().then(text => OpenErrorModal(text, r.status, "upload_modal"));
-      }
-      else {
-        let json = await r.json()
-        if (json["animal_data"].length > 2) {
-          document.getElementById("animal_modal_text").innerHTML = json["text"];
-          document.getElementById("animal_modal_text_2").style.display = "block";
-          document.getElementById("animal_modal").style.height = "400px";
-          document.getElementById("animal_modal").style.width = "70%";
-          document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
-          OpenModel("animal_modal")
-        }
-      }
-  } catch(e) {
-    alert("Something went wrong: " + e);
+    const response = await AppFetch('/upload/pyrat_csv',
+      {method: "POST", body: formData, signal: ctrl.signal});
+    if (!response.ok) {
+      const message = await response.text();
+      OpenErrorModal(message || "Failed importing animal data.", response.status, "upload_modal");
+      return;
+    }
+    const json = await response.json();
+    if (json["animal_data"].length > 2) {
+      document.getElementById("animal_modal_text").textContent = json["text"];
+      document.getElementById("animal_modal_text_2").style.display = "block";
+      document.getElementById("animal_modal").style.height = "400px";
+      document.getElementById("animal_modal").style.width = "70%";
+      document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+      OpenModel("animal_modal");
+    }
+  } catch (error) {
+    console.error("Failed importing animal data:", error);
+    OpenErrorModal();
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -77,212 +72,179 @@ function ApplyAllSelectedComments() {
 }
 
 async function ApplyComments(animal_ids) {
-  let formData = new FormData();
+  const formData = new FormData();
   formData.append("mlas", JSON.stringify(animal_ids));
-  
-  const ctrl = new AbortController();    // timeout
-  setTimeout(() => ctrl.abort(), 5000);
-  
-  // Send request to server.
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 5000);
   try {
-    // Send request:
-    let r = await fetch('/comments/apply', 
-     {method: "POST", body: formData, signal: ctrl.signal}); 
-    // Handle response:
-      if (r.status != 200) {
-        r.text().then(text => OpenErrorModal(text, r.status, "upload_modal"));
-      }
-      else {
-        r.text().then(text => {
-          document.getElementById("animal_modal_text").innerHTML = "Apply pirate comments";
-          document.getElementById("animal_modal_text_2").style.display = "block";
-          document.getElementById("animal_modal").style.height = "400px";
-          document.getElementById("animal_modal").style.width = "70%";
-          document.getElementById("animal_modal_table").innerHTML = text;
-          OpenModel("animal_modal");
-        });
-      }
-  } catch(e) {
-    alert("Something went wrong: " + e);
+    const response = await AppFetch('/comments/apply',
+      {method: "POST", body: formData, signal: ctrl.signal});
+    const message = await response.text();
+    if (!response.ok) {
+      OpenErrorModal(message || "Failed applying comments.", response.status, "upload_modal");
+      return;
+    }
+    document.getElementById("animal_modal_text").textContent = "Apply pirate comments";
+    document.getElementById("animal_modal_text_2").style.display = "block";
+    document.getElementById("animal_modal").style.height = "400px";
+    document.getElementById("animal_modal").style.width = "70%";
+    document.getElementById("animal_modal_table").innerHTML = message;
+    OpenModel("animal_modal");
+  } catch (error) {
+    console.error("Failed applying comments:", error);
+    OpenErrorModal();
+  } finally {
+    clearTimeout(timeout);
   }
 }
-function parseHttpHeaders(httpHeaders) {
-    return httpHeaders.split("\n")
-     .map(x=>x.split(/: */,2))
-     .filter(x=>x[0])
-     .reduce((ac, x)=>{ac[x[0]] = x[1];return ac;}, {});
-}
 
-function GenerateP9(protocol, force) {
-  const use_year = document.getElementById("inp_use_year").value;
-  var req = new XMLHttpRequest();
-  req.open("POST", "/generate/paragraph9/"+protocol + "/" + use_year + ((force) ? "/force" : ""), true);
-  req.responseType = "blob";
-  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  req.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      // Print potential errors:
-      const error_json = JSON.parse(req.getResponseHeader('filtered-procedures-json'));
-      if (error_json) {
-        console.log(error_json);
-        msg = "The following procedures where removed since they took place after the "
-          + "sacrifice of the animals: \n";
-        Object.keys(error_json).forEach(function(key) {
-          if (error_json[key].length > 0) {
-            msg += "- " + key + ": \n";
-            error_json[key].forEach(p => {
-              msg += "  + " + p["name"] + ": " + p["start_date"] + " - " + p["end_date"] + "\n"
-            });
+async function GenerateP9(protocol, force) {
+  const year = document.getElementById("inp_use_year").value;
+  let downloadUrl;
+  let link;
+  try {
+    const response = await AppFetch(
+      "/generate/paragraph9/" + protocol + "/" + year + (force ? "/force" : ""),
+      {method: "POST"}
+    );
+    if (!response.ok) {
+      if (response.status === 409) {
+        OpenModel("p9_error_modal");
+      } else {
+        OpenErrorModal(await response.text(), response.status);
+      }
+      return;
+    }
+    const filtered = response.headers.get("Filtered-Procedures-JSON");
+    if (filtered) {
+      const errors = JSON.parse(filtered);
+      let message = "The following procedures were removed because they took place after sacrifice:\n";
+      for (const [animal, procedures] of Object.entries(errors)) {
+        if (procedures.length) {
+          message += "- " + animal + ":\n";
+          for (const procedure of procedures) {
+            message += "  + " + procedure.name + ": " + procedure.start_date + " - " + procedure.end_date + "\n";
           }
-        });
-        alert(msg);
+        }
       }
-
-      // Get pdf
-      var blob = new Blob([this.response], {"type": "application/pdf"});
-      var url = window.URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      document.body.appendChild(link);
-      link.style = "display: none";
-      link.href = url;
-      link.download = protocol + "_paragraph-9.pdf";
-      link.click();
+      alert(message);
+    }
+    downloadUrl = URL.createObjectURL(await response.blob());
+    link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = protocol + "_paragraph-9.pdf";
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error("Failed downloading paragraph 9:", error);
+    OpenErrorModal("The PDF could not be downloaded. Please try again.");
+  } finally {
+    if (downloadUrl) {
       setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        link.remove(); 
-      } , 100);
+        URL.revokeObjectURL(downloadUrl);
+        link?.remove();
+      }, 100);
     }
-    else if (this.readyState === 4 && this.status == 409) {
-      OpenModel("p9_error_modal");
-    }
-    else if (this.readyState === 4 && this.status != 400 ) {
-      var blob = new Blob([this.response], {type: "text"});
-      var reader = new FileReader();
-      reader.onload = function() {
-        OpenErrorModal(reader.result, this.status);
-      }
-      reader.readAsText(blob);
-    }
-  };
-  req.send();
+  }
 }
 
 async function DeleteAnimalData(animal_id) {
-  // Send request to server:
+  let reload = false;
   try {
-    // Send request:
-    let r = await fetch('/animal_data/delete/' + animal_id, {method: "POST"}); 
-    // Handle response:
-    if (r.status === 200) {
-      window.location=window.location;
+    const response = await AppFetch('/animal_data/delete/' + animal_id, {method: "POST"});
+    if (!response.ok) {
+      const message = await response.text();
+      OpenErrorModal(message || "Failed deleting animal data.", response.status);
+    } else {
+      reload = true;
     }
-    else {
-      alert("Something went wrong: Error code: " + r.status);
-      window.location=window.location;
-    }
-  } catch(e) {
-    alert("Something went wrong: " + e);
+  } catch (error) {
+    console.error("Failed deleting animal data:", error);
+    OpenErrorModal();
   }
+  if (reload) window.location.reload();
 }
 
-
 async function UpdateSubprotocol(subprotocol, animal_id, force) {
-  let formData = new FormData();
-  // Add extracted data to form.
+  const formData = new FormData();
   formData.append("subprotocol", subprotocol);
   formData.append("animal_id", animal_id);
   formData.append("force", force);
-  // Send request to server:
+  let reload = false;
   try {
-    // Send request:
-    let r = await fetch('/update/animal_data/subprotocol', {method: "POST", body: formData}); 
-    // Handle response:
-    if (r.status === 200) {
-      window.location=window.location;
+    const response = await AppFetch('/update/animal_data/subprotocol', {method: "POST", body: formData});
+    if (response.ok) {
+      reload = true;
+    } else {
+      const message = await response.text();
+      if (response.status === 409) {
+        document.getElementById("set_subprotocol_msg").textContent = message;
+        document.getElementById("set_subprotocol_btn").onclick = () =>
+          UpdateSubprotocol(subprotocol, animal_id, true);
+        OpenModel("confirm_modal");
+      } else {
+        OpenErrorModal(message || "Failed updating subprotocol.", response.status);
+      }
     }
-    else if (r.status === 400) {
-      let response_text = await r.text()
-      alert(response_text + ": " + r.status);
-    }
-    else if (r.status === 409) {
-      let response_text = await r.text()
-      var dialog = document.getElementById("confirm_modal"); 
-      document.getElementById("set_subprotocol_msg").innerHTML = response_text; 
-      document.getElementById("set_subprotocol_btn").setAttribute("onclick", 
-        "UpdateSubprotocol('"+subprotocol+"', '"+animal_id+"', true)");
-      dialog.showModal(); 
-    }
-    else {
-      alert("Something went wrong: Error code: " + r.status);
-      window.location=window.location;
-    }
-  } catch(e) {
-    alert("Something went wrong: " + e);
+  } catch (error) {
+    console.error("Failed updating subprotocol:", error);
+    OpenErrorModal();
   }
+  if (reload) window.location.reload();
 }
 
 async function UpdateProtocol(protocol, animal_id, force) {
-  console.log("UpdateProtocol", protocol, animal_id, force);
-  let formData = new FormData();
-  // Add extracted data to form.
+  const formData = new FormData();
   formData.append("protocol", protocol);
   formData.append("animal_id", animal_id);
   formData.append("force", force);
-  // Send request to server:
+  let reload = false;
   try {
-    // Send request:
-    let r = await fetch('/update/animal_data/protocol', {method: "POST", body: formData}); 
-    // Handle response:
-    if (r.status === 200) {
-      window.location=window.location;
+    const response = await AppFetch('/update/animal_data/protocol', {method: "POST", body: formData});
+    if (response.ok) {
+      reload = true;
+    } else {
+      const message = await response.text();
+      if (response.status === 409) {
+        document.getElementById("set_subprotocol_msg").textContent = message;
+        document.getElementById("set_subprotocol_btn").onclick = () =>
+          UpdateProtocol(protocol, animal_id, true);
+        OpenModel("confirm_modal");
+      } else {
+        OpenErrorModal(message || "Failed updating protocol.", response.status);
+      }
     }
-    else if (r.status === 409) {
-      let response_text = await r.text()
-      var dialog = document.getElementById("confirm_modal"); 
-      document.getElementById("set_subprotocol_msg").innerHTML = response_text; 
-      document.getElementById("set_subprotocol_btn").setAttribute("onclick", 
-        "UpdateProtocol('"+protocol+"', '"+animal_id+"', true)");
-      dialog.showModal(); 
-    }
-    else
-      alert("Something went wrong: Error code: " + r.status);
-  } catch(e) {
-    alert("Something went wrong: " + e);
+  } catch (error) {
+    console.error("Failed updating protocol:", error);
+    OpenErrorModal();
   }
+  if (reload) window.location.reload();
 }
 
 async function UpdateProtocolLive(entries, protocol) {
-  console.log("ENTRIES: ", entries);
-  const animal_id = entries[0].innerHTML;
-  let formData = new FormData();
-  // Add extracted data to form.
+  const animal_id = entries[0].textContent;
+  const formData = new FormData();
   formData.append("protocol", protocol);
   formData.append("animal_id", animal_id);
   formData.append("force", false);
-  // Send request to server:
   try {
-    // Send request:
-    let r = await fetch('/update/animal_data/protocol/live', {method: "POST", body: formData}); 
-    // Handle response:
-    if (r.status === 200) {
-      var selectElement = entries[7].children[0];
-      var response = await r.json();
-      console.log("RESPONSE: ", response);
-      var subprotocols = response["subprotocols"]
-      for (var i=0; i<=subprotocols.length; i++) {
-        console.log("Adding ", subprotocols[i]);
-        selectElement.add(new Option(subprotocols[i])); 
-      }
+    const response = await AppFetch('/update/animal_data/protocol/live', {method: "POST", body: formData});
+    const message = await response.text();
+    if (!response.ok) {
+      OpenErrorModal(message || "Failed updating protocol.", response.status);
+      return;
     }
-    else {
-      let response_text = await r.text()
-      document.getElementById("animal_modal_text_3").innerHTML = response_text; 
+    const subprotocols = message ? JSON.parse(message)["subprotocols"] : [];
+    const select = entries[8].children[0];
+    select.replaceChildren(new Option("---", "---"));
+    for (const subprotocol of subprotocols) {
+      select.add(new Option(subprotocol));
     }
-  } catch(e) {
-    alert("Something went wrong: " + e);
+  } catch (error) {
+    console.error("Failed updating live protocol:", error);
+    OpenErrorModal();
   }
 }
-
 
 function NotResponsible() {
   alert("You're not responsible for this animal!")
@@ -327,22 +289,23 @@ function ApplyFilter() {
   window.location = BuildFilter().href;
 }
 
-function TypeaheadFilter() {
+async function TypeaheadFilter() {
   const url = BuildFilter();
   const req = '/table/' + url.pathname + url.search
-  fetch(req)
-    .then(response => {
-      if (response.ok) {
-        response.text().then(text => {
-          document.getElementById("overview_table").innerHTML = text;
-          ApplyReducedOverviewFields();
-          ResetLoadMoreOverview(response.headers.get("X-Overview-Has-More"));
-        });
-      }
-    })
-    .catch(error => {
-      OpenErrorModal(error);
-    })
+  try {
+    const response = await AppFetch(req);
+    const message = await response.text();
+    if (!response.ok) {
+      OpenErrorModal(message, response.status);
+      return;
+    }
+    document.getElementById("overview_table").innerHTML = message;
+    ApplyReducedOverviewFields();
+    ResetLoadMoreOverview(response.headers.get("X-Overview-Has-More"));
+  } catch (error) {
+    console.error("Failed filtering overview:", error);
+    OpenErrorModal("The overview could not be loaded. Please try again.");
+  }
 }
 
 function ResetLoadMoreOverview(hasMore) {
@@ -367,8 +330,11 @@ async function LoadMoreOverview() {
   url.searchParams.set("offset", button.dataset.offset);
 
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Error code: ${response.status}`);
+    const response = await AppFetch(url);
+    if (!response.ok) {
+      OpenErrorModal(await response.text(), response.status);
+      return;
+    }
 
     const documentFragment = new DOMParser().parseFromString(
       await response.text(),
@@ -387,7 +353,8 @@ async function LoadMoreOverview() {
     const hasMore = response.headers.get("X-Overview-Has-More") === "true";
     button.style.display = hasMore ? "" : "none";
   } catch (error) {
-    OpenErrorModal(error);
+    console.error("Failed loading more overview rows:", error);
+    OpenErrorModal();
   } finally {
     button.disabled = false;
   }

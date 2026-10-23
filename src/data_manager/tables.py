@@ -244,6 +244,8 @@ class AMedication(db.Model):
         if not self.weight_independant: 
             float_dosis = get_float(self.dosis)
             float_concentration = get_float(self.concentration) 
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*weight)/float_concentration))
             print(f"Updated amount: ({float_dosis}*{weight})/{float_concentration} = {self.amount}")
 
@@ -461,6 +463,8 @@ class PMedication(db.Model):
         if not self.weight_independant: 
             float_dosis = get_float(self.dosis) 
             float_concentration = get_float(self.concentration)
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*weight)/float_concentration))
 
 
@@ -818,6 +822,8 @@ class Medication(db.Model):
             print("weight @ procedure: ", cur_weight)
             float_dosis = get_float(self.dosis)
             float_concentration = get_float(self.concentration)
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*cur_weight)/float_concentration))
 
 class Procedure(db.Model): 
@@ -974,15 +980,18 @@ def roundup(x):
     return x
 
 def get_float(text: str) -> float: 
-    for delimiter in ["-", "/"]:
-        if delimiter in text:
-            # works for both: '12/14'->12.0 and '14'->12.0
-            float_text = float(text.split(delimiter)[0])  
-            return float_text
-    try: 
-        return float(text)
-    except:
-        return -1
+    try:
+        # Preserve the existing notation for dose ranges, e.g. 12/14 or 12-14.
+        value = str(text)
+        for delimiter in ("-", "/"):
+            if delimiter in value:
+                value = value.split(delimiter)[0]
+        number = float(value)
+    except (ValueError, TypeError) as error:
+        raise InvalidTypeException(f"Invalid medication number: {text}") from error
+    if not math.isfinite(number) or number < 0:
+        raise InvalidTypeException(f"Invalid medication number: {text}")
+    return number
 
 def parse_comment(comment: str) -> Tuple[str, str, float]: 
     """! Gets start and end date from comment"""

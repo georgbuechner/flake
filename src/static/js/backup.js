@@ -1,7 +1,7 @@
 async function AddBackup() {
   let reload = false;
   try {
-    const response = await fetch("/settings/backups/add", {method: "POST"});
+    const response = await AppFetch("/settings/backups/add", {method: "POST"});
     const message = await response.text();
 
     if (!response.ok) {
@@ -11,8 +11,7 @@ async function AddBackup() {
     }
   } catch (error) {
     console.error("Failed adding backup:", error); 
-    OpenErrorModal("The result could not be confirmed. The backup may already have been created. " +
-      "Reload and check before retrying.", 500);
+    OpenErrorModal();
   }
   if (reload) {
     window.location.reload();
@@ -23,7 +22,7 @@ async function DeleteBackup(backup) {
   let reload = false 
 
   try {
-    const response = await fetch(
+    const response = await AppFetch(
       "/settings/backups/delete/" + encodeURIComponent(backup), 
       {method: "POST"}
     );
@@ -35,8 +34,7 @@ async function DeleteBackup(backup) {
     }
   } catch (error) {
     console.error("Failed deleting backup:", error); 
-    OpenErrorModal("The result could not be confirmed. The backup may already have been deleted. " +
-      "Reload and check before retrying.", 500);
+    OpenErrorModal();
   }
   if (reload) {
     window.location.reload();
@@ -47,7 +45,7 @@ async function LoadBackup(backup) {
   let reload = false;
 
   try {
-    const response = await fetch(
+    const response = await AppFetch(
       "/settings/backups/load/" + encodeURIComponent(backup), 
       {method: "POST"}
     );
@@ -60,8 +58,7 @@ async function LoadBackup(backup) {
     }
   } catch(error) {
     console.error("Failed loading backup:", error); 
-    OpenErrorModal("The result could not be confirmed. The backup may already have been loaded. " +
-      "Reload and check before retrying.", 500);
+    OpenErrorModal();
   }
   if (reload) {
     window.location.reload();
@@ -72,7 +69,7 @@ async function DownloadBackup(backup) {
   let url;
   let link; 
   try {
-    const response = await fetch(
+    const response = await AppFetch(
       "/settings/backups/download/" + encodeURIComponent(backup), 
       {method: "POST"}
     );
@@ -92,7 +89,7 @@ async function DownloadBackup(backup) {
     link.click();
   } catch (error) {
     console.error("Failed downloading backup:", error);
-    OpenErrorModal("The backup could not be downloaded. Please try again.", 500);
+    OpenErrorModal("The backup could not be downloaded. Please try again.");
   } finally {
     // Allow the browser to start the download before releasing its URL. 
     if (url) {

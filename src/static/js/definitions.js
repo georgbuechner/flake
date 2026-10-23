@@ -1,28 +1,27 @@
 document.addEventListener('DOMContentLoaded', function() {
-  const form = document.querySelector('form');
-  form.addEventListener('submit', (event) => {
-    console.log("ADDED EVENTLISTENER: ", form.action);
-    event.preventDefault();
-    const formData = new FormData(form);
-    let reload = false;
-    try {
-      const response = await fetch(
-        form.action, 
-        { method: form.method, body: formData, }
-      );
-      if (!response.ok) {
-        const message = await response.text();
-        OpenErrorModal(message, response.status, "edit_modal");
-      } else {
-        reload = true;
+  for (const form of document.querySelectorAll('form[data-ajax-submit]')) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const previous = form.closest('dialog')?.id;
+      try {
+        const response = await AppFetch(form.action, {
+          method: form.method,
+          body: new FormData(form),
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          OpenErrorModal(message, response.status, previous);
+          return;
+        }
+      } catch(error) {
+        console.error("Failed submitting definition form:", error);
+        OpenErrorModal(undefined, undefined, previous);
+        return;
       }
-    } catch(error) {
-      OpenErrorModal("Unkown error", 500, "edit_modal");
-    };
-    if (reload) {
+
       window.location.reload();
-    }
-  });
+    });
+  }
 });
 
 function SetEditName(form, value) {
@@ -116,7 +115,7 @@ async function DelProtocolEntry(category, uuid) {
   let reload = false;
   try {
     // Send request:
-    let response = await fetch("/settings/protocols/delete/" + category + "/" + uuid, 
+    let response = await AppFetch("/settings/protocols/delete/" + category + "/" + uuid,
       {method: "POST", body: new FormData}); 
     // Handle response:
     if (!response.ok) {
@@ -128,7 +127,7 @@ async function DelProtocolEntry(category, uuid) {
     }
   } catch(error) {
     console.error("Failed deleting protocol entry:", error);
-    OpenErrorModal(undefined, undefined);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }
@@ -138,7 +137,7 @@ async function DelADEntry(animal_id, category, uuid) {
   let reload = false;
   try {
     // Send request:
-    let response = await fetch("/animal_data/" + animal_id + "/delete/" + category + "/" + uuid, 
+    let response = await AppFetch("/animal_data/" + animal_id + "/delete/" + category + "/" + uuid,
       {method: "POST", body: new FormData}); 
     // Handle response:
     if (!response.ok) {
@@ -150,7 +149,7 @@ async function DelADEntry(animal_id, category, uuid) {
     }
   } catch(error) {
     console.error("Failed deleting animal data entry:", error);
-    OpenErrorModal(undefined, undefined);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }
@@ -171,7 +170,7 @@ async function Del(category, name, type, identifier, protocol) {
 
   try {
     // Send request:
-    let response = await fetch(base_url+"/delete/" + category + "/" + escaped_name + protocol, {
+    let response = await AppFetch(base_url+"/delete/" + category + "/" + escaped_name + protocol, {
       method: "POST", body: new FormData}); 
     // Handle response:
     if (!response.ok) {
@@ -183,7 +182,7 @@ async function Del(category, name, type, identifier, protocol) {
     }
   } catch(error) {
     console.error("Failed saveing notes:", error);
-    OpenErrorModal(undefined, undefined);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }
@@ -263,7 +262,7 @@ async function ResetSubprotocols(protocol) {
   formData.append("experiment", protocol);
 
   try {
-    const response = await fetch("/animal_data/reset/", {method: "POST", body: formData});
+    const response = await AppFetch("/animal_data/reset/", {method: "POST", body: formData});
     const message = await response.text();
     if (!response.ok) {
       OpenErrorModal(message || "Failed resetting subprotocol", response.status, 
@@ -274,7 +273,7 @@ async function ResetSubprotocols(protocol) {
     }
   } catch(error) {
     console.error("Failed resetting subprotocol:", error);
-    OpenErrorModal(undefined, undefined);
+    OpenErrorModal();
   };
   if (reload) window.location.reload();
 }
@@ -284,14 +283,14 @@ async function ReloadSubprotocols(protocol) {
   formData.append("experiment", protocol);
   let reload = false;
   try {
-    const response = await fetch("/animal_data/reload/", {method: "POST", body: formData});
+    const response = await AppFetch("/animal_data/reload/", {method: "POST", body: formData});
     if (!response.ok) {
       const message = await response.text();
-      OpenErrorModal(message, response.status, "protocol_changed_modal"));
+      OpenErrorModal(message, response.status, "protocol_changed_modal");
     } else {
       const json = await response.json();
       if ("animal_data" in json && json["animal_data"].length > 2) {
-        document.getElementById("animal_modal_text").innerHTML = json["text"];
+        document.getElementById("animal_modal_text").textContent = json["text"];
         document.getElementById("animal_modal_text_2").style.display = "block";
         document.getElementById("animal_modal").style.height = "400px";
         document.getElementById("animal_modal").style.width = "70%";
@@ -304,7 +303,7 @@ async function ReloadSubprotocols(protocol) {
     }
   } catch(error) {
     console.error("Failed saveing notes:", error);
-    OpenErrorModal(undefined, undefined);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }

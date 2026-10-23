@@ -31,6 +31,7 @@ class AllowedAnimalTests(unittest.TestCase):
         self.manager.update_protocol_entry("allowed_animals", protocol, {
             "uuid": uuid, "name": name, "num_availible_animals": allowance,
         })
+        db.session.commit()
 
     def test_duplicate_edit_rejected_without_changing_existing_row(self):
         with self.assertRaises(DublicateEntry) as raised:

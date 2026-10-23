@@ -85,7 +85,7 @@
     <br>
 
     {% if category=="general" %}
-      <form action="general" method="POST">
+      <form action="general" method="POST" data-ajax-submit>
         <input type="text" name="uuid" id="uuid" style="display:none" value="{{data['uuid']}}"/>
         <table class="center">
           </tr>
@@ -271,7 +271,7 @@
       <a class="mod thick" title="Add new entry." onclick="Add();">+</a>
 
     {% elif category=="watercontrol" %}
-      <form action="watercontrol" method="POST">
+      <form action="watercontrol" method="POST" data-ajax-submit>
         <input type="text" name="uuid" id="uuid" style="display:none" value="{{data['uuid']}}"/>
         <table class="center">
           <tr>

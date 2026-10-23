@@ -38,17 +38,19 @@ async function DelSub(protocol, subprotocol) {
   // Send request:
   let reload = false;
   try {
-    const response = await fetch(
+    const response = await AppFetch(
       "/settings/protocols/remove/" + params, 
       {method: "POST", body: new FormData}
     );
     if (response.ok) {
       reload = true;
     } else {
-      response.text().then(text => OpenErrorModal(text, response.status));
+      const message = await response.text();
+      OpenErrorModal(message, response.status);
     }
   } catch(error) {
-    OpenErrorModal(undefined, undefined);
+    console.error("Failed deleting protocol or subprotocol:", error);
+    OpenErrorModal();
   }
   if (reload) {
     window.location.reload();

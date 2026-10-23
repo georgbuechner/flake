@@ -1,3 +1,9 @@
+function AppFetch(url, options = {}) {
+  const headers = new Headers(options.headers);
+  headers.set("X-Requested-With", "XMLHttpRequest");
+  return fetch(url, {...options, headers});
+}
+
 function Refresh() {
   window.location=window.location;
 }
@@ -23,14 +29,15 @@ function OpenErrorModal(msg, resp_status, previous) {
   if (previous !== undefined)
     CloseModal(previous);
   OpenModel("error_modal");
-  if (resp_status === undefined) {
-    msg = "The result could not be confirmed. Partial changes might "
+  if (msg === undefined) {
+    msg = "The result could not be confirmed. Partial changes might " +
       "have been applied. Reload and check before retrying.";
   }
-  document.getElementById("error_modal_msg").innerHTML = msg + " (status: " + resp_status + ")";
+  const status = resp_status === undefined ? "" : " (status: " + resp_status + ")";
+  document.getElementById("error_modal_msg").textContent = msg + status;
 }
 
-async function UpdateAll(td, force) {
+async function UpdateAll(td) {
   console.log(td);
   let entries = td.children;
   start = entries[3].children[0].value;
@@ -39,13 +46,13 @@ async function UpdateAll(td, force) {
   protocol = entries[7].children[0].value;
   subprotocol = entries[8].children[0].value;
   if (start == "")
-    document.getElementById("animal_modal_text_3").innerHTML = "Missing start-date";
+    document.getElementById("animal_modal_text_3").textContent = "Missing start-date";
   else if (end == "")
-    document.getElementById("animal_modal_text_3").innerHTML = "Missing end-date";
+    document.getElementById("animal_modal_text_3").textContent = "Missing end-date";
   else if (protocol == "---")
-    document.getElementById("animal_modal_text_3").innerHTML = "Missing protocol";
+    document.getElementById("animal_modal_text_3").textContent = "Missing protocol";
   else if (subprotocol == "---")
-    document.getElementById("animal_modal_text_3").innerHTML = "Missing sub-protocol";
+    document.getElementById("animal_modal_text_3").textContent = "Missing sub-protocol";
   else {
     let reload = false;
     let formData = new FormData();
@@ -59,17 +66,17 @@ async function UpdateAll(td, force) {
     // Send request to server:
     try {
       // Send request:
-      let response = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
+      let response = await AppFetch('/update/animal_data/all', {method: "POST", body: formData});
       // Handle response:
       let message = await response.text();
-      document.getElementById("animal_modal_text_3").innerHTML = message + " " + response.status;
+      document.getElementById("animal_modal_text_3").textContent = message + " " + response.status;
       if (response.ok) {
         td.classList.remove("not_stored");
-        document.getElementById("animal_modal_text_3").innerHTML = message || "success";
+        document.getElementById("animal_modal_text_3").textContent = message || "success";
       }
     } catch(error) {
       console.error("Failed fully updating animal data: " + error);
-      OpenErrorModal(undefined, undefined);
+      OpenErrorModal();
     }
   }
 }
@@ -121,5 +128,3 @@ function UpdateReportingYear(year) {
   console.log("New url: ", url)
   window.location = url.href;
 }
-
-

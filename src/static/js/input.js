@@ -83,7 +83,7 @@ async function UpdateDates(animal_id, autofill) {
   // Send request:
   let reload = false;
   try {
-    const response = await fetch(
+    const response = await AppFetch(
       '/update/animal_data/dates/' + animal_id + "/" + autofill,
       {method: "POST", body: new FormData(form)}
     );
@@ -102,8 +102,7 @@ async function UpdateDates(animal_id, autofill) {
     reload = true;
   } catch (error) {
     console.error("Updating dates failed:", error); 
-    OpenErrorModal("The result could not be confirmed. The dates may already have been saved. " +
-      "Reload and check before retrying", 500);
+    OpenErrorModal();
   }
 
   if (reload) window.location.reload()
@@ -113,7 +112,7 @@ async function GenerateWeightList(animal_id, weight) {
   let reload = false;
   // Send request:
   try {
-    let response = await fetch(
+    let response = await AppFetch(
       '/generate/weights/' + animal_id + "/" + weight, 
       {method: "POST"}
     );
@@ -130,8 +129,7 @@ async function GenerateWeightList(animal_id, weight) {
     }
   } catch (error) {
     console.error("Generating weights failed:", error); 
-    OpenErrorModal("The result could not be confirmed. The weights may already have been saved. " +
-      "Reload and check before retrying", 500);
+    OpenErrorModal();
   };
   if (reload) window.location.reload();
 }
@@ -141,7 +139,7 @@ async function UpdateSuffering(animal_id, suffering) {
   // Send request to server:
   try {
     // Send request:
-    let response = await fetch(
+    let response = await AppFetch(
       '/update/animal_data/suffering/' + animal_id + "/" + suffering, 
       {method: "POST", body: new FormData()}
     ); 
@@ -154,63 +152,78 @@ async function UpdateSuffering(animal_id, suffering) {
     }
   } catch(error) {
     console.error("Updating suffering failed:", error);
-    OpenErrorModal("The result could not be confirmed. Suffering may already have been saved. " +
-      "Reload and check before retrying.", 500);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }
 
 async function UpdateProgress(id) {
-  fetch("/generate/progress/" + id)
-    .then(response => response.json())
-    .then(data => {
-      let progress = document.getElementById("progress_bar");
-      progress.setAttribute("max", Number(data["total"]));
-      progress.setAttribute("value", Number(data["cur"]));
-      console.log("set progress to: ", data["cur"], progress);
-    })
-    .catch(error => console.error('Error:', error));
+  try {
+    const response = await AppFetch("/generate/progress/" + id);
+    // A job may not have started yet, or may have just finished.
+    if (response.status === 404) return true;
+    if (!response.ok) {
+      OpenErrorModal(await response.text(), response.status);
+      return false;
+    }
+    const data = await response.json();
+    const progress = document.getElementById("progress_bar");
+    progress.setAttribute("max", Number(data.total));
+    progress.setAttribute("value", Number(data.cur));
+    return true;
+  } catch (error) {
+    console.error("Failed retrieving document progress:", error);
+    OpenErrorModal("Progress could not be retrieved. The document may still be generating.");
+    return false;
+  }
 }
 
 async function GenerateMainSheet(animal_id, type) {
-  let progress = document.getElementById("progress_container");
-  progress.style = "display: block";
+  const progress = document.getElementById("progress_container");
+  progress.style.display = "block";
   const id = type + "/" + animal_id;
-  const interval = setInterval(() => UpdateProgress(id.replace("/", "_")), 2500);
-  const url = "/generate/" + id;
-  fetch(url, {"headers": {"Content-Type": "application/x-www-form-urlencoded"}}) 
-    .then(response => {
-      if (!response.ok)
-        throw new Error("Network response was not ok.");
-     
-      // If a header with infos exists, show message of removed procedures:
-      if (response.headers.has('Filtered-Procedures-JSON')) {
-        const filtered_procedures = JSON.parse(response.headers.get('Filtered-Procedures-JSON'));
-        if (filtered_procedures.length > 0) {
-          msg = "The following procedures where removed since they took place after the "
+  const interval = setInterval(async () => {
+    if (!await UpdateProgress(id.replace("/", "_"))) clearInterval(interval);
+  }, 2500);
+  let downloadUrl;
+  let link;
+  try {
+    const response = await AppFetch("/generate/" + id);
+    if (!response.ok) {
+      OpenErrorModal(await response.text(), response.status);
+      return;
+    }
+    const filtered = response.headers.get("Filtered-Procedures-JSON");
+    if (filtered) {
+      const filtered_procedures = JSON.parse(filtered);
+      if (filtered_procedures.length > 0) {
+        let msg = "The following procedures where removed since they took place after the "
             + "sacrifice of the animal: \n";
-          filtered_procedures.forEach(p => {
-            msg += "- " + p["name"] + ": " + p["start_date"] + " - " + p["end_date"] + "\n"
-          });
-          alert(msg);
-        }
+        filtered_procedures.forEach(p => {
+          msg += "- " + p.name + ": " + p.start_date + " - " + p.end_date + "\n";
+        });
+        alert(msg);
       }
-      return response.blob()
-    })
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = animal_id + "_" + type + ".docx";
-      link.click();
-      progress.style = "display: none";
-      clearInterval(interval);
-    })
-    .catch(error => {
-      clearInterval(interval);
-      progress.style = "display: none";
-      alert("Error:", error.message);
-    });
+    }
+    downloadUrl = URL.createObjectURL(await response.blob());
+    link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = animal_id + "_" + type + ".docx";
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error("Failed downloading document:", error);
+    OpenErrorModal("The document could not be downloaded. Please try again.");
+  } finally {
+    clearInterval(interval);
+    progress.style.display = "none";
+    if (downloadUrl) {
+      setTimeout(() => {
+        URL.revokeObjectURL(downloadUrl);
+        link?.remove();
+      }, 100);
+    }
+  }
 }
 
 function AddOrEdit(elem) {
@@ -233,7 +246,7 @@ async function Clear(animal_id) {
   // Send request to server:
   try {
     // Send request:
-    let response = await fetch(
+    let response = await AppFetch(
       '/clear/' + encodeURIComponent(animal_id), 
       {method: "POST", body: new FormData()}
     ); 
@@ -250,8 +263,7 @@ async function Clear(animal_id) {
     }
   } catch(error) {
     console.error("Failed clearing animal data:", error);
-    OpenErrorModal("The result could not be confirmed. The animal data may already have been cleared. : " +
-      "Reload and check before retrying", 500);
+    OpenErrorModal();
   }
 
   if (reload) window.location.reload();
@@ -285,7 +297,7 @@ async function CloseModalNotes(animal_id, save) {
   let reload = false;
   try {
     // Send request:
-    let response = await fetch('/store/notes/'+animal_id+'/'+category, {method: "POST", body: formData}); 
+    let response = await AppFetch('/store/notes/'+animal_id+'/'+category, {method: "POST", body: formData});
     // Handle response:
     console.log('HTTP response code: ' + response.status); 
     if (!response.ok) {
@@ -297,8 +309,7 @@ async function CloseModalNotes(animal_id, save) {
     }
   } catch(error) {
     console.error("Failed saveing notes:", error);
-    OpenErrorModal("The result could not be confirmed. The notes might have been saved. " +
-      "Reload and check before retrying", 500);
+    OpenErrorModal();
   }
 
   if (reload) window.location.reload();
@@ -378,7 +389,7 @@ async function CloseModalWeights(animal_id, save) {
   let reload = false;
   try {
     // Send request:
-    let r = await fetch('/update/animal_data/weights/'+animal_id, {method: "POST", body: formData}); 
+    let r = await AppFetch('/update/animal_data/weights/'+animal_id, {method: "POST", body: formData});
     // Handle response:
     console.log('HTTP response code: ' + r.status); 
     if (!r.ok) {
@@ -389,8 +400,7 @@ async function CloseModalWeights(animal_id, save) {
     }
   } catch(error) {
     console.error("Error updating animal weights:", error);
-    OpenErrorModal("The result could not be confirmed. The weights might have been updated. " +
-      "Reload and check before retrying", 500);
+    OpenErrorModal();
   }
   if (reload) window.location.reload();
 }

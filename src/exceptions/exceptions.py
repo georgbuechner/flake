@@ -28,7 +28,7 @@ class InvalidTypeException(FlakeError):
 
 class InvalidNameException(FlakeError): 
     def __init__(self, name: str, msg: str):
-        self.msg = f"Invalid name: <i>{name}</i>. {msg}"
+        self.msg = f"Invalid name: {name}. {msg}"
         self.status = 406
         super().__init__(self.msg, self.status)
 
@@ -37,7 +37,7 @@ class MissingEntryException(FlakeError):
         self.msg = "Missing entry: "
         if msg != None:
             self.msg = msg
-        self.msg += f"<i>{entry}</i>!"
+        self.msg += f"{entry}!"
         self.status = 406
         super().__init__(self.msg, self.status)
 
@@ -55,8 +55,8 @@ class ParseException(FlakeError):
 class InvalidDateException(FlakeError): 
     def __init__(self, date_str: str, formats: str):
         self.msg = (
-            f"The date \"{date_str}\" did not match any of the following"
-            + f"formats: \"<i>{formats}</i>\""
+            f"The date \"{date_str}\" did not match any of the following "
+            + f"formats: \"{formats}\""
         )
         super().__init__(self.msg, 400)
 

@@ -1,6 +1,5 @@
 import json
 import html
-from sys import exception
 from flask import (
     Flask, 
     jsonify, 
@@ -12,11 +11,13 @@ from flask import (
     session
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
-from data_manager.dmanager import DManager, date_filled, parse_weight
+from data_manager.dmanager import DManager, date_filled, parse_weight, get_category_table
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import *
-from werkzeug.exceptions import HTTPException, Forbidden
+from exceptions.handlers import handle_request_error, is_ajax_request, register_error_handlers
+from werkzeug.exceptions import Unauthorized, Forbidden
+from PIL import Image, UnidentifiedImageError
 import os
 import subprocess
 import re
@@ -49,27 +50,15 @@ login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 dmanager = DManager()
+register_error_handlers(app)
 
 def handle_exception(func): 
     @wraps(func)
     def wrapper(*args, **kwargs):
         try: 
             return func(*args, **kwargs)
-        except FlakeError as error:
-            db.session.rollback()
-            return error.msg, error.status
-        except HTTPException: 
-            db.session.rollback()
-            app.logger.exception("HTTP error in %s", func.__name__)
-            raise
         except Exception as error:
-            db.session.rollback()
-            app.logger.exception("unexpected error in %s", func.__name__)
-            return (
-                "Sorry, an unexpected error occured. "
-                "The error has been logged. Contact the system administration.", 
-                500
-            )
+            return handle_request_error(error)
     return wrapper
 
 def create_root_user_if_not_exists():
@@ -129,6 +118,8 @@ def user_loader(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
+    if is_ajax_request():
+        raise Unauthorized("Your session has expired. Log in again before retrying.")
     return redirect("/login")
 
 @app.route("/")
@@ -430,12 +421,18 @@ def input(animal_id: str, category: str):
     
     @return Rendered html experiment-data input page from jinja2-template.
     """
+    if category:
+        get_category_table(EXPERIMENT_TABLES, category)
     animal_data = db.session.get(AnimalData, animal_id)
+    if animal_data is None:
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     # Redirect 
     if animal_data.user != current_user.name and not current_user.admin:
         return redirect("/")
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = db.session.get(General, animal_id)
+    if general is None:
+        raise EntryNotFound("No experiment data found. Select a protocol and subprotocol first.")
     availible_viruses = sort_query(PVirus.query.filter(PVirus.protocol == general.experiment), "name")
     availible_medication= sort_query(
         PMedication.query.filter(PMedication.protocol == general.experiment), "name"
@@ -450,8 +447,9 @@ def input(animal_id: str, category: str):
 
     # Create ref to previous page
     ref = False
-    if "/users/" in request.referrer or "/protocols/" in request.referrer: 
-        ref_name = request.referrer[request.referrer.rfind("/")+1:]
+    referrer = request.referrer or ""
+    if "/users/" in referrer or "/protocols/" in referrer:
+        ref_name = referrer[referrer.rfind("/")+1:]
         ref = {
             "name": urllib.parse.unquote(ref_name), 
             "link": request.referrer
@@ -514,7 +512,7 @@ def user_management():
 @handle_exception
 def delete_verification_code(email: str):
     if not current_user.admin:
-        return redirect("/") 
+        raise Forbidden("Only admins can delete verification keys")
     # Delete verification code if exists
     existing_entry = VerificationCode.query.filter_by(email=email).first()
     if existing_entry:
@@ -640,19 +638,37 @@ def upload_signature(escaped_user: str):
     file = content.get("sig")
     if file is None:
         raise MissingEntryException("sig")
-    remove_signature_if_present(current_user.name)
-    if file.mimetype == "image/jpeg":
-        remove_if_exists(f"src/signatures/{escaped_user}.png")
-        file.save(f"src/signatures/{escaped_user}.jpg")
-    else:
-        remove_if_exists(f"src/signatures/{escaped_user}.jpg")
-        file.save(f"src/signatures/{escaped_user}.png")
+    formats = {"image/png": ("PNG", "png"), "image/jpeg": ("JPEG", "jpg")}
+    if file.mimetype not in formats:
+        raise InvalidTypeException("Signature must be a PNG or JPEG image")
+    image_format, extension = formats[file.mimetype]
+    filename = escape(current_user.name)
+    # Stage and validate the upload before replacing the existing signature.
+    # Using the same filesystem lets os.replace perform an atomic replacement.
+    with tempfile.TemporaryDirectory(prefix=".signature-", dir=SIGNATURE_PATH) as directory:
+        staged = os.path.join(directory, "upload")
+        file.save(staged)
+        try:
+            with Image.open(staged) as image:
+                if image.format != image_format:
+                    raise InvalidTypeException("Signature contents do not match the image type")
+                image.verify()
+        except (UnidentifiedImageError, OSError, SyntaxError) as error:
+            raise InvalidTypeException("Signature is not a valid PNG or JPEG image") from error
+        os.replace(staged, os.path.join(SIGNATURE_PATH, f"{filename}.{extension}"))
+    other_extension = "jpg" if extension == "png" else "png"
+    try:
+        os.remove(os.path.join(SIGNATURE_PATH, f"{filename}.{other_extension}"))
+    except FileNotFoundError:
+        pass
     return "", 200
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
 @login_required
 def availible(category: str):
+    if category:
+        get_category_table(DEFINITION_TABLES, category)
     return render_template(
         "definitions.html", 
         category=category,
@@ -685,12 +701,7 @@ def protocol(escaped_protocol: str):
             is_setup=dmanager.subprotocol_is_setup,
             msg=""
         )
-    return render_template(
-        "protocols.html", 
-        protocols=Protocol.query.all(),
-        is_setup=dmanager.protocol_is_setup,
-        msg="Protocol not found"
-    )
+    raise EntryNotFound(f"Protocol \"{escaped_protocol}\" not found")
 
 @app.route("/settings/backups/add", methods=["POST"])
 @login_required
@@ -1104,6 +1115,8 @@ def delete_protocol_entry(category: str, uuid: str):
 @login_required
 def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     protocol = db.session.get(Protocol, escaped_protocol)
+    if protocol is None or subprotocol not in protocol.get_subprotocols():
+        raise EntryNotFound(f"Subprotocol \"{escaped_protocol}/{subprotocol}\" not found")
     full_protocol = f"{escaped_protocol}/{subprotocol}"
     data, definitions = dmanager.get_protocol_data(category, full_protocol)
     procedures = PProcedure.query.filter(PProcedure.protocol == full_protocol)
@@ -1139,14 +1152,11 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
 @handle_exception
 def add_protocal():
     escaped_name = escape(request.form["name"]).strip()
+    if not escaped_name:
+        raise InvalidNameException(request.form["name"], "Protocol name must not be empty")
     protocol = db.session.get(Protocol, escaped_name)
     if protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg="A protocol with this name already exists!"
-        )
+        raise DublicateEntry("A protocol with this name already exists!")
 
     protocol = Protocol(
         name=request.form["name"],
@@ -1164,24 +1174,11 @@ def add_subprotocal(escaped_protocol):
     protocol = db.session.get(Protocol, escaped_protocol)
     subprotocol = request.form["name"]
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg="Matching protocol does not exist!"
-        )
-    if " " in subprotocol or subprotocol in protocol.get_subprotocols():
-        if " " in subprotocol:
-            msg = f"Subprotocol must not contain whitespaces: {subprotocol}"
-        else: 
-            msg = "Subprotocol already exists!"
-        return render_template(
-            "protocol.html", 
-            protocol=protocol,
-            subprotocols=protocol.get_subprotocols(),
-            is_setup=dmanager.subprotocol_is_setup,
-            msg=msg
-        )
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
+    if not subprotocol or " " in subprotocol:
+        raise InvalidNameException(subprotocol, "Subprotocol must not be empty or contain spaces")
+    if subprotocol in protocol.get_subprotocols():
+        raise DublicateEntry("Subprotocol already exists!")
     protocol.add_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
@@ -1192,12 +1189,7 @@ def add_subprotocal(escaped_protocol):
 def remove_protocol(escaped_protocol: str):
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg=f"Matching protocol \"{escaped_protocol}\" does not exist!"
-        )
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
     dmanager.remove_protocol(protocol, escaped_protocol)
     db.session.commit()
     return redirect("/settings/protocols")
@@ -1208,12 +1200,7 @@ def remove_protocol(escaped_protocol: str):
 def remove_subprotocol(escaped_protocol: str, subprotocol: str):
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg=f"Matching protocol {escaped_protocol} does not exist!"
-        )
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
     if subprotocol not in protocol.get_subprotocols(): 
         # Check again with '_' replaced by '/' (for corrupted subprotocols)
         subprotocol = subprotocol.replace("_", "/");

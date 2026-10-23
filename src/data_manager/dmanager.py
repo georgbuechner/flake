@@ -1,6 +1,7 @@
 from urllib.parse import unquote
 import clevercsv 
 import json
+import math
 import os
 import random
 import string
@@ -457,15 +458,17 @@ class DManager:
     def update_experiment_data_entry(
         self, animal_id: str, category: str, data: Dict[str, Any]
     ):
+        Table = get_category_table(EXPERIMENT_TABLES, category)
+        require_entry_fields(category, data, experiment=True)
         # Check name:
         if "name" not in data or data["name"] == "---": 
             raise MissingEntryException(entry="name")
         if category == "procedures" and "experimenter" not in data:
             raise MissingEntryException(entry="experimenter")
         # Update or add element:
-        Table = EXPERIMENT_TABLES[category] 
-        element = db.session.get(Table, data["uuid"])
-        if data["uuid"] and (element is None or element.animal_id != animal_id):
+        uuid = data.get("uuid", "")
+        element = db.session.get(Table, uuid) if uuid else None
+        if uuid and (element is None or element.animal_id != animal_id):
             raise EntryNotFound("No entry found for this animal.")
         if element:
             validate_unchanged_name(element, data["name"])
@@ -528,7 +531,7 @@ class DManager:
     def delete_experiment_data_entry(
         self, animal_id: str, category: str, uuid: str
     ) -> None:
-        Table = EXPERIMENT_TABLES[category] 
+        Table = get_category_table(EXPERIMENT_TABLES, category)
         element = db.session.get(Table, uuid)
         if element:
             db.session.delete(element)
@@ -592,6 +595,8 @@ class DManager:
         return data, filtered_procedures
 
     def get_protocol_data(self, category: str, full_protocol: str): 
+        if category not in ("general", "watercontrol"):
+            get_category_table(PROTOCOL_TABLES, category)
         # Get tables which should have only 1 element:
         if category not in PROTOCOL_TABLES:
             if category == "general":
@@ -600,7 +605,7 @@ class DManager:
                 res = PWatercontrol.query.filter(PWatercontrol.protocol == full_protocol)
             return table_to_json(res.first()) if res.first() else {}, {}
         # Get tables for all other categories.
-        Table = PROTOCOL_TABLES[category]
+        Table = get_category_table(PROTOCOL_TABLES, category)
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
         # Sort tables by days_after_start:
         if category == "procedures":
@@ -626,11 +631,13 @@ class DManager:
             available_names = {line.name for line in ALine.query.all()} | counts.keys()
             definitions = [ALine(name) for name in sorted(available_names - configured_names)]
         else:
-            definitions = sort_query(DEFINITION_TABLES[category].query.all(), "name")
+            definitions = sort_query(get_category_table(DEFINITION_TABLES, category).query.all(), "name")
         return protocol_data, definitions
 
     def get_p9_data(self, escaped_protocol: str, use_year: str, force: bool): 
         protocol = db.session.get(Protocol, escaped_protocol)
+        if protocol is None:
+            raise EntryNotFound(f'Protocol "{escaped_protocol}" not found')
         subprotocols = {}
         error_json = {}
         num_errors = 0
@@ -658,7 +665,7 @@ class DManager:
                 default = get_protocol_entry_by_name(PProcedure, general.experiment, p.name)
                 if default is None and p.name != UNEXPECTED_DEATH: 
                     raise MissingEntryException(
-                        entry=p.name, msg=f"For animal: <i>{general.animal_id}</i>: no procedure: "
+                        entry=p.name, msg=f"For animal: {general.animal_id}: no procedure: "
                     )
                 if (p.start_date, p.end_date) not in data: 
                     data[(p.start_date, p.end_date)] = {
@@ -787,9 +794,26 @@ class DManager:
             raise InvalidTypeException("Weights must be a non-empty JSON list of numbers") from error
         if not isinstance(parsed_weights, list) or not parsed_weights:
             raise InvalidTypeException("Weights must be a non-empty JSON list of numbers")
+        for index, weight in enumerate(parsed_weights):
+            if weight is None and index > 0:
+                continue  # An unmeasured day may be empty.
+            try:
+                finite = type(weight) in (int, float) and math.isfinite(weight)
+            except OverflowError:
+                finite = False
+            if (not finite
+                    or weight < 0 or (index == 0 and weight == 0)):
+                raise InvalidTypeException("Weights must contain finite, non-negative numbers; the first weight must be positive")
+        try:
+            parsed_mask = json.loads(water_control_mask)
+        except (TypeError, ValueError) as error:
+            raise InvalidTypeException("Watercontrol must be a JSON list of booleans") from error
+        if (not isinstance(parsed_mask, list) or len(parsed_mask) != len(parsed_weights)
+                or any(type(value) is not bool for value in parsed_mask)):
+            raise InvalidTypeException("Watercontrol must contain one boolean for each weight")
         start_weight = parse_weight(parsed_weights[0])
-        general.watercontrol_mask = water_control_mask
-        general.weights = weights
+        general.watercontrol_mask = json.dumps(parsed_mask)
+        general.weights = json.dumps(parsed_weights)
         general.set_start_weight(start_weight)
         self.__update_stored(animal_id)
 
@@ -797,6 +821,8 @@ class DManager:
         self, category: str, data: Dict[str, Any]
     ) -> None:
         """! Updates or creates new definition entry. """
+        Table = get_category_table(DEFINITION_TABLES, category)
+        require_entry_fields(category, data)
         # Check neccesarry fields are included:
         if "name" not in data or data["name"] == "":
             raise MissingEntryException(entry="name")
@@ -805,7 +831,6 @@ class DManager:
                 name=data["name"], msg="'/' not allowed for definition names!"
             )
         # Create or update entry
-        Table = DEFINITION_TABLES[category]
         original_name = data.get("original_name")
         if original_name:
             definitions_entry = db.session.get(Table, original_name)
@@ -823,6 +848,9 @@ class DManager:
         self, category: str, protocol: str, data: Dict[str, Any]
     ) -> None:
         """! Updates or creates new definition entry. """
+        if category not in ("general", "watercontrol"):
+            get_category_table(PROTOCOL_TABLES, category)
+        require_entry_fields(category, data)
         # Get protocol-entry from table definied by category
         if category == "general":
             protocol_entry = db.session.get(PGeneral, data["uuid"])
@@ -843,9 +871,10 @@ class DManager:
 
         if "name" not in data or data["name"] == "---":
             raise MissingEntryException(entry="name")
-        Table = PROTOCOL_TABLES[category]
-        protocol_entry = db.session.get(Table, data["uuid"])
-        if data["uuid"]:
+        Table = get_category_table(PROTOCOL_TABLES, category)
+        uuid = data.get("uuid", "")
+        protocol_entry = db.session.get(Table, uuid) if uuid else None
+        if uuid:
             if protocol_entry is None or protocol_entry.protocol != protocol:
                 raise EntryNotFound("No entry found for this subprotocol.", 404)
         if protocol_entry is not None:
@@ -886,14 +915,14 @@ class DManager:
         db.session.add(protocol_entry)
 
     def delete_protocol_entry(self, category: str, uuid: str) -> None:
-        Table = PROTOCOL_TABLES[category]
+        Table = get_category_table(PROTOCOL_TABLES, category)
         protocol_entry = db.session.get(Table, uuid)
         if protocol_entry is None:
             raise EntryNotFound(f"Entry {uuid} of {category} not found!")
         db.session.delete(protocol_entry)
 
     def delete_definitions_entry(self, category: str, name: str) -> None:
-        Table = DEFINITION_TABLES[category]
+        Table = get_category_table(DEFINITION_TABLES, category)
         definition_entry = db.session.get(Table, name)
         if definition_entry is None:
             raise EntryNotFound(f"Entry {name} of {category} not found!")
@@ -1197,9 +1226,36 @@ class DManager:
 
 def parse_weight(weight: str | float):
     try: 
-        return float(weight) 
-    except (ValueError, TypeError) as error:
+        value = float(weight)
+    except (ValueError, TypeError, OverflowError) as error:
         raise InvalidTypeException(f"Weight must be number: {weight}") from error
+    if isinstance(weight, bool) or not math.isfinite(value) or (value <= 0 and value != -1):
+        raise InvalidTypeException("Weight must be a positive finite number, or -1 for an estimate")
+    return value
+
+
+def get_category_table(tables, category):
+    if category not in tables:
+        raise EntryNotFound(f'Unknown category "{category}"')
+    return tables[category]
+
+
+def require_entry_fields(category, data, *, experiment=False):
+    fields = {
+        "medication": ("name", "kind", "procedure", "amount", "concentration", "dosis"),
+        "procedures": ("name", "days_after_start", "duration", "requires_medication", "requires_virus"),
+        "viruses": ("name", "procedure", "amount"),
+        "kinds": ("name",), "lines": ("name",),
+        "allowed_animals": ("name", "num_availible_animals"),
+        "general": ("uuid", "allowed_users", "suffering"),
+        "watercontrol": ("uuid", "days_after_start", "duration"),
+    }
+    required = fields[category]
+    if experiment and category == "procedures":
+        required = ("name", "start_date", "end_date", "experimenter", "protocol_entry_uuid")
+    for field in required:
+        if field not in data:
+            raise MissingEntryException(field)
 
 def get_surgery_start(protocol: str):
     procedures = db.session.query(PProcedure).filter_by(protocol=protocol)
