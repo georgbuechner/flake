@@ -92,3 +92,6 @@ schema changes, but data cleanup or transformation must be written manually in
 `upgrade()`. Test the migration against a database copy before committing the
 model and revision together. Do not use `alembic stamp` unless intentionally
 baselining a database, because it records revisions without running them.
+
+The type decisions for issue #3 and the scope of its migration are documented in
+[docs/database-types.md](docs/database-types.md).

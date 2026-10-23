@@ -53,6 +53,49 @@ class DefinitionNameTests(unittest.TestCase):
                 **self.data, "original_name": "Original",
             })
 
+    def test_procedure_scalar_form_values_persist_on_create_and_edit(self):
+        data = {**self.data, "days_after_start": "-3", "requires_medication": "2",
+                "requires_virus": "1"}
+        self.manager.update_definitions_entry("procedures", data)
+        self.manager.update_protocol_entry("procedures", "protocol/sub", data)
+        db.session.commit()
+        db.session.expire_all()
+        definition = DEFINITION_TABLES["procedures"].query.one()
+        procedure = PROTOCOL_TABLES["procedures"].query.one()
+        self.assertEqual(definition.days_after_start, -3)
+        for row in (definition, procedure):
+            self.assertEqual((row.requires_medication, row.requires_virus), (2, 1))
+        self.manager.update_definitions_entry("procedures", {
+            **data, "original_name": "Original", "days_after_start": "0",
+            "requires_medication": "4",
+        })
+        self.manager.update_protocol_entry("procedures", "protocol/sub", {
+            **data, "uuid": procedure.uuid, "requires_medication": "4",
+        })
+        db.session.commit()
+        db.session.expire_all()
+        self.assertEqual(definition.days_after_start, 0)
+        for row in (definition, procedure):
+            self.assertEqual(row.requires_medication, 4)
+
+    def test_unset_procedure_values_persist_as_null_and_remain_usable(self):
+        data = {**self.data, "days_after_start": "---", "duration": " ",
+                "requires_medication": "", "requires_virus": "--"}
+        self.manager.update_definitions_entry("procedures", data)
+        self.manager.update_protocol_entry("procedures", "protocol/sub", data)
+        db.session.commit()
+        db.session.expire_all()
+        for Table in (DEFINITION_TABLES["procedures"], PROTOCOL_TABLES["procedures"]):
+            row = Table.query.one()
+            for field in ("days_after_start", "duration", "requires_medication", "requires_virus"):
+                self.assertIsNone(getattr(row, field))
+        self.assertIsNone(self.manager.missing_required_medication("protocol/sub"))
+        self.assertIsNone(self.manager.missing_required_virus("protocol/sub"))
+        procedure = EXPERIMENT_TABLES["procedures"].from_default(
+            "animal", "Test", PROTOCOL_TABLES["procedures"].query.one(),
+        )
+        self.assertEqual(procedure.start_date, "")
+
     def test_protocol_names_locked_but_other_values_editable(self):
         self.manager.update_definitions_entry("procedures", self.data)
         for category in ("medication", "procedures", "viruses"):

@@ -207,7 +207,7 @@ function Set(elem, availible) {
         if (el.id === "weight_independant") BlockAmount();
       }
       else 
-        el.value = value; 
+        el.value = value ?? "";
     }
   }
 }

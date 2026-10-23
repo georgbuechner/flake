@@ -11,6 +11,26 @@ from utils.dt_utils import date_filled, unify_date, daterange_str
 
 db = SQLAlchemy()
 
+
+def optional_text(value):
+    """Use NULL for unset schedule values, preserving range notation."""
+    if value is None or (isinstance(value, str) and value.strip() in ("", "-", "--", "---")):
+        return None
+    return str(value)
+
+
+def optional_integer(value, field, non_negative=False):
+    text = optional_text(value)
+    if text is None:
+        return None
+    if type(value) is not int and not (isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]+", text.strip())):
+        raise InvalidTypeException(f"{field} must be an integer or left blank.")
+    number = int(text)
+    if not -(2**63) <= number < 2**63 or (non_negative and number < 0):
+        raise InvalidTypeException(f"Invalid integer for {field}: {value}")
+    return number
+
+
 class User(db.Model):
     """!An admin user capable of viewing reports.
 
@@ -254,16 +274,24 @@ class AProcedure(db.Model):
     __tablename__ = "availible_procedures"
 
     name = db.Column(db.String, primary_key=True) 
-    days_after_start = db.Column(db.String, primary_key=False)
+    days_after_start = db.Column(db.Integer, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
     requires_medication = db.Column(db.Integer, primary_key=False)
     requires_virus = db.Column(db.Integer, primary_key=False)
 
+    @validates("days_after_start", "requires_medication", "requires_virus")
+    def validate_integer(self, key, value):
+        return optional_integer(value, key, non_negative=key != "days_after_start")
+
+    @validates("duration")
+    def validate_duration(self, key, value):
+        return optional_text(value)
+
     def __init__(
         self, 
         name: str, 
-        days_after_start: str, 
+        days_after_start: int | str | None,
         duration: str, 
         surgery: bool,
         requires_medication: int,
@@ -273,8 +301,8 @@ class AProcedure(db.Model):
         self.days_after_start = days_after_start 
         self.duration = duration 
         self.surgery = surgery
-        self.requires_medication = requires_medication if type(requires_medication) == int else 0
-        self.requires_virus = requires_virus if type(requires_virus) == int else 0
+        self.requires_medication = requires_medication
+        self.requires_virus = requires_virus
 
     @classmethod
     def from_json(cls, procedure: Dict[str, any]): 
@@ -361,7 +389,7 @@ class PAllowedMice(db.Model):
 
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
-    name = db.Column(db.Integer, primary_key=False) 
+    name = db.Column(db.String, primary_key=False)
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
 
     @validates("num_availible_animals")
@@ -474,12 +502,21 @@ class PProcedure(db.Model):
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
     name = db.Column(db.String, primary_key=False) 
+    # Legacy offset ranges are retained; automatic scheduling still needs a scalar.
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
     surgery = db.Column(db.Boolean, primary_key=False)
     optional = db.Column(db.Boolean, primary_key=False)
     requires_medication = db.Column(db.Integer, primary_key=False)
     requires_virus = db.Column(db.Integer, primary_key=False)
+
+    @validates("days_after_start", "duration")
+    def validate_schedule(self, key, value):
+        return optional_text(value)
+
+    @validates("requires_medication", "requires_virus")
+    def validate_count(self, key, value):
+        return optional_integer(value, key, non_negative=True)
 
     def __init__(
         self, 
@@ -499,8 +536,8 @@ class PProcedure(db.Model):
         self.duration = duration
         self.surgery = surgery
         self.optional = optional
-        self.requires_medication = requires_medication if type(requires_medication) == int else 0
-        self.requires_virus = requires_virus if type(requires_virus) == int else 0
+        self.requires_medication = requires_medication
+        self.requires_virus = requires_virus
 
     @classmethod
     def from_form(cls, protocol: str, procedure: Dict[str, any]): 
@@ -586,8 +623,13 @@ class PWatercontrol(db.Model):
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False, unique=True)
     allowed = db.Column(db.Boolean, primary_key=False) 
+    # Preserve legacy ranges without choosing a start or duration for the user.
     days_after_start = db.Column(db.String, primary_key=False)
     duration = db.Column(db.String, primary_key=False)
+
+    @validates("days_after_start", "duration")
+    def validate_schedule(self, key, value):
+        return optional_text(value)
 
     def __init__(
         self, protocol: str, allowed: bool, days_after_start: str, duration: str
@@ -714,7 +756,7 @@ class Medication(db.Model):
     dosis = db.Column(db.String, primary_key=False)
     weight_independant = db.Column(db.Boolean, primary_key=False)
     toe_pinch = db.Column(db.Boolean, primary_key=False)
-    procedure = db.Column(db.Integer, primary_key=False)
+    procedure = db.Column(db.String, primary_key=False)
     protocol_entry_uuid = db.Column(db.String, primary_key=False)
 
     def __init__(
@@ -865,7 +907,7 @@ class Procedure(db.Model):
         return cls(
             animal_id, 
             procedure.name, 
-            procedure.days_after_start, 
+            str(procedure.days_after_start) if procedure.days_after_start is not None else "",
             "", 
             experimenter, 
             procedure.uuid

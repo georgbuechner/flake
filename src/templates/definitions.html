@@ -141,11 +141,11 @@
         {% for procedure in procedures %}
            <tr>
              <td name="name">{{procedure.name}}</td> 
-             <td name="days_after_start">{{procedure.days_after_start}}</td> 
-             <td name="duration">{{procedure.duration}}</td> 
+             <td name="days_after_start">{{procedure.days_after_start if procedure.days_after_start is not none else ''}}</td>
+             <td name="duration">{{procedure.duration if procedure.duration is not none else ''}}</td>
              <td name="surgery">{{procedure.surgery}}</td> 
-             <td name="requires_medication" style="display: none">{{procedure.requires_medication}}</td> 
-             <td name="requires_virus" style="display: none">{{procedure.requires_virus}}</td> 
+             <td name="requires_medication" style="display: none">{{procedure.requires_medication if procedure.requires_medication is not none else ''}}</td>
+             <td name="requires_virus" style="display: none">{{procedure.requires_virus if procedure.requires_virus is not none else ''}}</td>
              <td 
                 {% if not current_user.admin %}
                   onclick="Restricted();"

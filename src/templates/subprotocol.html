@@ -220,12 +220,12 @@
            <tr>
              <td name="uuid" style="display:none">{{procedure.uuid}}</td> 
              <td name="name">{{procedure.name}}</td> 
-             <td name="days_after_start">{{procedure.days_after_start}}</td> 
-             <td name="duration">{{procedure.duration}}</td> 
+             <td name="days_after_start">{{procedure.days_after_start if procedure.days_after_start is not none else ''}}</td>
+             <td name="duration">{{procedure.duration if procedure.duration is not none else ''}}</td>
              <td name="surgery">{{procedure.surgery}}</td> 
              <td name="optional">{{procedure.optional}}</td> 
-             <td name="requires_medication" style="display: none">{{procedure.requires_medication}}</td> 
-             <td name="requires_virus" style="display: none">{{procedure.requires_virus}}</td> 
+             <td name="requires_medication" style="display: none">{{procedure.requires_medication if procedure.requires_medication is not none else ''}}</td>
+             <td name="requires_virus" style="display: none">{{procedure.requires_virus if procedure.requires_virus is not none else ''}}</td>
              <td onclick="DelProtocolEntry('procedures', '{{procedure.uuid}}');">
                <i class="mod u" title="Remove entry.">remove</i>
              </td>
@@ -285,7 +285,7 @@
             <td><label for="days_after_start">Days after start:</label>
             <td><input 
               type="text" name="days_after_start" id="days_after_start" placeholder="days after start"
-              value="{{data['days_after_start'] if 'days_after_start' in data}}"
+              value="{{data.get('days_after_start') if data.get('days_after_start') is not none else ''}}"
               required
             ></td>
           </tr>
@@ -293,7 +293,7 @@
             <td><label for="duration">Duration:</label>
             <td><input 
               type="text" name="duration" id="duration" placeholder="duration in days"
-              value="{{data['duration'] if 'duration' in data}}"
+              value="{{data.get('duration') if data.get('duration') is not none else ''}}"
               required
             ></td>
           </tr>
