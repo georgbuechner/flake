@@ -758,20 +758,8 @@ def update_animal_subprotocol():
     subprotocol = request.form.get("subprotocol") or ""
     animal_id = request.form.get("animal_id") or ""
     force = request.form.get("force") == "true"
-    try:
-        dmanager.set_subprotocol(animal_id, subprotocol, force) 
-        db.session.commit()
-    except ConfirmationRequired:
-        raise 
-    except Exception: 
-        try:
-            dmanager.set_subprotocol(animal_id, "---", force)
-            db.session.commit()
-        except Exception: 
-            app.logger.exception(
-                "Failed to reset subprotocol for animal %s", animal_id
-            )
-        raise
+    dmanager.set_subprotocol(animal_id, subprotocol, force) 
+    db.session.commit()
     return "", 200
 
 @app.route("/update/animal_data/protocol", methods=["POST"])

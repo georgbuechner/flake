@@ -22,7 +22,7 @@ function Close(modal_name) {
   dialog.close();
 }
 
-function DelSub(protocol, subprotocol) {
+async function DelSub(protocol, subprotocol) {
   let params = protocol 
   if (subprotocol != "") {
     // Check for corrupted subprotocols (if they include the protocal again)
@@ -36,13 +36,21 @@ function DelSub(protocol, subprotocol) {
   }
   console.log(protocol, subprotocol, params);
   // Send request:
-  fetch("/settings/protocols/remove/" + params, 
-    {method: "POST", body: new FormData})
-  .then((response) => {
-    if (response.ok)
-      window.location=window.location;
-    else
+  let reload = false;
+  try {
+    const response = await fetch(
+      "/settings/protocols/remove/" + params, 
+      {method: "POST", body: new FormData}
+    );
+    if (response.ok) {
+      reload = true;
+    } else {
       response.text().then(text => OpenErrorModal(text, response.status));
-  })
-  .catch((error) => OpenErrorModal("Unkown Error.", response.status));
+    }
+  } catch(error) {
+    OpenErrorModal(undefined, undefined);
+  }
+  if (reload) {
+    window.location.reload();
+  }
 }

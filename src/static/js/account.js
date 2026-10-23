@@ -16,18 +16,18 @@ async function UploadSignature(escaped_user) {
   // Send request to server.
   try {
     // Send request:
-    let r = await fetch('/upload/signature/'+escaped_user, 
+    let response = await fetch('/upload/signature/'+escaped_user, 
      {method: "POST", body: formData, signal: ctrl.signal}); 
     // Handle response:
-    if (r.ok) {
-      if (r.status === 206) {
-        let response_text = await r.text()
+    if (response.ok) {
+      if (response.status === 206) {
+        let response_text = await response.text()
         alert(response_text);
       }
       window.location=window.location;
     }
     else
-      alert("Something went wrong: Error code: " + r.status);
+      alert("Something went wrong: Error code: " + response.status);
   } catch(e) {
     alert("Something went wrong: " + e);
   }

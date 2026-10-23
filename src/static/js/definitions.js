@@ -4,17 +4,24 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("ADDED EVENTLISTENER: ", form.action);
     event.preventDefault();
     const formData = new FormData(form);
-    fetch(form.action, { method: form.method, body: formData, })
-      .then((response) => {
-        if (!response.ok)
-          response.text().then(text => OpenErrorModal(text, response.status, "edit_modal"));
-        else 
-          window.location=window.location;
-        // Handle successful response
-      })
-      .catch((error) => {
-          OpenErrorModal("Unkown error", 500, "edit_modal");
-      });
+    let reload = false;
+    try {
+      const response = await fetch(
+        form.action, 
+        { method: form.method, body: formData, }
+      );
+      if (!response.ok) {
+        const message = await response.text();
+        OpenErrorModal(message, response.status, "edit_modal");
+      } else {
+        reload = true;
+      }
+    } catch(error) {
+      OpenErrorModal("Unkown error", 500, "edit_modal");
+    };
+    if (reload) {
+      window.location.reload();
+    }
   });
 });
 
@@ -106,37 +113,47 @@ function SwitchWeightDependant(checked) {
 
 async function DelProtocolEntry(category, uuid) {
   console.log(category, uuid);
+  let reload = false;
   try {
     // Send request:
-    let r = await fetch("/settings/protocols/delete/"+category+"/"+uuid, 
+    let response = await fetch("/settings/protocols/delete/" + category + "/" + uuid, 
       {method: "POST", body: new FormData}); 
     // Handle response:
-    if (r.status === 200)
-      window.location=window.location;
-    else 
-      alert("Unkown error. Sorry " + r.status);
-  } catch(e) {
-    console.log(e);
-    alert("Unkown error. Sorry", e);
+    if (!response.ok) {
+      let message = await response.text()
+      OpenErrorModal(message || "Failed deleting entry.", response.status);
+    }
+    else {
+      reload = true;
+    }
+  } catch(error) {
+    console.error("Failed deleting protocol entry:", error);
+    OpenErrorModal(undefined, undefined);
   }
-}
-async function DelADEntry(animal_id, category, uuid) {
-  console.log(category, uuid);
-  try {
-    // Send request:
-    let r = await fetch("/animal_data/"+animal_id+"/delete/"+category+"/"+uuid, 
-      {method: "POST", body: new FormData}); 
-    // Handle response:
-    if (r.status === 200)
-      window.location=window.location;
-    else 
-      alert("Unkown error. Sorry " + r.status);
-  } catch(e) {
-    console.log(e);
-    alert("Unkown error. Sorry", e);
-  }
+  if (reload) window.location.reload();
 }
 
+async function DelADEntry(animal_id, category, uuid) {
+  console.log(category, uuid);
+  let reload = false;
+  try {
+    // Send request:
+    let response = await fetch("/animal_data/" + animal_id + "/delete/" + category + "/" + uuid, 
+      {method: "POST", body: new FormData}); 
+    // Handle response:
+    if (!response.ok) {
+      let message = await response.text()
+      OpenErrorModal(message || "Failed deleting entry.", response.status);
+    }
+    else {
+      reload = true;
+    }
+  } catch(error) {
+    console.error("Failed deleting animal data entry:", error);
+    OpenErrorModal(undefined, undefined);
+  }
+  if (reload) window.location.reload();
+}
 
 async function Del(category, name, type, identifier, protocol) {
   const escaped_name = encodeURIComponent(name);
@@ -150,23 +167,29 @@ async function Del(category, name, type, identifier, protocol) {
   // Add date if set.
   protocol = (protocol !== undefined) ? "/"+protocol: "";
   console.log(category, escaped_name);
+  let reload = false;
+
   try {
     // Send request:
-    let r = await fetch(base_url+"/delete/"+category+"/"+escaped_name+protocol, {
+    let response = await fetch(base_url+"/delete/" + category + "/" + escaped_name + protocol, {
       method: "POST", body: new FormData}); 
     // Handle response:
-    if (r.status === 200)
-      window.location=window.location;
-    else 
-      alert("Unkown error. Sorry " + r.status);
-  } catch(e) {
-    console.log(e);
-    alert("Unkown error. Sorry", e);
+    if (!response.ok) {
+      let message = await response.text()
+      OpenErrorModal(message || "Failed deleting entry.", response.status);
+    }
+    else {
+      reload = true;
+    }
+  } catch(error) {
+    console.error("Failed saveing notes:", error);
+    OpenErrorModal(undefined, undefined);
   }
+  if (reload) window.location.reload();
 }
 
 function Restricted() {
-    alert("This action is restricted to admin-users!")
+  alert("This action is restricted to admin-users!")
 }
 
 function Set(elem, availible) {
@@ -234,50 +257,54 @@ function RemoveAllowedUser(elem) {
   elem.parentNode.removeChild(elem);
 }
 
-function ResetSubprotocols(protocol) {
+async function ResetSubprotocols(protocol) {
+  let reload = false;
   let formData = new FormData();
   formData.append("experiment", protocol);
-  fetch("/animal_data/reset/", {method: "POST", body: formData})
-    .then(response => { 
-      if (!response.ok)
-        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
-      else {
-        response.text().then(text => {
-          alert("resetted subprotocol for " + text + " animals")
-          window.location = window.location;
-        });
-      }
-    })
-    .catch(error => {
-      OpenErrorModal(error);
-    });
+
+  try {
+    const response = await fetch("/animal_data/reset/", {method: "POST", body: formData});
+    const message = await response.text();
+    if (!response.ok) {
+      OpenErrorModal(message || "Failed resetting subprotocol", response.status, 
+        "protocol_changed_modal");
+    } else {
+      alert("resetted subprotocol for " + message + " animals")
+      reload = true
+    }
+  } catch(error) {
+    console.error("Failed resetting subprotocol:", error);
+    OpenErrorModal(undefined, undefined);
+  };
+  if (reload) window.location.reload();
 }
 
-function ReloadSubprotocols(protocol) {
+async function ReloadSubprotocols(protocol) {
   let formData = new FormData();
   formData.append("experiment", protocol);
-  fetch("/animal_data/reload/", {method: "POST", body: formData})
-    .then(response => { 
-      if (!response.ok)
-        response.text().then(text => OpenErrorModal(text, response.status, "protocol_changed_modal"));
-      else {
-        response.json().then(json => {
-          if ("animal_data" in json && json["animal_data"].length > 2) {
-            document.getElementById("animal_modal_text").innerHTML = json["text"];
-            document.getElementById("animal_modal_text_2").style.display = "block";
-            document.getElementById("animal_modal").style.height = "400px";
-            document.getElementById("animal_modal").style.width = "70%";
-            document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
-            OpenModel("animal_modal")
-          }
-          else {
-            alert("Nothing to do: there has been no animal-data listed under this protocol.");
-            window.location = window.location;
-          }
-        });
+  let reload = false;
+  try {
+    const response = await fetch("/animal_data/reload/", {method: "POST", body: formData});
+    if (!response.ok) {
+      const message = await response.text();
+      OpenErrorModal(message, response.status, "protocol_changed_modal"));
+    } else {
+      const json = await response.json();
+      if ("animal_data" in json && json["animal_data"].length > 2) {
+        document.getElementById("animal_modal_text").innerHTML = json["text"];
+        document.getElementById("animal_modal_text_2").style.display = "block";
+        document.getElementById("animal_modal").style.height = "400px";
+        document.getElementById("animal_modal").style.width = "70%";
+        document.getElementById("animal_modal_table").innerHTML = json["animal_data"];
+        OpenModel("animal_modal")
+      } else {
+        alert("Nothing to do: there has been no animal-data listed under this protocol.");
+        window.location = window.location;
       }
-    })
-    .catch(error => {
-      OpenErrorModal(error);
-    });
+    }
+  } catch(error) {
+    console.error("Failed saveing notes:", error);
+    OpenErrorModal(undefined, undefined);
+  }
+  if (reload) window.location.reload();
 }

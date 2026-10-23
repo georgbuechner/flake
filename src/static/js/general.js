@@ -23,8 +23,9 @@ function OpenErrorModal(msg, resp_status, previous) {
   if (previous !== undefined)
     CloseModal(previous);
   OpenModel("error_modal");
-  if (resp_status === 500) {
-    msg = "Sorry, this is probably our fault: " + msg;
+  if (resp_status === undefined) {
+    msg = "The result could not be confirmed. Partial changes might "
+      "have been applied. Reload and check before retrying.";
   }
   document.getElementById("error_modal_msg").innerHTML = msg + " (status: " + resp_status + ")";
 }
@@ -46,6 +47,7 @@ async function UpdateAll(td, force) {
   else if (subprotocol == "---")
     document.getElementById("animal_modal_text_3").innerHTML = "Missing sub-protocol";
   else {
+    let reload = false;
     let formData = new FormData();
     // Add extracted data to form.
     formData.append("start", start);
@@ -57,16 +59,17 @@ async function UpdateAll(td, force) {
     // Send request to server:
     try {
       // Send request:
-      let r = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
+      let response = await fetch('/update/animal_data/all', {method: "POST", body: formData}); 
       // Handle response:
-      let response_text = await r.text();
-      document.getElementById("animal_modal_text_3").innerHTML = response_text + " " + r.status;
-      if (r.status == 200) {
+      let message = await response.text();
+      document.getElementById("animal_modal_text_3").innerHTML = message + " " + response.status;
+      if (response.ok) {
         td.classList.remove("not_stored");
-        document.getElementById("animal_modal_text_3").innerHTML = "success";
+        document.getElementById("animal_modal_text_3").innerHTML = message || "success";
       }
-    } catch(e) {
-      alert("Something went wrong: " + e);
+    } catch(error) {
+      console.error("Failed fully updating animal data: " + error);
+      OpenErrorModal(undefined, undefined);
     }
   }
 }
