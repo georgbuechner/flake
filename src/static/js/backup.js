@@ -1,64 +1,102 @@
-function AddBackup() {
-  fetch("/settings/backups/add", {method: "POST"})
-    .then(response => {
-      if (!response.ok) 
-        response.text().then(text => OpenErrorModal(text, response.status));
-      else 
-        window.location=window.location;
-    }) 
-    .catch(error => OpenErrorModal(error, 500));
+async function AddBackup() {
+  let reload = false;
+  try {
+    const response = await AppFetch("/settings/backups/add", {method: "POST"});
+    const message = await response.text();
+
+    if (!response.ok) {
+      OpenErrorModal(message || "Adding backup failed.", response.status);
+    } else {
+      reload = true;
+    }
+  } catch (error) {
+    console.error("Failed adding backup:", error); 
+    OpenErrorModal();
+  }
+  if (reload) {
+    window.location.reload();
+  }
 }
 
-function DeleteBackup(backup) {
-  fetch("/settings/backups/delete/"+backup, {method: "POST"})
-    .then(response => {
-      if (!response.ok) 
-        response.text().then(text => OpenErrorModal(text, response.status));
-      else 
-        window.location=window.location;
-    }) 
-    .catch(error => OpenErrorModal(error, 500));
+async function DeleteBackup(backup) {
+  let reload = false 
+
+  try {
+    const response = await AppFetch(
+      "/settings/backups/delete/" + encodeURIComponent(backup), 
+      {method: "POST"}
+    );
+    const message = await response.text();
+    if (!response.ok) {
+      OpenErrorModal(message || "Deleting backup failed.", response.status);
+    } else {
+      reload = true;
+    }
+  } catch (error) {
+    console.error("Failed deleting backup:", error); 
+    OpenErrorModal();
+  }
+  if (reload) {
+    window.location.reload();
+  }
 }
 
-function LoadBackup(backup) {
-  fetch("/settings/backups/load/"+backup, {method: "POST"})
-    .then(response => {
-      if (!response.ok) 
-        response.text().then(text => OpenErrorModal(text, response.status));
-      else 
-        window.location=window.location;
-    }) 
-    .catch(error => OpenErrorModal(error, 500));
+async function LoadBackup(backup) {
+  let reload = false;
+
+  try {
+    const response = await AppFetch(
+      "/settings/backups/load/" + encodeURIComponent(backup), 
+      {method: "POST"}
+    );
+    const message = await response.text(); 
+
+    if (!response.ok) {
+      OpenErrorModal(message || "Loading backup failed.", response.status);
+    } else {
+      reload = true;
+    }
+  } catch(error) {
+    console.error("Failed loading backup:", error); 
+    OpenErrorModal();
+  }
+  if (reload) {
+    window.location.reload();
+  }
 }
 
-function DownloadBackup(backup) {
-  var req = new XMLHttpRequest();
-  req.open("POST", "/settings/backups/download/"+backup, true);
-  req.responseType = "blob";
-  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  req.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var blob = new Blob([this.response], {"type": "application/db"});
-      var url = window.URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      document.body.appendChild(link);
-      link.style = "display: none";
-      link.href = url;
-      link.download = backup;
-      link.click();
+async function DownloadBackup(backup) {
+  let url;
+  let link; 
+  try {
+    const response = await AppFetch(
+      "/settings/backups/download/" + encodeURIComponent(backup), 
+      {method: "POST"}
+    );
+
+    if (!response.ok) {
+      const message = await response.text(); 
+      OpenErrorModal(message || "Downloading backup failed", response.status);
+      return;
+    }
+    const blob = await response.blob()
+    url = window.URL.createObjectURL(blob);
+    link = document.createElement("a");
+    link.style.display = "none";
+    link.href = url;
+    link.download = backup;
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error("Failed downloading backup:", error);
+    OpenErrorModal("The backup could not be downloaded. Please try again.");
+  } finally {
+    // Allow the browser to start the download before releasing its URL. 
+    if (url) {
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-        link.remove(); 
-      } , 100);
+        if (link) link.remove();
+      }, 100);
     }
-    else if (this.readyState === 4 && this.status != 400 ) {
-      var blob = new Blob([this.response], {type: "text"});
-      var reader = new FileReader();
-      reader.onload = function() {
-        OpenErrorModal(reader.result, this.status);
-      }
-      reader.readAsText(blob);
-    }
-  };
-  req.send();
+  }
 }

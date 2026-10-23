@@ -14,7 +14,18 @@ from utils.utils import get_signature_path
 class GenerationThread(threading.Thread):
     def __init__(self, target, dcreator): 
         self.dcreator = dcreator 
+        self.error = None
         super().__init__(target=target)
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as error:
+            self.error = error
+
+    def raise_if_failed(self):
+        if self.error is not None:
+            raise self.error
 
     def progress(self): 
         return {"cur": self.dcreator.cur, "total": self.dcreator.total}

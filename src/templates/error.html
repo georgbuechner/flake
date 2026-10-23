@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLAKE - Error {{status}}</title>
+  <link href="/static/css/general.css" rel="stylesheet">
+</head>
+<body>
+  <main class="center_in_box">
+    <h1>Error {{status}}</h1>
+    <p class="err" style="white-space: pre-wrap;">{{message}}</p>
+    {% if status == 401 %}
+      <a href="/login">Log in</a>
+    {% else %}
+      <a href="/">Return to FLAKE</a>
+    {% endif %}
+  </main>
+</body>
+</html>

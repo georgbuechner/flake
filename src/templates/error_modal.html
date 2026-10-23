@@ -1,7 +1,8 @@
 <dialog id="error_modal" style="height: 300px; width: 60%;" category="">
-  <button onclick="Refresh();" style="float: right;">Close</button>
+  <button onclick="CloseModal('error_modal');" style="float: right;">Close</button>
+  <button onclick="Refresh();" style="float: right;">ReloadPage</button>
   <br><br>
   <h3>An Error Occured!</h3>
-  <p class="err" id="error_modal_msg"></p>
+  <p class="err" id="error_modal_msg" style="white-space: pre-wrap;"></p>
   <br>
 </dialog>

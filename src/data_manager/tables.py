@@ -3,8 +3,9 @@ import math
 import uuid
 import random
 import re
-from exceptions.exceptions import ParserException
+from exceptions.exceptions import FlakeError, InvalidDateException, InvalidTypeException
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import validates
 from typing import Dict, List, Tuple
 from utils.dt_utils import date_filled, unify_date, daterange_str
 
@@ -243,6 +244,8 @@ class AMedication(db.Model):
         if not self.weight_independant: 
             float_dosis = get_float(self.dosis)
             float_concentration = get_float(self.concentration) 
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*weight)/float_concentration))
             print(f"Updated amount: ({float_dosis}*{weight})/{float_concentration} = {self.amount}")
 
@@ -347,11 +350,31 @@ class PGeneral(db.Model):
 
 class PAllowedMice(db.Model):
     __tablename__ = "protocol_allowed_mice"
+    __table_args__ = (
+        db.UniqueConstraint("protocol", "name", name="uq_protocol_allowed_mice_protocol_name"),
+        db.CheckConstraint(
+            "num_availible_animals IS NULL OR "
+            "(typeof(num_availible_animals) = 'integer' AND num_availible_animals >= 0)",
+            name="ck_protocol_allowed_mice_allowance",
+        ),
+    )
 
     uuid = db.Column(db.String, primary_key=True)
     protocol = db.Column(db.String, primary_key=False) 
     name = db.Column(db.Integer, primary_key=False) 
     num_availible_animals = db.Column(db.Integer, primary_key=False) 
+
+    @validates("num_availible_animals")
+    def validate_num_availible_animals(self, key, value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if isinstance(value, str) and re.fullmatch(r"[0-9]+", value.strip()):
+            value = int(value.strip())
+        if type(value) is not int or value < 0:
+            raise InvalidTypeException(
+                "Number of allowed animals must be a non-negative integer or left blank."
+            )
+        return value
 
     def __init__(
         self, protocol: str, name: str, num_availible_animals: int, 
@@ -440,6 +463,8 @@ class PMedication(db.Model):
         if not self.weight_independant: 
             float_dosis = get_float(self.dosis) 
             float_concentration = get_float(self.concentration)
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*weight)/float_concentration))
 
 
@@ -507,14 +532,18 @@ class PProcedure(db.Model):
 
     def get_duration(self) -> int: 
         """ Gets duration or random duration between min and max """
-        if isinstance(self.duration, str): 
-            min_max = self.duration.split("-")
-            if len(min_max) > 1: 
-                return random.randint(int(min_max[0]), int(min_max[1])) 
-            return int(min_max[0])
-        elif isinstance(self.duration, int):
-            return self.duration 
-        raise ParserException(f"Invalid duration: {self.duration}!", 404)
+        try:
+            if isinstance(self.duration, str):
+                min_max = self.duration.split("-")
+                if len(min_max) == 2:
+                    return random.randint(int(min_max[0]), int(min_max[1]))
+                if len(min_max) == 1:
+                    return int(min_max[0])
+            elif isinstance(self.duration, int):
+                return self.duration
+        except ValueError as error:
+            raise InvalidTypeException(f"Invalid duration: {self.duration}!") from error
+        raise InvalidTypeException(f"Invalid duration: {self.duration}!")
 
 class PVirus(db.Model): 
     __tablename__ = "protocol_viruses"
@@ -616,7 +645,6 @@ class Protocol(db.Model):
         db.session.add(watercontrol)
         general = PGeneral(full_protocol, 10, "", "Leicht")
         db.session.add(general)
-        db.session.commit()
 
     def remove_subprotocol(self, subprotocol):
         subprotocols = self.get_subprotocols() 
@@ -630,7 +658,7 @@ class General(db.Model):
     start = db.Column(db.String, primary_key=False) 
     end = db.Column(db.String, primary_key=False)
     experiment = db.Column(db.String, primary_key=False)
-    start_weight = db.Column(db.Integer, primary_key=False) 
+    start_weight = db.Column(db.Float, primary_key=False)
     watercontrol = db.Column(db.Boolean, primary_key=False) 
     weights = db.Column(db.String, primary_key=False)
     watercontrol_mask = db.Column(db.String, primary_key=False)
@@ -661,14 +689,17 @@ class General(db.Model):
             general["suffering"],
         )
 
-    def set_start_weight(self, start_weight: int): 
-        self.start_weight = float(start_weight)
-        if float(start_weight) > 0:
-            rows = Medication.query.filter(Medication.animal_id == self.animal_id)
+    def set_start_weight(self, start_weight: float): 
+        self.start_weight = start_weight
+        if start_weight > 0:
+            rows = db.session.query(Medication).filter_by(animal_id=self.animal_id)
             if rows.first(): 
                 for row in rows: 
                     row.update_amount()
-                db.session.commit()
+
+    def get_last_measured_weight(self) -> float | None:
+        return next((weight for weight in reversed(json.loads(self.weights))
+                     if type(weight) in (int, float) and weight > 0 and math.isfinite(weight)), None)
 
 
 class Medication(db.Model): 
@@ -787,7 +818,9 @@ class Medication(db.Model):
             weights = json.loads(general.weights)
             print("weights: ", len(weights), days_after_start)
             if days_after_start < len(weights):
-                return weights[days_after_start]
+                weight = weights[days_after_start]
+                if weight is not None and weight > 0:
+                    return weight
             return get_start_weight(general)
 
         if not self.weight_independant: 
@@ -795,6 +828,8 @@ class Medication(db.Model):
             print("weight @ procedure: ", cur_weight)
             float_dosis = get_float(self.dosis)
             float_concentration = get_float(self.concentration)
+            if float_concentration <= 0:
+                raise InvalidTypeException("Medication concentration must be greater than zero")
             self.amount = str(roundup((float_dosis*cur_weight)/float_concentration))
 
 class Procedure(db.Model): 
@@ -951,15 +986,18 @@ def roundup(x):
     return x
 
 def get_float(text: str) -> float: 
-    for delimiter in ["-", "/"]:
-        if delimiter in text:
-            # works for both: '12/14'->12.0 and '14'->12.0
-            float_text = float(text.split(delimiter)[0])  
-            return float_text
-    try: 
-        return float(text)
-    except:
-        return -1
+    try:
+        # Preserve the existing notation for dose ranges, e.g. 12/14 or 12-14.
+        value = str(text)
+        for delimiter in ("-", "/"):
+            if delimiter in value:
+                value = value.split(delimiter)[0]
+        number = float(value)
+    except (ValueError, TypeError) as error:
+        raise InvalidTypeException(f"Invalid medication number: {text}") from error
+    if not math.isfinite(number) or number < 0:
+        raise InvalidTypeException(f"Invalid medication number: {text}")
+    return number
 
 def parse_comment(comment: str) -> Tuple[str, str, float]: 
     """! Gets start and end date from comment"""

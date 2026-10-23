@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List, Tuple
-from exceptions.exceptions import InvalidDateException, ParserException
+from exceptions.exceptions import InvalidDateException, FlakeError
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
 OUTPUT_DATE_FORMAT = "%d.%m.%y"
@@ -31,8 +31,8 @@ def unify_date(date_str: str) -> str:
 def strtodate(date_str: str) -> datetime: 
     try: 
         return datetime.strptime(date_str, SOURCE_DATE_FORMAT)
-    except: 
-        raise ParserException(f"Date {date_str} seems not to have been unified!", 409)
+    except (ValueError, TypeError) as error:
+        raise InvalidDateException(date_str, SOURCE_DATE_FORMAT) from error
 
 def datetostr(date: datetime, date_format: str = OUTPUT_DATE_FORMAT) -> str: 
     return datetime.strftime(date, date_format)
@@ -63,7 +63,7 @@ def today() -> datetime:
     return datetime.now()
 
 def date_filled(date_str: str) -> bool: 
-    return date_str and len(date_str) == 10
+    return date_str is not None and len(date_str) == 10
 
 def get_reporting_year(year: int) -> Tuple[datetime, datetime]: 
     start = datetime(year, 1, 1)

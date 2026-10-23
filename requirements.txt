@@ -10,6 +10,7 @@ matplotlib
 numpy
 ordered-set
 pandas
+Pillow
 python-dateutil
 python-docx
 regex

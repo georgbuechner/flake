@@ -1,14 +1,23 @@
 import json
 import html
 from flask import (
-    Flask, render_template, make_response, jsonify, request, send_file,
-    redirect, session
+    Flask, 
+    jsonify, 
+    make_response, 
+    redirect, 
+    render_template, 
+    request, 
+    send_file,
+    session
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
-from data_manager.dmanager import DManager, date_filled
+from data_manager.dmanager import DManager, date_filled, parse_weight, get_category_table
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import *
+from exceptions.handlers import handle_request_error, is_ajax_request, register_error_handlers
+from werkzeug.exceptions import Unauthorized, Forbidden
+from PIL import Image, UnidentifiedImageError
 import os
 import subprocess
 import re
@@ -19,6 +28,7 @@ import urllib.parse
 from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
+from utils.http import text_response
 
 SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
@@ -41,18 +51,15 @@ login_manager.init_app(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///larkum.db"
 db.init_app(app)
 dmanager = DManager()
+register_error_handlers(app)
 
 def handle_exception(func): 
     @wraps(func)
     def wrapper(*args, **kwargs):
         try: 
             return func(*args, **kwargs)
-        except ParserException as error:
-            print(traceback.format_exc())
-            return error.msg, error.status
         except Exception as error:
-            print(traceback.format_exc())
-            return repr(error), 500
+            return handle_request_error(error)
     return wrapper
 
 def create_root_user_if_not_exists():
@@ -112,6 +119,8 @@ def user_loader(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
+    if is_ajax_request():
+        raise Unauthorized("Your session has expired. Log in again before retrying.")
     return redirect("/login")
 
 @app.route("/")
@@ -150,6 +159,7 @@ def login():
     if request.form["login"] == "forgot-password": 
         print(request.form, request.form["email"])
         priv = dmanager.generate_pw_reset_keys(request.form["email"])
+        db.session.commit()
         return render_template("login.html", priv=priv)
     # Get user
     user = db.session.get(User, request.form["email"])
@@ -163,6 +173,7 @@ def login():
     return render_template("login.html", msg="User not found")
 
 @app.route("/reset_pw", methods=["GET", "POST"])
+@handle_exception
 def reset_pw():
     """! Serves login-page.
 
@@ -176,6 +187,8 @@ def reset_pw():
     verykey = VerificationCode.query.filter_by(
         priv=request.form["priv"], pub=request.form["pub"]
     ).first()
+    if verykey is None: 
+        raise EntryNotFound("No verification key found!")
     user = db.session.get(User, verykey.email)
     if user:
         # Get hashed password and check password.
@@ -370,27 +383,33 @@ def overview_table(area: str, what: str):
 
 @app.route("/animal_data/delete/<animal_id>", methods=["POST"])
 @login_required
+@handle_exception
 def delete_animal_data(animal_id: str): 
     """! Updates an entry in an animals experiment data. """
     if "," not in animal_id:
-        text, status = dmanager.delete_animal_data(animal_id)
+        dmanager.delete_animal_data(animal_id)
     else: 
         for x in animal_id.split(","): 
-            text, status = dmanager.delete_animal_data(x)
-    return text, status
+            dmanager.delete_animal_data(x)
+    db.session.commit()
+    return text_response()
 
 @app.route("/animal_data/reset/", methods=["POST"])
 @login_required
+@handle_exception
 def reset_animal_data(): 
     """! Updates an entry in an animals experiment data. """
     data_reset = dmanager.reset_animal_data(request.form["experiment"])
-    return str(data_reset), 200
+    db.session.commit()
+    return text_response(str(data_reset))
 
 @app.route("/animal_data/reload/", methods=["POST"])
 @login_required
+@handle_exception
 def reload_animal_data(): 
     """! Updates an entry in an animals experiment data. """
     response = dmanager.reload_animal_data(request.form["experiment"])
+    db.session.commit()
     return make_response(jsonify(response), 200)
 
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
@@ -403,12 +422,18 @@ def input(animal_id: str, category: str):
     
     @return Rendered html experiment-data input page from jinja2-template.
     """
+    if category:
+        get_category_table(EXPERIMENT_TABLES, category)
     animal_data = db.session.get(AnimalData, animal_id)
+    if animal_data is None:
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     # Redirect 
     if animal_data.user != current_user.name and not current_user.admin:
         return redirect("/")
     death_date = animal_data.death_date if date_filled(animal_data.death_date) else None
     general = db.session.get(General, animal_id)
+    if general is None:
+        raise EntryNotFound("No experiment data found. Select a protocol and subprotocol first.")
     availible_viruses = sort_query(PVirus.query.filter(PVirus.protocol == general.experiment), "name")
     availible_medication= sort_query(
         PMedication.query.filter(PMedication.protocol == general.experiment), "name"
@@ -423,8 +448,9 @@ def input(animal_id: str, category: str):
 
     # Create ref to previous page
     ref = False
-    if "/users/" in request.referrer or "/protocols/" in request.referrer: 
-        ref_name = request.referrer[request.referrer.rfind("/")+1:]
+    referrer = request.referrer or ""
+    if "/users/" in referrer or "/protocols/" in referrer:
+        ref_name = referrer[referrer.rfind("/")+1:]
         ref = {
             "name": urllib.parse.unquote(ref_name), 
             "link": request.referrer
@@ -457,7 +483,7 @@ def input(animal_id: str, category: str):
         protocols=dmanager.protocols_and_subprotocols(),
         notes=dmanager.get_notes(animal_id),
         age=age,
-        last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
+        last_weight=general.get_last_measured_weight(),
         category=category,
         ref=ref, 
         args=request.args,
@@ -484,27 +510,35 @@ def user_management():
 
 @app.route("/user_management/delete_key/<email>", methods=["POST"])
 @login_required
+@handle_exception
 def delete_verification_code(email: str):
     if not current_user.admin:
-        return redirect("/") 
+        raise Forbidden("Only admins can delete verification keys")
     # Delete verification code if exists
     existing_entry = VerificationCode.query.filter_by(email=email).first()
     if existing_entry:
         db.session.delete(existing_entry)
         db.session.commit()
-        return "Verification key for email " + email + " removed!", 200
-
-    return "No verification key with this email " + email + " found!", 404
+        return text_response("Verification key for email " + email + " removed!")
+    raise EntryNotFound(f"No verification key with this email {email} found!")
 
 @app.route("/user_management/update_username", methods=["POST"])
 @login_required
+@handle_exception
 def update_use_username():
-    old = request.form.get('old_username')
-    new = request.form.get('new_username')
+    old = request.form.get('old_username') or ""
+    new = request.form.get('new_username') or ""
+    if len(old) == 0: 
+        raise InvalidNameException(old, "username must not be empty!")
+    if len(new) == 0: 
+        raise InvalidNameException(new, "username must not be empty!")
+
     # Include to remove whitespace...
     if old == new and new[-1] == " ": 
         new = new.strip(" ")
-    return dmanager.update_responsible(old, new)
+    dmanager.update_responsible(old, new)
+    db.session.commit()
+    return text_response("Username update successfully!")
 
 @app.route("/account")
 @login_required
@@ -533,78 +567,125 @@ def backup():
 
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
 @login_required 
+@handle_exception
 def update_username(email, username):
     user = db.session.get(User, email)
-    if user:
-        user.name = html.unescape(username)
-        db.session.commit()
-        return "", 200
-    return "User not found", 404
+    if user is None:
+        raise EntryNotFound(f"User \"{username}\" not found!")
+    user.name = html.unescape(username)
+    db.session.commit()
+    return text_response()
 
 @app.route("/account/<email>/delete", methods=["POST"])
 @login_required 
+@handle_exception
 def delete_username(email):
     if not current_user.admin and email != current_user.email:
-        return "Only admins can delete accounts of other users", 403
+        raise Forbidden("Only admins can delete accounts of other users")
     user = db.session.get(User, email)
-    if user:
-        db.session.delete(user)
-        db.session.commit()
-        if request.args.get("logout"):
-            logout_user()
-        return redirect("/login")
-    return "User not found", 404
+    if user is None:
+        raise EntryNotFound(f"User \"{email}\" not found!")
+    db.session.delete(user)
+    db.session.commit()
+    if request.args.get("logout"):
+        logout_user()
+    return redirect("/login")
 
 @app.route("/account/<email>/set_admin", methods=["POST"])
 @login_required 
+@handle_exception
 def change_admin_status(email):
     if not current_user.admin:
-        return "Only admins can change admin status of other users", 403
+        raise Forbidden("Only admins can change admin status of other users")
     user = db.session.get(User, email)
-    if user:
-        is_admin = request.args.get("admin")
-        user.admin = request.args.get("admin") == "True"
-        db.session.commit()
-        return redirect("/login")
-    return "User not found", 404
-
+    if user is None:
+        raise EntryNotFound(f"User \"{email}\" not found!")
+    is_admin = request.args.get("admin")
+    user.admin = request.args.get("admin") == "True"
+    db.session.commit()
+    return redirect("/login")
 
 @app.route("/signature/<user>")
 @login_required 
+@handle_exception
 def get_signature(user: str):
-    path, mimetype = get_signature_path(user)
-    if path is None:
-        path, mimetype = get_signature_path(current_user.name)
-    return send_file(path, mimetype = mimetype)
+    targets = [user] if user == ML_SIGNATURE else [user, current_user.name]
+    for target in targets:
+        for extension, mimetype in (("png", "image/png"), ("jpg", "image/jpeg")):
+            path = os.path.join(SIGNATURE_PATH, f"{escape(target)}.{extension}")
+            if os.path.isfile(path):
+                return send_file(os.path.abspath(path), mimetype=mimetype)
+    raise EntryNotFound("No signature found")
+
+
+def signature_target(requested):
+    if requested == ML_SIGNATURE:
+        if not current_user.admin:
+            raise Forbidden("Only administrators can change the ML signature")
+        return ML_SIGNATURE
+    own_target = escape(current_user.name)
+    if requested != own_target:
+        raise Forbidden("You can only change your own signature")
+    return own_target
+
+def remove_signature_if_present(username: str) -> bool:
+    removed = False
+    for extension in ("png", "jpg"):
+        path = os.path.join(SIGNATURE_PATH, f"{escape(username)}.{extension}")
+        try:
+            os.remove(path)
+            removed = True
+        except FileNotFoundError:
+            pass
+    return removed
 
 @app.route("/delete/signature/<escaped_user>", methods=["POST"])
 @login_required 
+@handle_exception
 def remove_signature(escaped_user: str):
-    if has_signature(current_user.name):
-        path, _ = get_signature_path(current_user.name)
-        os.remove(f"src/{path}")
-        return "", 200
-    else: 
-        return "no signature found", 404
+    if not remove_signature_if_present(signature_target(escaped_user)):
+        raise EntryNotFound("No signature found")
+    return text_response()
 
 @app.route("/upload/signature/<escaped_user>", methods=["POST"])
 @login_required 
+@handle_exception
 def upload_signature(escaped_user: str):
-    remove_signature(escaped_user)
+    filename = signature_target(escaped_user)
     content = request.files
     file = content.get("sig")
-    if file.mimetype == "image/jpeg":
-        remove_if_exists(f"src/signatures/{escaped_user}.png")
-        file.save(f"src/signatures/{escaped_user}.jpg")
-    else:
-        remove_if_exists(f"src/signatures/{escaped_user}.jpg")
-        file.save(f"src/signatures/{escaped_user}.png")
-    return "", 200
+    if file is None:
+        raise MissingEntryException("sig")
+    formats = {"image/png": ("PNG", "png"), "image/jpeg": ("JPEG", "jpg")}
+    if file.mimetype not in formats:
+        raise InvalidTypeException("Signature must be a PNG or JPEG image")
+    image_format, extension = formats[file.mimetype]
+    # Stage and validate the upload before replacing the existing signature.
+    # Using the same filesystem lets os.replace perform an atomic replacement.
+    with tempfile.TemporaryDirectory(prefix=".signature-", dir=SIGNATURE_PATH) as directory:
+        staged = os.path.join(directory, "upload")
+        file.save(staged)
+        try:
+            with Image.open(staged) as image:
+                if image.format != image_format:
+                    raise InvalidTypeException("Signature contents do not match the image type")
+                image.verify()
+        except (UnidentifiedImageError, OSError, SyntaxError) as error:
+            raise InvalidTypeException("Signature is not a valid PNG or JPEG image") from error
+        os.replace(staged, os.path.join(SIGNATURE_PATH, f"{filename}.{extension}"))
+    other_extension = "jpg" if extension == "png" else "png"
+    try:
+        os.remove(os.path.join(SIGNATURE_PATH, f"{filename}.{other_extension}"))
+    except FileNotFoundError:
+        pass
+    return text_response()
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
 @login_required
 def availible(category: str):
+    if category:
+        get_category_table(DEFINITION_TABLES, category)
     return render_template(
         "definitions.html", 
         category=category,
@@ -637,66 +718,64 @@ def protocol(escaped_protocol: str):
             is_setup=dmanager.subprotocol_is_setup,
             msg=""
         )
-    return render_template(
-        "protocols.html", 
-        protocols=Protocol.query.all(),
-        is_setup=dmanager.protocol_is_setup,
-        msg="Protocol not found"
-    )
+    raise EntryNotFound(f"Protocol \"{escaped_protocol}\" not found")
 
 @app.route("/settings/backups/add", methods=["POST"])
 @login_required
+@handle_exception
 def add_backup(): 
     create_backup()
-    return "", 200
+    return text_response()
 
 @app.route("/settings/backups/delete/<backup>", methods=["POST"])
 @login_required
+@handle_exception
 def delete_backup(backup: str): 
     os.remove(f"{BACKUP_PATH}/{backup}")
-    return "", 200
+    return text_response()
 
 @app.route("/settings/backups/download/<backup>", methods=["POST"])
 @login_required
+@handle_exception
 def download_backup(backup: str): 
     return send_file(f"{REL_BACKUP_PATH}/{backup}", as_attachment=True)
 
 @app.route("/settings/backups/load/<backup>", methods=["POST"])
 @login_required
+@handle_exception
 def load_backup(backup: str): 
     create_backup()
     shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
-    return "", 200
+    return text_response()
 
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
+@handle_exception
 def update_animal_all(): 
-    txt = "failed"
-    status = 400
-    try:
-        animal_id = request.form.get("animal_id")
-        # Apply protocol and subprotocol
-        txt, status, _ = dmanager.set_protocol(animal_id, request.form.get("protocol"), False) 
-        txt, status = dmanager.set_subprotocol(animal_id, request.form.get("subprotocol"), False) 
-        # Apply dates
-        txt, status = dmanager.update_dates(animal_id, request.form.get("start"), True)
-        if date_filled(request.form.get("end")):
-            txt, status = dmanager.set_death_date(animal_id, request.form.get("end"))
-        # Apply start weight (if set)
-        try: 
-            start_weight = float(request.form.get("start_weight"))
-            print ("GOT START WEIGHT: ", start_weight)
-            if start_weight > 5 and start_weight < 50: 
-                txt, status = dmanager.generate_weight_list(animal_id, start_weight)
-        except: 
-            pass
-        return txt, status
-    except Exception as err: 
-        return txt + repr(err), status
+    animal_id = request.form.get("animal_id") or ""
+    protocol = request.form.get("protocol") or ""
+    subprotocol = request.form.get("subprotocol") or ""
+    start_weight_text = request.form.get("start_weight")
+    start_weight = parse_weight(start_weight_text) if start_weight_text else -1
+    if start_weight_text and not 5 < start_weight < 50:
+        raise InvalidTypeException("start_weight must be > 5 and < 50")
+    # Apply protocol and subprotocol
+    _ = dmanager.set_protocol(animal_id, protocol, False) 
+    dmanager.set_subprotocol(animal_id, subprotocol, False)
+    # Apply dates
+    start_date = request.form.get("start") or ""
+    end_date = request.form.get("end") or ""
+    dmanager.update_dates(animal_id, start_date, True, regenerate_weights=False)
+    if date_filled(end_date):
+        dmanager.set_death_date(animal_id, end_date, regenerate_weights=False)
+    warning = dmanager.try_generate_weight_list(animal_id, start_weight)
+    db.session.commit()
+    return text_response(warning or "")
 
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
+@handle_exception
 def update_animal_subprotocol(): 
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
@@ -704,24 +783,16 @@ def update_animal_subprotocol():
 
     @return error-/ success-message and status code.
     """
-    subprotocol = request.form.get("subprotocol")
-    animal_id = request.form.get("animal_id")
+    subprotocol = request.form.get("subprotocol") or ""
+    animal_id = request.form.get("animal_id") or ""
     force = request.form.get("force") == "true"
-    try:
-        txt, status = dmanager.set_subprotocol(animal_id, subprotocol, force) 
-        return txt, status
-    except AttributeError as err: 
-        _, _ = dmanager.set_subprotocol(animal_id, "---", force)
-        return ("Could not set protocol. Maybe your protocol is missing some entries" 
-             " (also check General and Watercontrol)"), 400
-    except Exception as err: 
-        _, _ = dmanager.set_subprotocol(animal_id, "---", force)
-        print(traceback.format_exc())
-        print(err)
-        return repr(err), 500
+    dmanager.set_subprotocol(animal_id, subprotocol, force) 
+    db.session.commit()
+    return text_response()
 
 @app.route("/update/animal_data/protocol", methods=["POST"])
 @login_required
+@handle_exception
 def update_animal_protocol(): 
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
@@ -729,14 +800,16 @@ def update_animal_protocol():
 
     @return error-/ success-message and status code.
     """
-    protocol = request.form.get("protocol")
-    animal_id = request.form.get("animal_id")
+    protocol = request.form.get("protocol") or ""
+    animal_id = request.form.get("animal_id") or ""
     force = request.form.get("force") == "true"
-    txt, status, _ = dmanager.set_protocol(animal_id, protocol, force) 
-    return txt, status
+    _ = dmanager.set_protocol(animal_id, protocol, force) 
+    db.session.commit()
+    return text_response()
 
 @app.route("/update/animal_data/protocol/live", methods=["POST"])
 @login_required
+@handle_exception
 def update_animal_protocol_live(): 
     """! Updates the subprotocol of an animal and initializes experiment-data.
     Live in the sence, that it responds with the now availible subprotocols,
@@ -746,19 +819,19 @@ def update_animal_protocol_live():
 
     @return error-/ success-message and status code.
     """
-    protocol = request.form.get("protocol")
-    animal_id = request.form.get("animal_id")
-    txt, status, escaped_protocol = dmanager.set_protocol(animal_id, protocol, False) 
-    if status == 200:
-        protocol = db.session.get(Protocol, escaped_protocol)
-        if protocol:
-            response = {"subprotocols": protocol.get_subprotocols()}
-            return make_response(jsonify(response), status)
-    return txt, status
-
+    protocol = request.form.get("protocol") or ""
+    animal_id = request.form.get("animal_id") or ""
+    escaped_protocol = dmanager.set_protocol(animal_id, protocol, False) 
+    db.session.commit()
+    protocol = db.session.get(Protocol, escaped_protocol)
+    if protocol:
+        response = {"subprotocols": protocol.get_subprotocols()}
+        return make_response(jsonify(response), 200)
+    return text_response()
 
 @app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
 @login_required
+@handle_exception
 def update_animal_death_date(animal_id): 
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
@@ -767,7 +840,10 @@ def update_animal_death_date(animal_id):
     @return error-/ success-message and status code.
     """
     death_date = request.form.get("death_date")
-    txt, status = dmanager.set_death_date(animal_id, death_date) 
+    warning = dmanager.set_death_date(animal_id, death_date)
+    db.session.commit()
+    if warning:
+        return text_response(warning)
     return redirect(request.referrer)
 
 
@@ -781,11 +857,13 @@ def update_dates(animal_id: str, autofill: bool):
 
     @return error-/ success-message and status code.
     """
-    return dmanager.update_dates(animal_id, request.form["start"], autofill == "true")
-    # exception handled
+    text = dmanager.update_dates(animal_id, request.form["start"], autofill == "true")
+    db.session.commit()
+    return text_response(text)
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
 @login_required
+@handle_exception
 def update_suffering(animal_id: str, suffering: str): 
     """! Updates the dates an animal 
 
@@ -794,13 +872,16 @@ def update_suffering(animal_id: str, suffering: str):
     @return error-/ success-message and status code.
     """
     general = db.session.get(General, animal_id)
+    if general is None: 
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     general.suffering = suffering 
     db.session.commit()
-    return "", 200
+    return text_response()
 
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required
+@handle_exception
 def update_weights(animal_id: str): 
     """! Updates the weight and watercontrol of an animal 
 
@@ -810,11 +891,9 @@ def update_weights(animal_id: str):
     """
     weights = request.form.get("weights")
     watercontrol = request.form.get("watercontrol")
-    txt, status = dmanager.update_weights_and_watercontrol(
-        animal_id, weights, watercontrol
-    ) 
-    return txt, status
-
+    dmanager.update_weights_and_watercontrol(animal_id, weights, watercontrol) 
+    db.session.commit()
+    return text_response()
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 @login_required
@@ -826,19 +905,23 @@ def store_animal_data():
     """
     content = request.files
     # upload via data-manager
-    response, status = dmanager.extract_animal_data(
+    response = dmanager.extract_animal_data(
         content.get("csv"), request.form.get("ignore_comment")=="true"
     )
-    return make_response(jsonify(response), status)
+    db.session.commit()
+    return make_response(jsonify(response), 200)
 
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
 @handle_exception
-def generate_weight_list(animal_id: str, weight: int): 
-    return dmanager.generate_weight_list(animal_id, weight)
+def generate_weight_list(animal_id: str, weight: str): 
+    dmanager.generate_weight_list(animal_id, parse_weight(weight))
+    db.session.commit()
+    return text_response()
 
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
+@handle_exception
 def store_notes(animal_id: str, category: str):
     """! Adds new experiment-data from for given animal-id.
 
@@ -848,10 +931,9 @@ def store_notes(animal_id: str, category: str):
     print("store_notes: ", request.form.get("apply_note"))
     note_txt = request.form.get("note") or ""
     apply_note = request.form.get("apply_note") == "true";
-    if dmanager.store_note(animal_id, category, apply_note, note_txt):
-        return "Success", 200
-    return "Something went wrong", 500
-    # exception handled
+    dmanager.store_note(animal_id, category, apply_note, note_txt)
+    db.session.commit()
+    return text_response("Success")
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
@@ -859,18 +941,22 @@ def store_notes(animal_id: str, category: str):
 def update_experiment_data(animal_id: str, category: str): 
     """! Updates an entry in an animals experiment data. """
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
-    return "", 200
+    db.session.commit()
+    return text_response()
     # exception handled
 
 @app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
 @login_required
+@handle_exception
 def delete_experiment_data(animal_id: str, category: str, uuid: str): 
     """! Updates an entry in an animals experiment data. """
     dmanager.delete_experiment_data_entry(animal_id, category, uuid)
+    db.session.commit()
     return redirect(f"/animal_data/{animal_id}/{category}")
 
 @app.route("/clear/<animal_id>", methods=["POST"])
 @login_required
+@handle_exception
 def clear_experiment_data(animal_id: str):
     """! Adds new experiment-data from for given animal-id.
 
@@ -879,15 +965,21 @@ def clear_experiment_data(animal_id: str):
     @return error-/ success-message and status code.
     """
     animal_data = db.session.get(AnimalData, animal_id)
+    if animal_data is None: 
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     dmanager.set_subprotocol(animal_id, animal_data.subprotocol, True)
-    return "Success", 200
+    db.session.commit()
+    return text_response("Success")
 
 @app.route("/generate/surgery_sheet/<animal_id>")
 @login_required
+@handle_exception
 def generate_surgery_sheet(animal_id: str):
     animal_data = db.session.get(AnimalData, animal_id)
+    if animal_data is None: 
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     if not date_filled(animal_data.death_date): 
-        return "Animal is not yet sacrificed", 401
+        raise AnimalNotSacrificed()
     surgery_sheet_data, filtered_procedures = dmanager.get_surgery_sheet_data(
         animal_id
     )
@@ -906,10 +998,13 @@ def generate_surgery_sheet(animal_id: str):
 
 @app.route("/generate/score_sheet/<animal_id>")
 @login_required
+@handle_exception
 def generate_score_sheet(animal_id: str):
     animal_data = db.session.get(AnimalData, animal_id)
+    if animal_data is None:
+        raise EntryNotFound(f"AnimalData for {animal_id} not found")
     if not date_filled(animal_data.death_date): 
-        return "Animal is not yet sacrificed", 401
+        raise AnimalNotSacrificed()
 
     dcreator = DCreator(
         template_path="templates/score_sheet", 
@@ -919,12 +1014,16 @@ def generate_score_sheet(animal_id: str):
     )
     global generation_threads
     thread_id = f"score_sheet_{animal_id}"
-    generation_threads[thread_id] = GenerationThread(
+    thread = GenerationThread(
         target=dcreator.create_score_sheet, dcreator=dcreator
     )
-    generation_threads[thread_id].start()
-    generation_threads[thread_id].join()
-    del generation_threads[thread_id]
+    generation_threads[thread_id] = thread
+    try:
+        thread.start()
+        thread.join()
+        thread.raise_if_failed()
+    finally:
+        generation_threads.pop(thread_id, None)
     return send_file("output/score_sheet.docx", as_attachment=True)
 
 @app.route("/generate/paragraph9/<escaped_protocol>/<year>", methods=["POST"])
@@ -982,26 +1081,30 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
 
 @app.route("/generate/progress/<thread_id>")
 @login_required
+@handle_exception
 def generation_progress(thread_id: str): 
     global generation_threads
     if thread_id in generation_threads:
         return make_response(
             jsonify(generation_threads[thread_id].progress()), 200
         )
-    return {}, 404
+    raise EntryNotFound(f"Generation task {thread_id} not found")
 
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
 @handle_exception
 def update_definitions_entry(category: str):
     dmanager.update_definitions_entry(category, request.form)
+    db.session.commit()
     return redirect(request.referrer)
 
 @app.route("/definitions/delete/<category>/<name>", methods=["POST"])
 @login_required 
+@handle_exception
 def delete_definition(category: str, name: str): 
     name = html.unescape(name).replace("_", "/")
     dmanager.delete_definitions_entry(category, name)
+    db.session.commit()
     return redirect(f"/settings/definitions/{category}")
 
 @app.route("/settings/protocols/<protocol>/<subprotocol>/<category>", methods=["POST"])
@@ -1012,20 +1115,25 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
         category, f"{protocol}/{subprotocol}", request.form
     )
     session["subprotocol_changed"] = True
-    return "", 200
+    db.session.commit()
+    return text_response()
     # exception handled
 
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
+@handle_exception
 def delete_protocol_entry(category: str, uuid: str): 
     dmanager.delete_protocol_entry(category, uuid)
     session["subprotocol_changed"] = True
-    return "", 200
+    db.session.commit()
+    return text_response()
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
 def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     protocol = db.session.get(Protocol, escaped_protocol)
+    if protocol is None or subprotocol not in protocol.get_subprotocols():
+        raise EntryNotFound(f"Subprotocol \"{escaped_protocol}/{subprotocol}\" not found")
     full_protocol = f"{escaped_protocol}/{subprotocol}"
     data, definitions = dmanager.get_protocol_data(category, full_protocol)
     procedures = PProcedure.query.filter(PProcedure.protocol == full_protocol)
@@ -1034,6 +1142,9 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
     if protocol:
         subprotocol_changed = session.get("subprotocol_changed")
         session.pop("subprotocol_changed", None)
+        missing_medication = dmanager.missing_required_medication(full_protocol)
+        missing_virus = dmanager.missing_required_virus(full_protocol)
+        db.session.commit()
         return render_template(
             "subprotocol.html", 
             protocol=protocol,
@@ -1048,23 +1159,21 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             subprotocol_changed=subprotocol_changed,
             protocol_is_setup=dmanager.subprotocol_is_setup(full_protocol),
             has_sacrifice_procedure=dmanager.has_sacrifice_procedure(full_protocol),
-            missing_required_medication=dmanager.missing_required_medication(full_protocol),
-            missing_required_virus=dmanager.missing_required_virus(full_protocol),
+            missing_required_medication=missing_medication,
+            missing_required_virus=missing_virus,
             msg=""
         )
 
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
+@handle_exception
 def add_protocal():
     escaped_name = escape(request.form["name"]).strip()
+    if not escaped_name:
+        raise InvalidNameException(request.form["name"], "Protocol name must not be empty")
     protocol = db.session.get(Protocol, escaped_name)
     if protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg="A protocol with this name already exists!"
-        )
+        raise DublicateEntry("A protocol with this name already exists!")
 
     protocol = Protocol(
         name=request.form["name"],
@@ -1077,82 +1186,58 @@ def add_protocal():
 
 @app.route("/settings/protocols/<escaped_protocol>/add_protocol", methods=["POST"]) 
 @login_required 
+@handle_exception
 def add_subprotocal(escaped_protocol):
     protocol = db.session.get(Protocol, escaped_protocol)
     subprotocol = request.form["name"]
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg="Matching protocol does not exist!"
-        )
-    if " " in subprotocol or subprotocol in protocol.get_subprotocols():
-        if " " in subprotocol:
-            msg = f"Subprotocol must not contain whitespaces: {subprotocol}"
-        else: 
-            msg = "Subprotocol already exists!"
-        return render_template(
-            "protocol.html", 
-            protocol=protocol,
-            subprotocols=protocol.get_subprotocols(),
-            is_setup=dmanager.subprotocol_is_setup,
-            msg=msg
-        )
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
+    if not subprotocol or " " in subprotocol:
+        raise InvalidNameException(subprotocol, "Subprotocol must not be empty or contain spaces")
+    if subprotocol in protocol.get_subprotocols():
+        raise DublicateEntry("Subprotocol already exists!")
     protocol.add_subprotocol(subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
 
 @app.route("/settings/protocols/remove/<escaped_protocol>", methods=["POST"]) 
 @login_required 
-def remove_protocol(escaped_protocol):
+@handle_exception
+def remove_protocol(escaped_protocol: str):
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg=f"Matching protocol \"{escaped_protocol}\" does not exist!"
-        )
-
-    # Remove data matching this excact protocol
-    dmanager.delete_protocol_data(escaped_protocol)
-    for subprotocol in list(protocol.get_subprotocols()): 
-        dmanager.delete_protocol_data(f"{escaped_protocol}/{subprotocol}")
-
-    # Remove protocol.
-    db.session.delete(protocol)
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
+    dmanager.remove_protocol(protocol, escaped_protocol)
     db.session.commit()
     return redirect("/settings/protocols")
 
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
+@handle_exception
 def remove_subprotocol(escaped_protocol: str, subprotocol: str):
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
-        return render_template(
-            "protocols.html", 
-            protocols=Protocol.query.all(),
-            is_setup=dmanager.protocol_is_setup,
-            msg=f"Matching protocol {escaped_protocol} does not exist!"
-        )
+        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
     if subprotocol not in protocol.get_subprotocols(): 
         # Check again with '_' replaced by '/' (for corrupted subprotocols)
         subprotocol = subprotocol.replace("_", "/");
         if subprotocol not in protocol.get_subprotocols(): 
-            return f"Subprotocol {subprotocol} does not exists!", 404
+            raise EntryNotFound(f"Subprotocol {subprotocol} does not exist!")
 
-    # Remove data related to subprotocol
-    dmanager.delete_protocol_data(f"{escaped_protocol}/{subprotocol}")
-    # Remove subprotocol from protocol
-    protocol.remove_subprotocol(subprotocol)
+    dmanager.remove_subprotocol(protocol, escaped_protocol, subprotocol)
     db.session.commit()
     return redirect("/settings/protocols/" + escaped_protocol)
 
 @app.route("/comments/apply/", methods=["POST"]) 
 @login_required 
+@handle_exception
 def apply_comments():
-    mlas = json.loads(request.form["mlas"]) 
+    try:
+        mlas = json.loads(request.form["mlas"])
+    except json.JSONDecodeError as error:
+        raise InvalidTypeException("Animal IDs must be a JSON list") from error
+    if not isinstance(mlas, list) or any(not isinstance(mla, str) for mla in mlas):
+        raise InvalidTypeException("Animal IDs must be a JSON list of strings")
     return dmanager.get_comment_data_html(mlas)
 
 if __name__=="__main__":
