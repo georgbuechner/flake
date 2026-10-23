@@ -14,6 +14,7 @@ from data_manager.tables import db, AnimalData, General, PGeneral, PWatercontrol
 from exceptions.exceptions import FlakeError, InvalidTypeException, WeightGenerationUnavailable
 from exceptions.handlers import handle_request_error
 from utils.dt_utils import date_filled
+from utils.http import text_response
 
 
 class WeightGenerationTransactionTests(unittest.TestCase):

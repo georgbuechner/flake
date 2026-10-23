@@ -697,6 +697,10 @@ class General(db.Model):
                 for row in rows: 
                     row.update_amount()
 
+    def get_last_measured_weight(self) -> float | None:
+        return next((weight for weight in reversed(json.loads(self.weights))
+                     if type(weight) in (int, float) and weight > 0 and math.isfinite(weight)), None)
+
 
 class Medication(db.Model): 
     __tablename__ = "medication"
@@ -814,7 +818,9 @@ class Medication(db.Model):
             weights = json.loads(general.weights)
             print("weights: ", len(weights), days_after_start)
             if days_after_start < len(weights):
-                return weights[days_after_start]
+                weight = weights[days_after_start]
+                if weight is not None and weight > 0:
+                    return weight
             return get_start_weight(general)
 
         if not self.weight_independant: 

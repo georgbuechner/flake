@@ -1,15 +1,21 @@
 """Exercise error handling through real route and authentication decorators."""
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from unittest.mock import Mock
+from urllib.parse import quote
 
 from flask import Flask
 from PIL import Image
 
 from data_manager.dmanager import DManager
-from data_manager.tables import db, AnimalData, General, AMedication, User, CommentBackup, Virus
+from data_manager.tables import (
+    db, AnimalData, General, AMedication, User, CommentBackup, Virus,
+    Medication, Procedure, VerificationCode,
+)
 from route_helpers import ROOT, load_routes
 
 
@@ -83,6 +89,94 @@ class RequestFailureTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         db.session.remove()
         self.assertEqual(db.session.get(General, "test").weights, "[20, null, 0]")
+
+    def test_input_pages_remain_accessible_after_saving_a_missing_final_weight(self):
+        response = self.client.post('/update/animal_data/weights/test', headers=self.ajax,
+                                    data={"weights": "[20, null]", "watercontrol": "[false, true]"})
+        self.assertEqual(response.status_code, 200, response.text)
+        for category in ('', '/medication', '/procedures', '/viruses'):
+            with self.subTest(category=category):
+                response = self.client.get('/animal_data/test' + category)
+                self.assertEqual(response.status_code, 200, response.text)
+        db.session.remove()
+        self.assertEqual(db.session.get(General, "test").weights, "[20, null]")
+
+    def test_last_weight_skips_unmeasured_days_and_preserves_decimals(self):
+        for weights, expected in (([], None), ([None, 0], None), ([20, None, 0], 20),
+                                  ([20, 50.9], 50.9), ([20, 50.9, None], 50.9)):
+            with self.subTest(weights=weights):
+                general = db.session.get(General, 'test')
+                general.weights = json.dumps(weights)
+                db.session.commit()
+                self.assertEqual(general.get_last_measured_weight(), expected)
+                response = self.client.get('/animal_data/test')
+                self.assertEqual(response.status_code, 200, response.text)
+                if expected is not None and expected > 50:
+                    self.assertIn('Final weight is unrealistically high!', response.text)
+                else:
+                    self.assertNotIn('Final weight is unrealistically high!', response.text)
+
+    def test_missing_procedure_weights_use_the_existing_start_weight_fallback(self):
+        general = db.session.get(General, 'test')
+        general.start = '2025-02-01'
+        db.session.add(Procedure('test', 'Procedure', '2025-02-01', '2025-02-01', 'Test User'))
+        db.session.flush()
+        medication = Medication('test', 'Medication', 'Kind', 'Procedure', '0', '1', '1', False)
+        db.session.add(medication)
+        db.session.commit()
+        uuid = medication.uuid
+        for weight, expected_amount in ((None, '20'), (0, '20'), (30, '30')):
+            with self.subTest(weight=weight):
+                response = self.client.post('/update/animal_data/weights/test', headers=self.ajax,
+                                            data={'weights': json.dumps([20, weight]), 'watercontrol': '[false, true]'})
+                self.assertEqual(response.status_code, 200, response.text)
+                db.session.remove()
+                self.assertEqual(db.session.get(Medication, uuid).amount, expected_amount)
+
+    def test_native_death_date_warning_with_subprotocol_markup_is_plain_text(self):
+        payload = '<svg/onload=alert(1)>'
+        animal = db.session.get(AnimalData, 'test')
+        animal.protocol_escaped = 'P'
+        animal.subprotocol = payload
+        general = db.session.get(General, 'test')
+        general.experiment = 'P/' + payload
+        general.start = '2025-02-01'
+        db.session.commit()
+        response = self.client.post('/update/animal_data/sacrifice_date/test',
+                                    headers={'Accept': 'text/html'}, data={'death_date': '2025-02-10'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertIn('Dates saved; weights were not regenerated', response.text)
+        self.assertIn(payload, response.text)
+        db.session.remove()
+        self.assertEqual(db.session.get(AnimalData, 'test').death_date, '2025-02-10')
+
+    def test_other_successful_warning_messages_are_plain_text(self):
+        message = 'Dates saved; weights were not regenerated: <svg/onload=alert(1)>'
+        with patch.object(self.manager, 'update_dates', return_value=message):
+            response = self.client.post('/update/animal_data/dates/test/true',
+                                        headers={'Accept': 'text/html'}, data={'start': '2025-02-01'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertEqual(response.text, message)
+        with patch.multiple(self.manager, set_protocol=Mock(), set_subprotocol=Mock(),
+                            update_dates=Mock(), set_death_date=Mock(),
+                            try_generate_weight_list=Mock(return_value=message)):
+            response = self.client.post('/update/animal_data/all', headers={'Accept': 'text/html'},
+                                        data={'animal_id': 'test', 'start': '2025-02-01'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertEqual(response.text, message)
+
+    def test_verification_key_deletion_success_displays_email_as_plain_text(self):
+        email = '<img src=x onerror=alert(1)>@example.test'
+        db.session.add(VerificationCode(email=email, priv='123', pub='456'))
+        db.session.commit()
+        response = self.client.post('/user_management/delete_key/' + quote(email, safe=''),
+                                    headers={'Accept': 'text/html'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertIn(email, response.text)
 
     def test_invalid_concentrations_are_input_errors_and_edit_rolls_back(self):
         data = dict(name="Existing", kind="Kind", procedure="Procedure", amount="10", concentration="1", dosis="1")
@@ -219,3 +313,74 @@ class RequestFailureTests(unittest.TestCase):
                                     data={'sig': (io.BytesIO(image_bytes()), 'signature.png', 'image/png')})
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual([path.name for path in self.signatures.iterdir()], ['TestUser.png'])
+
+    def test_administrator_ml_upload_preserves_personal_signature(self):
+        personal = self.signatures / 'TestUser.png'
+        personal.write_bytes(image_bytes())
+        (self.signatures / 'ml-signature.jpg').write_bytes(image_bytes('JPEG'))
+        uploaded = image_bytes()
+        response = self.client.post('/upload/signature/ml-signature', headers=self.ajax,
+                                    data={'sig': (io.BytesIO(uploaded), 'signature.png', 'image/png')})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual((self.signatures / 'ml-signature.png').read_bytes(), uploaded)
+        self.assertEqual(personal.read_bytes(), image_bytes())
+        self.assertFalse((self.signatures / 'ml-signature.jpg').exists())
+        response = self.client.get('/signature/ml-signature')
+        self.addCleanup(response.close)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'image/png')
+        self.assertEqual(response.data, uploaded)
+
+    def test_administrator_ml_deletion_preserves_personal_signature(self):
+        personal = self.signatures / 'TestUser.png'
+        personal.write_bytes(image_bytes())
+        (self.signatures / 'ml-signature.png').write_bytes(image_bytes())
+        response = self.client.post('/delete/signature/ml-signature', headers=self.ajax)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(personal.read_bytes(), image_bytes())
+        self.assertFalse((self.signatures / 'ml-signature.png').exists())
+
+    def test_signature_targets_are_authorized_before_any_file_changes(self):
+        personal = self.signatures / 'TestUser.png'
+        personal.write_bytes(image_bytes())
+        ml = self.signatures / 'ml-signature.png'
+        ml.write_bytes(image_bytes())
+        for admin in (True, False):
+            user = db.session.get(User, 'test@example.org')
+            user.admin = admin
+            db.session.commit()
+            targets = ['OtherUser'] if admin else ['OtherUser', 'ml-signature']
+            for target in targets:
+                for operation in ('upload', 'delete'):
+                    with self.subTest(admin=admin, target=target, operation=operation):
+                        data = {'sig': (io.BytesIO(image_bytes()), 'signature.png', 'image/png')} if operation == 'upload' else {}
+                        response = self.client.post(f'/{operation}/signature/{target}', headers=self.ajax, data=data)
+                        self.assertEqual(response.status_code, 403, response.text)
+                        self.assertEqual(personal.read_bytes(), image_bytes())
+                        self.assertEqual(ml.read_bytes(), image_bytes())
+                        self.assertEqual({path.name for path in self.signatures.iterdir()},
+                                         {'TestUser.png', 'ml-signature.png'})
+
+    def test_ordinary_user_can_upload_and_delete_own_signature(self):
+        user = db.session.get(User, 'test@example.org')
+        user.admin = False
+        db.session.commit()
+        ml = self.signatures / 'ml-signature.png'
+        ml.write_bytes(image_bytes())
+        response = self.client.post('/upload/signature/TestUser', headers=self.ajax,
+                                    data={'sig': (io.BytesIO(image_bytes()), 'signature.png', 'image/png')})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual((self.signatures / 'TestUser.png').read_bytes(), image_bytes())
+        response = self.client.post('/delete/signature/TestUser', headers=self.ajax)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertFalse((self.signatures / 'TestUser.png').exists())
+        self.assertEqual(ml.read_bytes(), image_bytes())
+
+    def test_missing_ml_preview_does_not_fall_back_to_a_personal_signature(self):
+        (self.signatures / 'TestUser.png').write_bytes(image_bytes())
+        response = self.client.get('/signature/ml-signature')
+        self.assertEqual(response.status_code, 404, response.text)
+        response = self.client.get('/signature/TestUser')
+        self.addCleanup(response.close)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'image/png')

@@ -87,7 +87,7 @@
         {% endif %}
         {% if general.start_weight < 2 %} 
             Weight is unrealistically low!<br>
-        {% elif last_weight > 50 %} 
+        {% elif last_weight is not none and last_weight > 50 %}
             Final weight is unrealistically high!<br>
         {% endif %}
       </p>

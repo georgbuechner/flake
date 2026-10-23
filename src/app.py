@@ -28,6 +28,7 @@ import urllib.parse
 from functools import wraps
 from utils.utils import *
 from utils.dt_utils import * 
+from utils.http import text_response
 
 SIGNATURE_PATH = "src/signatures/"
 SERVER_CONFIG_PATH = "server.config"
@@ -391,7 +392,7 @@ def delete_animal_data(animal_id: str):
         for x in animal_id.split(","): 
             dmanager.delete_animal_data(x)
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/animal_data/reset/", methods=["POST"])
 @login_required
@@ -400,7 +401,7 @@ def reset_animal_data():
     """! Updates an entry in an animals experiment data. """
     data_reset = dmanager.reset_animal_data(request.form["experiment"])
     db.session.commit()
-    return str(data_reset), 200
+    return text_response(str(data_reset))
 
 @app.route("/animal_data/reload/", methods=["POST"])
 @login_required
@@ -482,7 +483,7 @@ def input(animal_id: str, category: str):
         protocols=dmanager.protocols_and_subprotocols(),
         notes=dmanager.get_notes(animal_id),
         age=age,
-        last_weight=int(json.loads(general.weights)[-1]) if len(general.weights) > 2 else 5,
+        last_weight=general.get_last_measured_weight(),
         category=category,
         ref=ref, 
         args=request.args,
@@ -518,7 +519,7 @@ def delete_verification_code(email: str):
     if existing_entry:
         db.session.delete(existing_entry)
         db.session.commit()
-        return "Verification key for email " + email + " removed!", 200
+        return text_response("Verification key for email " + email + " removed!")
     raise EntryNotFound(f"No verification key with this email {email} found!")
 
 @app.route("/user_management/update_username", methods=["POST"])
@@ -537,7 +538,7 @@ def update_use_username():
         new = new.strip(" ")
     dmanager.update_responsible(old, new)
     db.session.commit()
-    return "Username update successfully!"
+    return text_response("Username update successfully!")
 
 @app.route("/account")
 @login_required
@@ -573,7 +574,7 @@ def update_username(email, username):
         raise EntryNotFound(f"User \"{username}\" not found!")
     user.name = html.unescape(username)
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/account/<email>/delete", methods=["POST"])
 @login_required 
@@ -608,32 +609,49 @@ def change_admin_status(email):
 @login_required 
 @handle_exception
 def get_signature(user: str):
-    path, mimetype = get_signature_path(user)
-    if path is None:
-        path, mimetype = get_signature_path(current_user.name)
-    if path is None:
-        raise EntryNotFound("No signature found")
-    return send_file(path, mimetype = mimetype)
+    targets = [user] if user == ML_SIGNATURE else [user, current_user.name]
+    for target in targets:
+        for extension, mimetype in (("png", "image/png"), ("jpg", "image/jpeg")):
+            path = os.path.join(SIGNATURE_PATH, f"{escape(target)}.{extension}")
+            if os.path.isfile(path):
+                return send_file(os.path.abspath(path), mimetype=mimetype)
+    raise EntryNotFound("No signature found")
+
+
+def signature_target(requested):
+    if requested == ML_SIGNATURE:
+        if not current_user.admin:
+            raise Forbidden("Only administrators can change the ML signature")
+        return ML_SIGNATURE
+    own_target = escape(current_user.name)
+    if requested != own_target:
+        raise Forbidden("You can only change your own signature")
+    return own_target
 
 def remove_signature_if_present(username: str) -> bool:
-    path, _ = get_signature_path(username)
-    if path is None:
-        return False
-    os.remove(f"src/{path}")
-    return True
+    removed = False
+    for extension in ("png", "jpg"):
+        path = os.path.join(SIGNATURE_PATH, f"{escape(username)}.{extension}")
+        try:
+            os.remove(path)
+            removed = True
+        except FileNotFoundError:
+            pass
+    return removed
 
 @app.route("/delete/signature/<escaped_user>", methods=["POST"])
 @login_required 
 @handle_exception
 def remove_signature(escaped_user: str):
-    if not remove_signature_if_present(current_user.name):
+    if not remove_signature_if_present(signature_target(escaped_user)):
         raise EntryNotFound("No signature found")
-    return "", 200
+    return text_response()
 
 @app.route("/upload/signature/<escaped_user>", methods=["POST"])
 @login_required 
 @handle_exception
 def upload_signature(escaped_user: str):
+    filename = signature_target(escaped_user)
     content = request.files
     file = content.get("sig")
     if file is None:
@@ -642,7 +660,6 @@ def upload_signature(escaped_user: str):
     if file.mimetype not in formats:
         raise InvalidTypeException("Signature must be a PNG or JPEG image")
     image_format, extension = formats[file.mimetype]
-    filename = escape(current_user.name)
     # Stage and validate the upload before replacing the existing signature.
     # Using the same filesystem lets os.replace perform an atomic replacement.
     with tempfile.TemporaryDirectory(prefix=".signature-", dir=SIGNATURE_PATH) as directory:
@@ -661,7 +678,7 @@ def upload_signature(escaped_user: str):
         os.remove(os.path.join(SIGNATURE_PATH, f"{filename}.{other_extension}"))
     except FileNotFoundError:
         pass
-    return "", 200
+    return text_response()
 
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
@@ -708,14 +725,14 @@ def protocol(escaped_protocol: str):
 @handle_exception
 def add_backup(): 
     create_backup()
-    return "", 200
+    return text_response()
 
 @app.route("/settings/backups/delete/<backup>", methods=["POST"])
 @login_required
 @handle_exception
 def delete_backup(backup: str): 
     os.remove(f"{BACKUP_PATH}/{backup}")
-    return "", 200
+    return text_response()
 
 @app.route("/settings/backups/download/<backup>", methods=["POST"])
 @login_required
@@ -729,7 +746,7 @@ def download_backup(backup: str):
 def load_backup(backup: str): 
     create_backup()
     shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
-    return "", 200
+    return text_response()
 
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
@@ -753,7 +770,7 @@ def update_animal_all():
         dmanager.set_death_date(animal_id, end_date, regenerate_weights=False)
     warning = dmanager.try_generate_weight_list(animal_id, start_weight)
     db.session.commit()
-    return warning or "", 200
+    return text_response(warning or "")
 
 
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
@@ -771,7 +788,7 @@ def update_animal_subprotocol():
     force = request.form.get("force") == "true"
     dmanager.set_subprotocol(animal_id, subprotocol, force) 
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/update/animal_data/protocol", methods=["POST"])
 @login_required
@@ -788,7 +805,7 @@ def update_animal_protocol():
     force = request.form.get("force") == "true"
     _ = dmanager.set_protocol(animal_id, protocol, force) 
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/update/animal_data/protocol/live", methods=["POST"])
 @login_required
@@ -810,7 +827,7 @@ def update_animal_protocol_live():
     if protocol:
         response = {"subprotocols": protocol.get_subprotocols()}
         return make_response(jsonify(response), 200)
-    return "", 200
+    return text_response()
 
 @app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
 @login_required
@@ -826,7 +843,7 @@ def update_animal_death_date(animal_id):
     warning = dmanager.set_death_date(animal_id, death_date)
     db.session.commit()
     if warning:
-        return warning, 200
+        return text_response(warning)
     return redirect(request.referrer)
 
 
@@ -842,7 +859,7 @@ def update_dates(animal_id: str, autofill: bool):
     """
     text = dmanager.update_dates(animal_id, request.form["start"], autofill == "true")
     db.session.commit()
-    return text, 200
+    return text_response(text)
 
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
 @login_required
@@ -859,7 +876,7 @@ def update_suffering(animal_id: str, suffering: str):
         raise EntryNotFound(f"AnimalData for {animal_id} not found")
     general.suffering = suffering 
     db.session.commit()
-    return "", 200
+    return text_response()
 
 
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
@@ -876,7 +893,7 @@ def update_weights(animal_id: str):
     watercontrol = request.form.get("watercontrol")
     dmanager.update_weights_and_watercontrol(animal_id, weights, watercontrol) 
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/upload/pyrat_csv", methods=["POST"])
 @login_required
@@ -900,7 +917,7 @@ def store_animal_data():
 def generate_weight_list(animal_id: str, weight: str): 
     dmanager.generate_weight_list(animal_id, parse_weight(weight))
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
@@ -916,7 +933,7 @@ def store_notes(animal_id: str, category: str):
     apply_note = request.form.get("apply_note") == "true";
     dmanager.store_note(animal_id, category, apply_note, note_txt)
     db.session.commit()
-    return "Success", 200
+    return text_response("Success")
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
@@ -925,7 +942,7 @@ def update_experiment_data(animal_id: str, category: str):
     """! Updates an entry in an animals experiment data. """
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
     db.session.commit()
-    return "", 200
+    return text_response()
     # exception handled
 
 @app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
@@ -952,7 +969,7 @@ def clear_experiment_data(animal_id: str):
         raise EntryNotFound(f"AnimalData for {animal_id} not found")
     dmanager.set_subprotocol(animal_id, animal_data.subprotocol, True)
     db.session.commit()
-    return "Success", 200
+    return text_response("Success")
 
 @app.route("/generate/surgery_sheet/<animal_id>")
 @login_required
@@ -1099,7 +1116,7 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
     )
     session["subprotocol_changed"] = True
     db.session.commit()
-    return "", 200
+    return text_response()
     # exception handled
 
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
@@ -1109,7 +1126,7 @@ def delete_protocol_entry(category: str, uuid: str):
     dmanager.delete_protocol_entry(category, uuid)
     session["subprotocol_changed"] = True
     db.session.commit()
-    return "", 200
+    return text_response()
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required

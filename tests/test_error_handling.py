@@ -27,7 +27,7 @@ from route_helpers import load_routes as load_app_routes
 
 def load_routes(app):
     return load_app_routes(app, {
-        "handle_exception", "upload_signature", "generate_score_sheet",
+        "handle_exception", "signature_target", "upload_signature", "generate_score_sheet",
     })
 
 
@@ -90,7 +90,9 @@ class RouteErrorTests(unittest.TestCase):
             current_user=SimpleNamespace(name="test"),
             SIGNATURE_PATH=directory.name,
         )
-        self.assertEqual(self.ns["upload_signature"]("test"), ("", 200))
+        response = self.ns["upload_signature"]("test")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_data(), b"")
         with Image.open(Path(directory.name) / "test.png") as image:
             self.assertEqual(image.format, "PNG")
         self.assertEqual([path.name for path in Path(directory.name).iterdir()], ["test.png"])

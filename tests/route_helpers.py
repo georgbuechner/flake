@@ -20,6 +20,7 @@ def load_routes(app, names=None, *, decorated=False):
     namespace = {
         "app": app, "login_manager": LoginManager(app),
         "SIGNATURE_PATH": str(ROOT / "src/signatures"),
+        "ML_SIGNATURE": "ml-signature",
         "OVERVIEW_BATCH_SIZE": 50, "LAB_PASSWORD": "test-only", "generation_threads": {},
     }
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), "exec"), namespace)
