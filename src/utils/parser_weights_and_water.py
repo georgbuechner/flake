@@ -1,10 +1,19 @@
 import pandas as pd
 import random
 import math
-from typing import Dict, List, Tuple
+from datetime import datetime
+from typing import List, Sequence, overload
 
 
-def weight_male(age):
+@overload
+def weight_male(age: int) -> float: ...
+
+
+@overload
+def weight_male(age: float) -> float | None: ...
+
+
+def weight_male(age: float) -> float | None:
     if age >= 226.54:
         return 32
     elif 28.318 < age < 226.54:
@@ -16,7 +25,15 @@ def weight_male(age):
     return None  # should never happen
 
 
-def weight_female(age):
+@overload
+def weight_female(age: int) -> float: ...
+
+
+@overload
+def weight_female(age: float) -> float | None: ...
+
+
+def weight_female(age: float) -> float | None:
     if age >= 227.437:
         return 21
     elif 24.836 < age < 227.437:
@@ -28,7 +45,7 @@ def weight_female(age):
     return None  # should never happen
 
 
-def generate_raw_weight_list(age_days, sex, duration_days):
+def generate_raw_weight_list(age_days: int, sex: str, duration_days: int) -> List[float]:
     if sex == "M":
         weight_curve = weight_male
     else:
@@ -44,11 +61,13 @@ def generate_raw_weight_list(age_days, sex, duration_days):
     return weight_list
 
 
-def apply_weight_factor(weight_list, weight_factor):
+def apply_weight_factor(weight_list: Sequence[float], weight_factor: float) -> List[float]:
     return list(map(lambda weight: weight * weight_factor, weight_list))
 
 
-def apply_noise(weight_list, noise_factor, apply_to_first_day=True):
+def apply_noise(
+    weight_list: Sequence[float], noise_factor: float, apply_to_first_day: bool = True
+) -> List[float]:
     if apply_to_first_day:
         first_day_noise = random.uniform(-noise_factor, noise_factor)
     else:
@@ -61,7 +80,7 @@ def apply_noise(weight_list, noise_factor, apply_to_first_day=True):
     return noisy_list
 
 
-def enumerate_blocks(bool_list):
+def enumerate_blocks(bool_list: Sequence[bool]) -> List[int]:
     current_boolean = bool_list[0]
     enumerated_blocks = [0]
     length_counter = 0
@@ -77,7 +96,7 @@ def enumerate_blocks(bool_list):
     return enumerated_blocks
 
 
-def oblique_throw(x, x_apex, y_apex):
+def oblique_throw(x: float, x_apex: float, y_apex: float) -> float:
     """
     Returns the y-value of x on the curve of an oblique throw, approaching point (x_apex, y_apex) from origin.
     Can be used to calculated a quadratic approach to a point (the apex).
@@ -91,7 +110,7 @@ def oblique_throw(x, x_apex, y_apex):
     return a * pow(x, 2) + b * x
 
 
-def quadratic_approach(y_start, x_value, x_max, y_end):
+def quadratic_approach(y_start: float, x_value: float, x_max: float, y_end: float) -> float:
     """
     Calculate a quadratic approach from y_start to y_end over a distance x_max. The returned value is the y-value to the
     parameter x_value. To model this approach, one half of an oblique throw is used. The quadratic approach is the curve
@@ -111,12 +130,12 @@ def quadratic_approach(y_start, x_value, x_max, y_end):
 
 
 def apply_water_control_mask(
-    weight_list, 
-    water_control_mask, 
-    target_weight_percentage=0.85, 
-    days_until_target_weight=3,
-    days_until_normal_weight=2
-):
+    weight_list: Sequence[float],
+    water_control_mask: Sequence[bool],
+    target_weight_percentage: float = 0.85,
+    days_until_target_weight: int = 3,
+    days_until_normal_weight: int = 2
+) -> List[float]:
     assert len(weight_list) == len(water_control_mask), \
         f"Weights and mask have unequal lengths! No alignment possible. " + \
         f"{len(weight_list)}, {len(water_control_mask)}"
@@ -161,7 +180,11 @@ def apply_water_control_mask(
 
 
 def generate_raw_water_control_mask(
-    start_date, duration_days, free_weekend_chance=1, consecutive_free_weekends=True):
+    start_date: datetime,
+    duration_days: int,
+    free_weekend_chance: float = 1,
+    consecutive_free_weekends: bool = True,
+) -> List[bool]:
     # Water Restriction Creating
     end_date = start_date + pd.Timedelta(duration_days-1, unit='D')
     day_list = pd.date_range(start=start_date, end=end_date).tolist()
@@ -190,8 +213,14 @@ def generate_raw_water_control_mask(
     return water_control_mask
 
 
-def apply_surgery_periods(start_date, water_control_mask, surgery_dates, pre_surgery_days=3,
-                          min_post_surgery_days=3, start_next_monday=True):
+def apply_surgery_periods(
+    start_date: datetime,
+    water_control_mask: List[bool],
+    surgery_dates: Sequence[datetime],
+    pre_surgery_days: int = 3,
+    min_post_surgery_days: int = 3,
+    start_next_monday: bool = True,
+) -> List[bool]:
     modified_water_control_mask = water_control_mask.copy()
 
     for surgery_date in surgery_dates:
@@ -221,7 +250,9 @@ def apply_surgery_periods(start_date, water_control_mask, surgery_dates, pre_sur
     return modified_water_control_mask
 
 
-def apply_short_control_filter(water_control_mask, min_block_length=4, min_sum=7):
+def apply_short_control_filter(
+    water_control_mask: List[bool], min_block_length: int = 4, min_sum: int = 7
+) -> List[bool]:
     filtered_water_control_mask = water_control_mask.copy()
 
     block_length_counter = 0
@@ -241,7 +272,7 @@ def apply_short_control_filter(water_control_mask, min_block_length=4, min_sum=7
     return filtered_water_control_mask
 
 
-def get_water_control_mask(start_date, duration, surgery_dates):
+def get_water_control_mask(start_date: datetime, duration: int, surgery_dates: Sequence[datetime]) -> List[bool]:
     water_control_mask = generate_raw_water_control_mask(start_date, duration)
     water_control_mask = apply_surgery_periods(start_date, water_control_mask, surgery_dates)
     water_control_mask = apply_short_control_filter(water_control_mask)

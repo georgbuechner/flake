@@ -1,4 +1,7 @@
 """Consistent error responses for page requests and AJAX operations."""
+from flask import Flask
+from werkzeug.wrappers import Response
+
 from flask import current_app, make_response, render_template, request
 from werkzeug.exceptions import HTTPException
 
@@ -6,17 +9,17 @@ from data_manager.tables import db
 from exceptions.exceptions import FlakeError
 
 
-def is_ajax_request():
+def is_ajax_request() -> bool:
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
-def handle_request_error(error):
+def handle_request_error(error: Exception) -> Response:
     db.session.rollback()
     if isinstance(error, FlakeError):
         message, status = error.msg, error.status
         response = make_response("", status)
     elif isinstance(error, HTTPException):
-        message, status = error.description, error.code
+        message, status = error.description or "", error.code
         response = error.get_response()
     else:
         current_app.logger.exception("Unexpected error handling %s", request.path)
@@ -40,6 +43,6 @@ def handle_request_error(error):
     return response
 
 
-def register_error_handlers(app):
+def register_error_handlers(app: Flask) -> None:
     for error_type in (FlakeError, HTTPException, Exception):
         app.register_error_handler(error_type, handle_request_error)

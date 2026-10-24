@@ -5,14 +5,18 @@ import os
 import getpass
 from data_manager.tables import table_to_json
 from os.path import exists as file_exists
-from typing import Tuple
+from typing import Any, Iterable, Mapping, Tuple, TypeVar
+from flask_sqlalchemy.model import Model
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+T = TypeVar("T", bound=Model)
+EntryT = TypeVar("EntryT", bound=Mapping[str, Any])
+
 ENV_FIELD_MASTER_PW = "FLAKE_MASTER_PASSWORD"
 
-def sort_query(obj_list, key: str, to_int: bool = False):
+def sort_query(obj_list: Iterable[T], key: str, to_int: bool = False) -> list[T]:
     """! Sorts a given list of objects by given key. 
 
     @param obj_list  List of objects to sort.
@@ -20,7 +24,7 @@ def sort_query(obj_list, key: str, to_int: bool = False):
 
     @return Sorted list.
     """
-    def sort_by_key(e):
+    def sort_by_key(e: T) -> Any:
         try:
             if to_int:
                 return int(table_to_json(e)[key])
@@ -30,21 +34,18 @@ def sort_query(obj_list, key: str, to_int: bool = False):
             print(f"sort_query: key: {key}, value: {table_to_json(e)[key]} failed: {repr(err)}") 
             return 0
     if not isinstance(obj_list, list):
-        if obj_list.first():
-            obj_list = [x for x in obj_list]
-        else:
-            return []
+        obj_list = list(obj_list)
     obj_list.sort(key=sort_by_key)
     return obj_list
 
-def sort(obj_list, key: str): 
-    def sort_by_key(e): 
+def sort(obj_list: list[EntryT], key: str) -> list[EntryT]:
+    def sort_by_key(e: EntryT) -> Any:
         return e[key]
     obj_list.sort(key=sort_by_key)
     return obj_list
 
 
-def hash_pw(password: str, salt: str = None) -> Tuple[str, str]: 
+def hash_pw(password: str, salt: bytes | None = None) -> Tuple[bytes, bytes]:
     """! Creates hash from given password with salt and retuns hash and salt 
 
     @param password  The password to be hashed 
@@ -62,7 +63,7 @@ def has_signature(username: str) -> bool:
     sig_path = f"src/signatures/{escape(username)}"
     return file_exists(f"{sig_path}.png") or file_exists(f"{sig_path}.jpg")
 
-def get_signature_path(username: str) -> Tuple[str, str]: 
+def get_signature_path(username: str) -> Tuple[str, str] | Tuple[None, None]:
     """ Checks src/signatures directory for signitures by given user and gets 
     signature-path and mimetype.
 
@@ -86,11 +87,11 @@ def escape(string: str) -> str:
     """
     return string.replace(" ", "").replace("/", "_")
 
-def get_keys_from_config(path: str) -> Tuple[str, str, str]: 
+def get_keys_from_config(path: str) -> Tuple[str, str, str | int]:
     with open(path) as f:
         config = json.load(f)
 
-    def encode_password(pw: str, salt=None):
+    def encode_password(pw: bytes, salt: bytes | None = None) -> Tuple[bytes, bytes]:
         if salt is None:
             salt = bcrypt.gensalt() # os.urandom(16)
         kdf = PBKDF2HMAC(
@@ -105,7 +106,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str, str]:
         salt = config["password"]["salt"].encode()
         print("Loading .env")
         print("Got dotenv: ", os.getenv(ENV_FIELD_MASTER_PW, False))
-        inp = os.getenv(ENV_FIELD_MASTER_PW) if os.getenv(ENV_FIELD_MASTER_PW) else getpass.getpass("password: ") 
+        inp = os.getenv(ENV_FIELD_MASTER_PW) or getpass.getpass("password: ")
         if hash_pw(inp, salt)[0] == password:
             encoded_password, _ = encode_password(inp.encode(), salt)
             fernet = Fernet(encoded_password) 
@@ -135,7 +136,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str, str]:
             json.dump(config, f)
         return secret, lab_password, config["port"]
 
-def get_root_user(path):
+def get_root_user(path: str) -> str:
     # Load config
     with open(path) as f:
         config = json.load(f)

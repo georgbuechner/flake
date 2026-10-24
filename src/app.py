@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import html
 from flask import (
@@ -26,6 +28,9 @@ import traceback
 import shutil
 import urllib.parse
 from functools import wraps
+from typing import Callable, ParamSpec, TypeVar
+from flask.typing import ResponseReturnValue
+from werkzeug.wrappers import Response
 from utils.utils import *
 from utils.dt_utils import * 
 from utils.http import text_response
@@ -41,7 +46,9 @@ OVERVIEW_BATCH_SIZE = 50
 
 ML_SIGNATURE = "ml-signature"
 
-generation_threads = {}
+generation_threads: dict[str, GenerationThread] = {}
+P = ParamSpec("P")
+R = TypeVar("R")
 
 # Create global instance of sql-connector, data-manager and flask-app.
 app = Flask(__name__)
@@ -53,16 +60,16 @@ db.init_app(app)
 dmanager = DManager()
 register_error_handlers(app)
 
-def handle_exception(func): 
+def handle_exception(func: Callable[P, R]) -> Callable[P, R | Response]:
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         try: 
             return func(*args, **kwargs)
         except Exception as error:
             return handle_request_error(error)
     return wrapper
 
-def create_root_user_if_not_exists():
+def create_root_user_if_not_exists() -> None:
     root_email = get_root_user(SERVER_CONFIG_PATH)
     root = db.session.get(User, root_email)
     if not root: 
@@ -80,7 +87,7 @@ def create_root_user_if_not_exists():
     # db.engine.execute("DROP TABLE alembic_version;")
     db.session.commit()
 
-def update_lines():
+def update_lines() -> None:
     # Update availible lines
     with open("resources/lines.json") as f:
         lines = json.load(f)
@@ -90,7 +97,7 @@ def update_lines():
                 db.session.add(line)
         db.session.commit()
 
-def create_backup(): 
+def create_backup() -> None:
     shutil.copyfile(
         DB_PATH,
         f"{BACKUP_PATH}/backup_{datetostr(today(), DATE_TIME)}.db"
@@ -110,7 +117,7 @@ with app.app_context():
 
 
 @login_manager.user_loader 
-def user_loader(user_id): 
+def user_loader(user_id: str) -> User | None:
     """! Given *user_id*, return the associated User object.
 
     @param user_id  user_id (email) user to retrieve
@@ -118,14 +125,14 @@ def user_loader(user_id):
     return db.session.get(User, user_id)
 
 @login_manager.unauthorized_handler
-def unauthorized_handler():
+def unauthorized_handler() -> ResponseReturnValue:
     if is_ajax_request():
         raise Unauthorized("Your session has expired. Log in again before retrying.")
     return redirect("/login")
 
 @app.route("/")
 @login_required
-def main():
+def main() -> ResponseReturnValue:
     """! Serves main-page showing all users, protocols. 
 
     @return Rendered html main-page from jinja2-template.
@@ -145,7 +152,7 @@ def main():
     )
 
 @app.route("/login", methods=["GET", "POST"])
-def login():
+def login() -> ResponseReturnValue:
     """! Serves login-page.
 
     @return Rendered html login-page from jinja2-template.
@@ -174,7 +181,7 @@ def login():
 
 @app.route("/reset_pw", methods=["GET", "POST"])
 @handle_exception
-def reset_pw():
+def reset_pw() -> ResponseReturnValue:
     """! Serves login-page.
 
     @return Rendered html login-page from jinja2-template.
@@ -202,7 +209,7 @@ def reset_pw():
 
 
 @app.route("/register", methods=["GET", "POST"])
-def register():
+def register() -> ResponseReturnValue:
     """! Serves registration-page.
 
     @return Rendered html registration-page from jinja2-template.
@@ -232,13 +239,13 @@ def register():
 
 @app.route('/logout')
 @login_required
-def logout():
+def logout() -> ResponseReturnValue:
     logout_user()
     return redirect("/login")
 
 @app.route("/overview")
 @login_required
-def overview():
+def overview() -> ResponseReturnValue:
     """! Serves general overview of all animal-data. 
 
     @return Rendered html overview-page from jinja2-template.
@@ -270,7 +277,7 @@ def overview():
 
 @app.route("/users/<user>")
 @login_required
-def user_overview(user: str):
+def user_overview(user: str) -> ResponseReturnValue:
     """! Serves overview of all animal-data of a single user 
 
     @param user  the user for which to show animal-data.
@@ -302,7 +309,7 @@ def user_overview(user: str):
 
 @app.route("/protocols/<protocol>")
 @login_required
-def protocol_overview(protocol: str):
+def protocol_overview(protocol: str) -> ResponseReturnValue:
     """! Serves overview of all animal-data of a single protocol.
 
     @param protocol  the protocol for which to show animal-data.
@@ -337,7 +344,7 @@ def protocol_overview(protocol: str):
 @app.route('/table/<area>/', defaults={'what': ""})
 @app.route("/table/<area>/<what>")
 @login_required
-def overview_table(area: str, what: str):
+def overview_table(area: str, what: str) -> ResponseReturnValue:
     if area == "users": 
         initial_request = AnimalData.query.filter(AnimalData.user == what)
     elif area == "protocols":
@@ -384,7 +391,7 @@ def overview_table(area: str, what: str):
 @app.route("/animal_data/delete/<animal_id>", methods=["POST"])
 @login_required
 @handle_exception
-def delete_animal_data(animal_id: str): 
+def delete_animal_data(animal_id: str) -> ResponseReturnValue:
     """! Updates an entry in an animals experiment data. """
     if "," not in animal_id:
         dmanager.delete_animal_data(animal_id)
@@ -397,7 +404,7 @@ def delete_animal_data(animal_id: str):
 @app.route("/animal_data/reset/", methods=["POST"])
 @login_required
 @handle_exception
-def reset_animal_data(): 
+def reset_animal_data() -> ResponseReturnValue:
     """! Updates an entry in an animals experiment data. """
     data_reset = dmanager.reset_animal_data(request.form["experiment"])
     db.session.commit()
@@ -406,7 +413,7 @@ def reset_animal_data():
 @app.route("/animal_data/reload/", methods=["POST"])
 @login_required
 @handle_exception
-def reload_animal_data(): 
+def reload_animal_data() -> ResponseReturnValue:
     """! Updates an entry in an animals experiment data. """
     response = dmanager.reload_animal_data(request.form["experiment"])
     db.session.commit()
@@ -415,7 +422,7 @@ def reload_animal_data():
 @app.route("/animal_data/<animal_id>", defaults={"category": ""})
 @app.route("/animal_data/<animal_id>/<category>")
 @login_required
-def input(animal_id: str, category: str):
+def input(animal_id: str, category: str) -> ResponseReturnValue:
     """! Serves page to input experiment-data.
 
     @param animal_id  id of animal for which to add experiment-data.
@@ -442,9 +449,9 @@ def input(animal_id: str, category: str):
         PProcedure.query.filter(PProcedure.protocol == general.experiment), "name"
     )
     allowed_users = [] 
-    protocol_general = PGeneral.query.filter(PGeneral.protocol == general.experiment)
-    if protocol_general.first(): 
-        allowed_users = protocol_general.first().allowed_users.split(", ")
+    protocol_general = PGeneral.query.filter(PGeneral.protocol == general.experiment).first()
+    if protocol_general is not None:
+        allowed_users = protocol_general.allowed_users.split(", ")
 
     # Create ref to previous page
     ref = False
@@ -491,12 +498,12 @@ def input(animal_id: str, category: str):
 
 @app.route("/settings")
 @login_required
-def settings():
+def settings() -> ResponseReturnValue:
     return render_template("settings.html")
 
 @app.route("/settings/user-management")
 @login_required
-def user_management():
+def user_management() -> ResponseReturnValue:
     if not current_user.admin:
         return redirect("/") 
     registered_users = [ x.name for x in User.query.all()]
@@ -511,7 +518,7 @@ def user_management():
 @app.route("/user_management/delete_key/<email>", methods=["POST"])
 @login_required
 @handle_exception
-def delete_verification_code(email: str):
+def delete_verification_code(email: str) -> ResponseReturnValue:
     if not current_user.admin:
         raise Forbidden("Only admins can delete verification keys")
     # Delete verification code if exists
@@ -525,7 +532,7 @@ def delete_verification_code(email: str):
 @app.route("/user_management/update_username", methods=["POST"])
 @login_required
 @handle_exception
-def update_use_username():
+def update_use_username() -> ResponseReturnValue:
     old = request.form.get('old_username') or ""
     new = request.form.get('new_username') or ""
     if len(old) == 0: 
@@ -542,7 +549,7 @@ def update_use_username():
 
 @app.route("/account")
 @login_required
-def account():
+def account() -> ResponseReturnValue:
     registered_users = [ x.name for x in User.query.all()]
     availible_usernames= [(x, x in registered_users) for x in dmanager.pyrat_usernames()]
     return render_template(
@@ -554,7 +561,7 @@ def account():
 
 @app.route("/settings/backup-management")
 @login_required
-def backup():
+def backup() -> ResponseReturnValue:
     # Walk through the directory tree and append subdirectory paths to the list
     backups = []
     for backup in os.listdir(BACKUP_PATH):
@@ -568,7 +575,7 @@ def backup():
 @app.route("/account/<email>/update/username/<username>", methods=["POST"])
 @login_required 
 @handle_exception
-def update_username(email, username):
+def update_username(email: str, username: str) -> ResponseReturnValue:
     user = db.session.get(User, email)
     if user is None:
         raise EntryNotFound(f"User \"{username}\" not found!")
@@ -579,7 +586,7 @@ def update_username(email, username):
 @app.route("/account/<email>/delete", methods=["POST"])
 @login_required 
 @handle_exception
-def delete_username(email):
+def delete_username(email: str) -> ResponseReturnValue:
     if not current_user.admin and email != current_user.email:
         raise Forbidden("Only admins can delete accounts of other users")
     user = db.session.get(User, email)
@@ -594,7 +601,7 @@ def delete_username(email):
 @app.route("/account/<email>/set_admin", methods=["POST"])
 @login_required 
 @handle_exception
-def change_admin_status(email):
+def change_admin_status(email: str) -> ResponseReturnValue:
     if not current_user.admin:
         raise Forbidden("Only admins can change admin status of other users")
     user = db.session.get(User, email)
@@ -608,7 +615,7 @@ def change_admin_status(email):
 @app.route("/signature/<user>")
 @login_required 
 @handle_exception
-def get_signature(user: str):
+def get_signature(user: str) -> ResponseReturnValue:
     targets = [user] if user == ML_SIGNATURE else [user, current_user.name]
     for target in targets:
         for extension, mimetype in (("png", "image/png"), ("jpg", "image/jpeg")):
@@ -618,7 +625,7 @@ def get_signature(user: str):
     raise EntryNotFound("No signature found")
 
 
-def signature_target(requested):
+def signature_target(requested: str) -> str:
     if requested == ML_SIGNATURE:
         if not current_user.admin:
             raise Forbidden("Only administrators can change the ML signature")
@@ -642,7 +649,7 @@ def remove_signature_if_present(username: str) -> bool:
 @app.route("/delete/signature/<escaped_user>", methods=["POST"])
 @login_required 
 @handle_exception
-def remove_signature(escaped_user: str):
+def remove_signature(escaped_user: str) -> ResponseReturnValue:
     if not remove_signature_if_present(signature_target(escaped_user)):
         raise EntryNotFound("No signature found")
     return text_response()
@@ -650,7 +657,7 @@ def remove_signature(escaped_user: str):
 @app.route("/upload/signature/<escaped_user>", methods=["POST"])
 @login_required 
 @handle_exception
-def upload_signature(escaped_user: str):
+def upload_signature(escaped_user: str) -> ResponseReturnValue:
     filename = signature_target(escaped_user)
     content = request.files
     file = content.get("sig")
@@ -683,7 +690,7 @@ def upload_signature(escaped_user: str):
 @app.route("/settings/definitions", defaults={"category": ""})
 @app.route("/settings/definitions/<category>")
 @login_required
-def availible(category: str):
+def availible(category: str) -> ResponseReturnValue:
     if category:
         get_category_table(DEFINITION_TABLES, category)
     return render_template(
@@ -698,7 +705,7 @@ def availible(category: str):
 
 @app.route("/settings/protocols", methods=["GET"])
 @login_required
-def protocols():
+def protocols() -> ResponseReturnValue:
     return render_template(
         "protocols.html", 
         protocols=sort_query(Protocol.query.all(), "name"),
@@ -708,7 +715,7 @@ def protocols():
 
 @app.route("/settings/protocols/<escaped_protocol>", methods=["GET"])
 @login_required
-def protocol(escaped_protocol: str):
+def protocol(escaped_protocol: str) -> ResponseReturnValue:
     protocol = db.session.get(Protocol, escaped_protocol)
     if protocol:
         return render_template(
@@ -723,27 +730,27 @@ def protocol(escaped_protocol: str):
 @app.route("/settings/backups/add", methods=["POST"])
 @login_required
 @handle_exception
-def add_backup(): 
+def add_backup() -> ResponseReturnValue:
     create_backup()
     return text_response()
 
 @app.route("/settings/backups/delete/<backup>", methods=["POST"])
 @login_required
 @handle_exception
-def delete_backup(backup: str): 
+def delete_backup(backup: str) -> ResponseReturnValue:
     os.remove(f"{BACKUP_PATH}/{backup}")
     return text_response()
 
 @app.route("/settings/backups/download/<backup>", methods=["POST"])
 @login_required
 @handle_exception
-def download_backup(backup: str): 
+def download_backup(backup: str) -> ResponseReturnValue:
     return send_file(f"{REL_BACKUP_PATH}/{backup}", as_attachment=True)
 
 @app.route("/settings/backups/load/<backup>", methods=["POST"])
 @login_required
 @handle_exception
-def load_backup(backup: str): 
+def load_backup(backup: str) -> ResponseReturnValue:
     create_backup()
     shutil.copyfile(f"{BACKUP_PATH}/{backup}", DB_PATH)
     return text_response()
@@ -751,7 +758,7 @@ def load_backup(backup: str):
 @app.route("/update/animal_data/all", methods=["POST"])
 @login_required
 @handle_exception
-def update_animal_all(): 
+def update_animal_all() -> ResponseReturnValue:
     animal_id = request.form.get("animal_id") or ""
     protocol = request.form.get("protocol") or ""
     subprotocol = request.form.get("subprotocol") or ""
@@ -776,7 +783,7 @@ def update_animal_all():
 @app.route("/update/animal_data/subprotocol", methods=["POST"])
 @login_required
 @handle_exception
-def update_animal_subprotocol(): 
+def update_animal_subprotocol() -> ResponseReturnValue:
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
     @param subprotocol  the new subprotocol
@@ -793,7 +800,7 @@ def update_animal_subprotocol():
 @app.route("/update/animal_data/protocol", methods=["POST"])
 @login_required
 @handle_exception
-def update_animal_protocol(): 
+def update_animal_protocol() -> ResponseReturnValue:
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
     @param subprotocol  the new subprotocol
@@ -810,7 +817,7 @@ def update_animal_protocol():
 @app.route("/update/animal_data/protocol/live", methods=["POST"])
 @login_required
 @handle_exception
-def update_animal_protocol_live(): 
+def update_animal_protocol_live() -> ResponseReturnValue:
     """! Updates the subprotocol of an animal and initializes experiment-data.
     Live in the sence, that it responds with the now availible subprotocols,
     which can be added to the sub-protocol dropdown "live".
@@ -832,7 +839,7 @@ def update_animal_protocol_live():
 @app.route("/update/animal_data/sacrifice_date/<animal_id>", methods=["POST"])
 @login_required
 @handle_exception
-def update_animal_death_date(animal_id): 
+def update_animal_death_date(animal_id: str) -> ResponseReturnValue:
     """! Updates the subprotocol of an animal and initializes experiment-data.
 
     @param subprotocol  the new subprotocol
@@ -850,7 +857,7 @@ def update_animal_death_date(animal_id):
 @app.route("/update/animal_data/dates/<animal_id>/<autofill>", methods=["POST"])
 @login_required
 @handle_exception
-def update_dates(animal_id: str, autofill: bool): 
+def update_dates(animal_id: str, autofill: str) -> ResponseReturnValue:
     """! Updates the dates an animal 
 
     @param animal_id  ID of animal for which to add data.
@@ -864,7 +871,7 @@ def update_dates(animal_id: str, autofill: bool):
 @app.route("/update/animal_data/suffering/<animal_id>/<suffering>", methods=["POST"])
 @login_required
 @handle_exception
-def update_suffering(animal_id: str, suffering: str): 
+def update_suffering(animal_id: str, suffering: str) -> ResponseReturnValue:
     """! Updates the dates an animal 
 
     @param animal_id  ID of animal for which to add data.
@@ -882,7 +889,7 @@ def update_suffering(animal_id: str, suffering: str):
 @app.route("/update/animal_data/weights/<animal_id>", methods=["POST"])
 @login_required
 @handle_exception
-def update_weights(animal_id: str): 
+def update_weights(animal_id: str) -> ResponseReturnValue:
     """! Updates the weight and watercontrol of an animal 
 
     @param animal_id  ID of animal for which to add data.
@@ -898,7 +905,7 @@ def update_weights(animal_id: str):
 @app.route("/upload/pyrat_csv", methods=["POST"])
 @login_required
 @handle_exception
-def store_animal_data():
+def store_animal_data() -> ResponseReturnValue:
     """! Adds new animal-data from .CSV.
 
     @return error-/ success-message and status code.
@@ -914,7 +921,7 @@ def store_animal_data():
 @app.route("/generate/weights/<animal_id>/<weight>", methods=["POST"])
 @login_required
 @handle_exception
-def generate_weight_list(animal_id: str, weight: str): 
+def generate_weight_list(animal_id: str, weight: str) -> ResponseReturnValue:
     dmanager.generate_weight_list(animal_id, parse_weight(weight))
     db.session.commit()
     return text_response()
@@ -922,7 +929,7 @@ def generate_weight_list(animal_id: str, weight: str):
 @app.route("/store/notes/<animal_id>/<category>", methods=["POST"])
 @login_required
 @handle_exception
-def store_notes(animal_id: str, category: str):
+def store_notes(animal_id: str, category: str) -> ResponseReturnValue:
     """! Adds new experiment-data from for given animal-id.
 
     @param animal_id  ID of animal for which to add data.
@@ -938,7 +945,7 @@ def store_notes(animal_id: str, category: str):
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
 @handle_exception
-def update_experiment_data(animal_id: str, category: str): 
+def update_experiment_data(animal_id: str, category: str) -> ResponseReturnValue:
     """! Updates an entry in an animals experiment data. """
     dmanager.update_experiment_data_entry(animal_id, category, request.form)
     db.session.commit()
@@ -948,7 +955,7 @@ def update_experiment_data(animal_id: str, category: str):
 @app.route("/animal_data/<animal_id>/delete/<category>/<uuid>", methods=["POST"])
 @login_required
 @handle_exception
-def delete_experiment_data(animal_id: str, category: str, uuid: str): 
+def delete_experiment_data(animal_id: str, category: str, uuid: str) -> ResponseReturnValue:
     """! Updates an entry in an animals experiment data. """
     dmanager.delete_experiment_data_entry(animal_id, category, uuid)
     db.session.commit()
@@ -957,7 +964,7 @@ def delete_experiment_data(animal_id: str, category: str, uuid: str):
 @app.route("/clear/<animal_id>", methods=["POST"])
 @login_required
 @handle_exception
-def clear_experiment_data(animal_id: str):
+def clear_experiment_data(animal_id: str) -> ResponseReturnValue:
     """! Adds new experiment-data from for given animal-id.
 
     @param animal_id  ID of animal for which to add data.
@@ -974,7 +981,7 @@ def clear_experiment_data(animal_id: str):
 @app.route("/generate/surgery_sheet/<animal_id>")
 @login_required
 @handle_exception
-def generate_surgery_sheet(animal_id: str):
+def generate_surgery_sheet(animal_id: str) -> ResponseReturnValue:
     animal_data = db.session.get(AnimalData, animal_id)
     if animal_data is None: 
         raise EntryNotFound(f"AnimalData for {animal_id} not found")
@@ -999,7 +1006,7 @@ def generate_surgery_sheet(animal_id: str):
 @app.route("/generate/score_sheet/<animal_id>")
 @login_required
 @handle_exception
-def generate_score_sheet(animal_id: str):
+def generate_score_sheet(animal_id: str) -> ResponseReturnValue:
     animal_data = db.session.get(AnimalData, animal_id)
     if animal_data is None:
         raise EntryNotFound(f"AnimalData for {animal_id} not found")
@@ -1030,7 +1037,7 @@ def generate_score_sheet(animal_id: str):
 @app.route("/generate/paragraph9/<escaped_protocol>/<year>/<force>", methods=["POST"])
 @login_required
 @handle_exception
-def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
+def generate_paragraph_9(escaped_protocol: str, year: str, force: str = "") -> ResponseReturnValue:
     subprotocols, protocol, err_msg, num_errors = dmanager.get_p9_data(
         escaped_protocol, year, force == "force"
     )
@@ -1041,6 +1048,8 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
 
     # get current ml signature
     ml_signature, _ = get_signature_path(ML_SIGNATURE)
+    if ml_signature is None:
+        raise EntryNotFound("No ML signature found")
                         
     txt = render_template(
         "main.tex", 
@@ -1082,7 +1091,7 @@ def generate_paragraph_9(escaped_protocol: str, year: str, force: str=""):
 @app.route("/generate/progress/<thread_id>")
 @login_required
 @handle_exception
-def generation_progress(thread_id: str): 
+def generation_progress(thread_id: str) -> ResponseReturnValue:
     global generation_threads
     if thread_id in generation_threads:
         return make_response(
@@ -1093,7 +1102,7 @@ def generation_progress(thread_id: str):
 @app.route("/settings/definitions/<category>", methods=["POST"])
 @login_required 
 @handle_exception
-def update_definitions_entry(category: str):
+def update_definitions_entry(category: str) -> ResponseReturnValue:
     dmanager.update_definitions_entry(category, request.form)
     db.session.commit()
     return redirect(request.referrer)
@@ -1101,7 +1110,7 @@ def update_definitions_entry(category: str):
 @app.route("/definitions/delete/<category>/<name>", methods=["POST"])
 @login_required 
 @handle_exception
-def delete_definition(category: str, name: str): 
+def delete_definition(category: str, name: str) -> ResponseReturnValue:
     name = html.unescape(name).replace("_", "/")
     dmanager.delete_definitions_entry(category, name)
     db.session.commit()
@@ -1110,7 +1119,7 @@ def delete_definition(category: str, name: str):
 @app.route("/settings/protocols/<protocol>/<subprotocol>/<category>", methods=["POST"])
 @login_required 
 @handle_exception
-def update_protocol_entry(protocol: str, subprotocol: str, category: str):
+def update_protocol_entry(protocol: str, subprotocol: str, category: str) -> ResponseReturnValue:
     dmanager.update_protocol_entry(
         category, f"{protocol}/{subprotocol}", request.form
     )
@@ -1122,7 +1131,7 @@ def update_protocol_entry(protocol: str, subprotocol: str, category: str):
 @app.route("/settings/protocols/delete/<category>/<uuid>", methods=["POST"])
 @login_required 
 @handle_exception
-def delete_protocol_entry(category: str, uuid: str): 
+def delete_protocol_entry(category: str, uuid: str) -> ResponseReturnValue:
     dmanager.delete_protocol_entry(category, uuid)
     session["subprotocol_changed"] = True
     db.session.commit()
@@ -1130,7 +1139,7 @@ def delete_protocol_entry(category: str, uuid: str):
 
 @app.route("/settings/protocols/<escaped_protocol>/<subprotocol>/<category>")
 @login_required
-def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
+def subprotocol(escaped_protocol: str, subprotocol: str, category: str) -> ResponseReturnValue:
     protocol = db.session.get(Protocol, escaped_protocol)
     if protocol is None or subprotocol not in protocol.get_subprotocols():
         raise EntryNotFound(f"Subprotocol \"{escaped_protocol}/{subprotocol}\" not found")
@@ -1163,11 +1172,12 @@ def subprotocol(escaped_protocol: str, subprotocol: str, category: str):
             missing_required_virus=missing_virus,
             msg=""
         )
+    raise EntryNotFound(f"Protocol {escaped_protocol} not found")
 
 @app.route("/settings/add_protocol", methods=["POST"]) 
 @login_required 
 @handle_exception
-def add_protocal():
+def add_protocal() -> ResponseReturnValue:
     escaped_name = escape(request.form["name"]).strip()
     if not escaped_name:
         raise InvalidNameException(request.form["name"], "Protocol name must not be empty")
@@ -1187,7 +1197,7 @@ def add_protocal():
 @app.route("/settings/protocols/<escaped_protocol>/add_protocol", methods=["POST"]) 
 @login_required 
 @handle_exception
-def add_subprotocal(escaped_protocol):
+def add_subprotocal(escaped_protocol: str) -> ResponseReturnValue:
     protocol = db.session.get(Protocol, escaped_protocol)
     subprotocol = request.form["name"]
     if not protocol:
@@ -1203,7 +1213,7 @@ def add_subprotocal(escaped_protocol):
 @app.route("/settings/protocols/remove/<escaped_protocol>", methods=["POST"]) 
 @login_required 
 @handle_exception
-def remove_protocol(escaped_protocol: str):
+def remove_protocol(escaped_protocol: str) -> ResponseReturnValue:
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
         raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
@@ -1214,7 +1224,7 @@ def remove_protocol(escaped_protocol: str):
 @app.route("/settings/protocols/remove/<escaped_protocol>/<subprotocol>", methods=["POST"]) 
 @login_required 
 @handle_exception
-def remove_subprotocol(escaped_protocol: str, subprotocol: str):
+def remove_subprotocol(escaped_protocol: str, subprotocol: str) -> ResponseReturnValue:
     protocol = db.session.get(Protocol, escaped_protocol)
     if not protocol:
         raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
@@ -1231,7 +1241,7 @@ def remove_subprotocol(escaped_protocol: str, subprotocol: str):
 @app.route("/comments/apply/", methods=["POST"]) 
 @login_required 
 @handle_exception
-def apply_comments():
+def apply_comments() -> ResponseReturnValue:
     try:
         mlas = json.loads(request.form["mlas"])
     except json.JSONDecodeError as error:
@@ -1241,4 +1251,4 @@ def apply_comments():
     return dmanager.get_comment_data_html(mlas)
 
 if __name__=="__main__":
-    app.run(debug=True, port=PORT)
+    app.run(debug=True, port=int(PORT))
