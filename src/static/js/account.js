@@ -102,6 +102,23 @@ async function SetAdmin(email, checked) {
   }
 }
 
+async function SetPawControl(email, checked) {
+  const query = checked ? "?paw_control=True" : "";
+  try {
+    const response = await AppFetch("/account/" + encodeURIComponent(email) + "/set_paw_control" + query,
+      {method: "POST", body: new FormData()});
+    if (!response.ok) {
+      const message = await response.text();
+      OpenErrorModal(message || "Failed changing paw-control status.", response.status);
+    } else {
+      alert("Paw-control " + (checked ? "enabled" : "disabled") + " for " + email);
+    }
+  } catch (error) {
+    console.error("Failed changing paw-control status:", error);
+    OpenErrorModal();
+  }
+}
+
 async function UpdateUsername() {
   const formData = new FormData();
   formData.append("old_username", document.getElementById("old_username").value);

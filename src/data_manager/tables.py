@@ -51,21 +51,29 @@ class User(db.Model):
     email: Mapped[str] = db.Column(db.String, primary_key=True)
     name: Mapped[str] = db.Column(db.String, primary_key=False)
     admin: Mapped[bool] = db.Column(db.Boolean, primary_key=False)
+    paw_control: Mapped[bool] = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
     password: Mapped[str | bytes] = db.Column(db.String, primary_key=False)
     salt: Mapped[bytes] = db.Column(db.String, primary_key=False)
     authenticated: Mapped[bool] = db.Column(db.Boolean, default=False)
 
-    def __init__(self, email: str, name: str, admin: bool, password: str | bytes, salt: bytes) -> None:
+    def __init__(
+        self, email: str, name: str, admin: bool, password: str | bytes, salt: bytes,
+        *, paw_control: bool = False,
+    ) -> None:
         self.email = email 
         self.name = name 
         self.admin = admin
+        self.paw_control = paw_control
         self.password = password 
         self.salt = salt
 
     @classmethod 
     def from_json(cls, user: Mapping[str, Any]) -> User:
         return cls(
-            user["email"], user["name"], user["admin"], user["password"], user["salt"]
+            user["email"], user["name"], user["admin"], user["password"], user["salt"],
+            paw_control=user.get("paw_control", False),
         )
 
     def is_active(self) -> bool:

@@ -608,10 +608,23 @@ def change_admin_status(email: str) -> ResponseReturnValue:
     user = db.session.get(User, email)
     if user is None:
         raise EntryNotFound(f"User \"{email}\" not found!")
-    is_admin = request.args.get("admin")
     user.admin = request.args.get("admin") == "True"
     db.session.commit()
     return redirect("/login")
+
+@app.route("/account/<email>/set_paw_control", methods=["POST"])
+@login_required
+@handle_exception
+def change_paw_control_status(email: str) -> ResponseReturnValue:
+    if not current_user.admin:
+        raise Forbidden("Only admins can change paw-control status of other users")
+    user = db.session.get(User, email)
+    if user is None:
+        raise EntryNotFound(f"User \"{email}\" not found!")
+    user.paw_control = request.args.get("paw_control") == "True"
+    db.session.commit()
+    return text_response("Paw-control status updated.")
+
 
 @app.route("/signature/<user>")
 @login_required 
