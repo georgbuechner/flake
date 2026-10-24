@@ -212,9 +212,9 @@ class ProtocolCreationTests(unittest.TestCase):
         self.assertIn('action="/settings/protocols/target/add_protocol"', response.text)
         self.assertIn('<option value="">Start empty</option>', response.text)
         self.assertIn('<optgroup label="Source &lt;protocol&gt;">', response.text)
-        self.assertIn('<option value="source/A">A</option>', response.text)
+        self.assertRegex(response.text, r'<option value="source/A">\s*source/A\s*</option>')
         self.assertIn('<optgroup label="Target protocol">', response.text)
-        self.assertIn('<option value="target/Existing">Existing</option>', response.text)
+        self.assertRegex(response.text, r'<option value="target/Existing">\s*target/Existing\s*</option>')
         self.assertNotIn('<optgroup label="Unused">', response.text)
 
     def test_route_creates_and_redirects_to_general_with_or_without_template(self):
