@@ -689,12 +689,15 @@ class Protocol(db.Model):
             return []
         return subprotocols
 
-    def add_subprotocol(self, subprotocol: str) -> None:
+    def add_subprotocol(self, subprotocol: str, *, initialize_defaults: bool = True) -> None:
         if len(self.subprotocols) == 0:
             self.subprotocols += subprotocol 
         else:
             self.subprotocols += ";" + subprotocol
         
+        if not initialize_defaults:
+            return
+
         # Add default general and watercontrol
         full_protocol = f"{self.escaped}/{subprotocol}"
         watercontrol = PWatercontrol(full_protocol, False, 0, 0)
