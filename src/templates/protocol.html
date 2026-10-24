@@ -53,12 +53,29 @@
     <br>
     <a class="mod thick" title="Add new protocol." onclick="AddProtocol();">+</a>
 
-  <dialog id="add_protocol_modal" style="height: 250px; width: 60%;" category="">
+  <dialog id="add_protocol_modal" style="width: 60%; max-width: 650px;" category="">
     <button onclick="Close('add_protocol_modal')" style="float: right;">Close</button>
     <h2>Add Subprotocol</h2>
-    <p>User <i>no subprotocol</i> if there are no subprotocols.</p>
-    <form action="{{protocol.escaped}}/add_protocol" method="POST">
-      <input type="text" name="name" id="name" placeholder="f.e. 'A', 'B', ...">
+    <p>Choose a name and optionally copy settings from an existing subprotocol.</p>
+    <form action="{{url_for('add_subprotocal', escaped_protocol=protocol.escaped)}}" method="POST">
+      <label for="name">Subprotocol name:</label>
+      <input type="text" name="name" id="name" placeholder="f.e. 'A', 'B', ..." required>
+      <br><br>
+      <label for="template">Template:</label>
+      <select name="template" id="template">
+        <option value="">Start empty</option>
+        {% for template_protocol in template_protocols %}
+          {% if template_protocol.get_subprotocols() %}
+            <optgroup label="{{template_protocol.name}}">
+              {% for template_subprotocol in template_protocol.get_subprotocols() | sort %}
+                <option value="{{template_protocol.escaped}}/{{template_subprotocol}}">
+                  {{template_protocol.escaped}}/{{template_subprotocol}}
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        {% endfor %}
+      </select>
       <br><br>
       <input type='submit' name='submit'/>
     </form>

@@ -11,6 +11,7 @@ import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
 from types import SimpleNamespace
+from uuid import uuid4
 from sqlalchemy.orm import Query
 from typing import Dict, Iterable, List, Mapping, Tuple, Any, TypeVar, cast
 from werkzeug.datastructures import FileStorage
@@ -947,6 +948,59 @@ class DManager:
         if definition_entry is None:
             raise EntryNotFound(f"Entry {name} of {category} not found!")
         db.session.delete(definition_entry)
+
+    def create_subprotocol(
+        self, target_protocol: str, name: str, *, template: Tuple[str, str] | None = None
+    ) -> str:
+        """Create independent subprotocol settings; the caller commits the transaction."""
+        protocol = db.session.get(Protocol, target_protocol)
+        if protocol is None:
+            raise EntryNotFound(f'Protocol "{target_protocol}" does not exist!')
+        if not name or any(character.isspace() or character in "/;" for character in name):
+            raise InvalidNameException(
+                name, "Subprotocol must not be empty or contain whitespace, / or ;"
+            )
+        if name in protocol.get_subprotocols():
+            raise DublicateEntry("Subprotocol already exists!")
+
+        if template is None:
+            protocol.add_subprotocol(name)
+        else:
+            self.__create_subprotocol_from_template(protocol, name, template)
+        return f"{target_protocol}/{name}"
+
+    def __create_subprotocol_from_template(
+        self, protocol: Protocol, name: str, template: Tuple[str, str]
+    ) -> None:
+        """Validate and copy template settings without committing the transaction."""
+        source_protocol, source_subprotocol = template
+        source = db.session.get(Protocol, source_protocol)
+        full_source = f"{source_protocol}/{source_subprotocol}"
+        if source is None or source_subprotocol not in source.get_subprotocols():
+            raise EntryNotFound(f'Template subprotocol "{full_source}" does not exist!')
+        template_data: Dict[type[Any], List[Dict[str, Any]]] = {}
+        for Table in [PGeneral, PWatercontrol, *PROTOCOL_TABLES.values()]:
+            table = Table.__table__
+            rows = db.session.execute(
+                table.select().where(table.c.protocol == full_source)
+            ).mappings()
+            template_data[Table] = [dict(row) for row in rows]
+            if Table in (PGeneral, PWatercontrol) and len(template_data[Table]) != 1:
+                raise MissingEntryException(
+                    entry=table.name,
+                    msg=f'Template subprotocol "{full_source}" must have exactly one row in ',
+                )
+
+        full_protocol = f"{protocol.escaped}/{name}"
+        protocol.add_subprotocol(name, initialize_defaults=False)
+        for Table, rows in template_data.items():
+            if rows:
+                # Insert stored values directly: form factories reinterpret false flags,
+                # and medication constructors recalculate amounts.
+                db.session.execute(Table.__table__.insert(), [
+                    {**row, "uuid": str(uuid4()), "protocol": full_protocol}
+                    for row in rows
+                ])
 
     def remove_protocol(self, protocol: Protocol, escaped_protocol: str) -> None: 
         # Remove data matching this excact protocol

@@ -10,7 +10,8 @@ from flask import (
     render_template, 
     request, 
     send_file,
-    session
+    session,
+    url_for,
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from data_manager.dmanager import DManager, date_filled, parse_weight, get_category_table
@@ -722,6 +723,7 @@ def protocol(escaped_protocol: str) -> ResponseReturnValue:
             "protocol.html", 
             protocol=protocol,
             subprotocols=protocol.get_subprotocols(),
+            template_protocols=sort_query(Protocol.query.all(), "name"),
             is_setup=dmanager.subprotocol_is_setup,
             msg=""
         )
@@ -1198,17 +1200,19 @@ def add_protocal() -> ResponseReturnValue:
 @login_required 
 @handle_exception
 def add_subprotocal(escaped_protocol: str) -> ResponseReturnValue:
-    protocol = db.session.get(Protocol, escaped_protocol)
-    subprotocol = request.form["name"]
-    if not protocol:
-        raise EntryNotFound(f"Protocol \"{escaped_protocol}\" does not exist!")
-    if not subprotocol or " " in subprotocol:
-        raise InvalidNameException(subprotocol, "Subprotocol must not be empty or contain spaces")
-    if subprotocol in protocol.get_subprotocols():
-        raise DublicateEntry("Subprotocol already exists!")
-    protocol.add_subprotocol(subprotocol)
+    template = None
+    template_value = request.form.get("template", "")
+    if template_value:
+        source_protocol, separator, source_subprotocol = template_value.partition("/")
+        if not separator or not source_protocol or not source_subprotocol:
+            raise InvalidTypeException("Select a valid template subprotocol.")
+        template = (source_protocol, source_subprotocol)
+    name = request.form["name"]
+    dmanager.create_subprotocol(escaped_protocol, name, template=template)
     db.session.commit()
-    return redirect("/settings/protocols/" + escaped_protocol)
+    return redirect(url_for(
+        "subprotocol", escaped_protocol=escaped_protocol, subprotocol=name, category="general"
+    ))
 
 @app.route("/settings/protocols/remove/<escaped_protocol>", methods=["POST"]) 
 @login_required 
