@@ -23,14 +23,18 @@ class PlainTextErrorTests(unittest.TestCase):
         mocked_db.start()
         self.addCleanup(mocked_db.stop)
         source = Path(__file__).resolve().parents[1] / "src/app.py"
-        handler = next(node for node in ast.parse(source.read_text()).body
-                       if isinstance(node, ast.FunctionDef) and node.name == "handle_exception")
+        nodes = []
+        for node in ast.parse(source.read_text()).body:
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+                nodes.append(node)
+            elif isinstance(node, ast.FunctionDef) and node.name == "handle_exception":
+                nodes.append(node)
         namespace = {
             "wraps": wraps, "FlakeError": FlakeError, "HTTPException": HTTPException,
             "db": Mock(session=self.session), "app": self.app,
             "handle_request_error": handle_request_error,
         }
-        exec(compile(ast.Module(body=[handler], type_ignores=[]), str(source), "exec"), namespace)
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), "exec"), namespace)
         self.handle = namespace["handle_exception"]
 
     def test_exception_formatting_is_plain_text_without_stripping_user_values(self):

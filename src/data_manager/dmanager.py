@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from urllib.parse import unquote
 import clevercsv 
 import json
@@ -9,8 +11,10 @@ import pandas as pd
 from copy import deepcopy
 from collections import OrderedDict
 from types import SimpleNamespace
-from flask_sqlalchemy.query import Query
-from typing import Dict, List, Tuple, Any
+from sqlalchemy.orm import Query
+from typing import Dict, Iterable, List, Mapping, Tuple, Any, TypeVar, cast
+from werkzeug.datastructures import FileStorage
+from data_manager.types import ExperimentData, NamedEntry, ProcedureSummary, SurgerySheetData
 from exceptions.exceptions import (
     AnimalDataIncompleteException,
     ConfirmationRequired,
@@ -30,6 +34,7 @@ from utils.parser_weights_and_water import (
 )
 from data_manager.tables import (
     ALine,
+    PAllowedMice,
     AnimalData,
     CommentBackup,
     CommentData,
@@ -57,6 +62,9 @@ from utils.utils import sort, sort_query, escape, get_signature_path
 from utils.dt_utils import * 
 from flask import render_template
 
+T = TypeVar("T")
+ProtocolEntryT = TypeVar("ProtocolEntryT", PMedication, PProcedure, PVirus, PAllowedMice)
+
 SACRIFICE_DATE = -1
 UNEXPECTED_DEATH = "Death: unexpected"
 
@@ -69,7 +77,7 @@ class DManager:
     @attribute protocols {"name": {"espaped":<str>, "subs":<Dict[str, str]>}
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """! The DManager class initializer. 
         """
         print(f"Initializing DManager...")
@@ -87,7 +95,7 @@ class DManager:
         users.sort()
         return users
 
-    def pyrat_usernames_with_progress(self, year) -> Dict[str, Tuple[int, int]]:
+    def pyrat_usernames_with_progress(self, year: str | int) -> Dict[str, Tuple[int, int]]:
         """! Gets dictionary of all users (pyrat: 'Responsible') which are
         currently responsible for an animal, mapping to a tuple indicating how
         many animals from all animals of this user are completed (f.e. FLAKE
@@ -214,14 +222,14 @@ class DManager:
 
     def get_overview_table(
         self, 
-        initial_query: Query, 
+        initial_query: Query[AnimalData],
         sort_by: str, 
-        reverse: bool, 
+        reverse: str,
         filter_date: str, 
         start: str, 
         end: str, 
         mla_num: str
-    ) -> List: 
+    ) -> List[AnimalData]:
         # Apply filter 
         if mla_num != "":  
             filtered_query = initial_query.filter(AnimalData.mla_num.like(f"%{mla_num}%"))
@@ -231,7 +239,8 @@ class DManager:
             filtered_query = [row for row in filtered_query if row.dob >= f"{start}" and row.dob <= f"{end}"]
         elif filter_date == "Sacrifice date":
             filtered_query = [
-                row for row in filtered_query if row.death_date>= f"{start}" and row.death_date <= f"{end}"
+                row for row in filtered_query
+                if row.death_date is not None and start <= row.death_date <= end
             ]
         elif filter_date == "start date": 
             dates = self.get_start_dates(filtered_query) 
@@ -256,14 +265,14 @@ class DManager:
             print("-> ", datetime.now())
         return str(datetime.now().year)
 
-    def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool]: 
+    def get_comment_infos(self, animal_data: List[AnimalData]) -> Dict[str, bool | None]:
         comment_infos = {} 
         for animal in animal_data: 
             comment_backup = db.session.get(CommentBackup, animal.mla_num)
             comment_infos[animal.mla_num] = comment_backup and comment_backup.comment != ""
         return comment_infos
 
-    def extract_animal_data(self, file, ignore_comment: bool) -> Dict[str, str]:
+    def extract_animal_data(self, file: FileStorage | None, ignore_comment: bool) -> Dict[str, str]:
         """! Extracts and stores animal-data from csv file.
 
         @param tmp_path  Path for temporarily storing csv-file.
@@ -299,7 +308,7 @@ class DManager:
         comment_data = self.__get_parsed_comments_data(animal_ids)
         return self.get_quick_apply_animal_data(comment_data)
 
-    def get_start_dates(self, animals) -> Dict[str, str]: 
+    def get_start_dates(self, animals: Iterable[AnimalData]) -> Dict[str, str]:
         start_dates = {}
         for x in animals: 
             general = db.session.get(General, x.mla_num)
@@ -321,7 +330,7 @@ class DManager:
         comment_data: Dict[str, CommentData], 
         set_stored: bool|None = None, 
         ignore_comment: bool|None = None
-    ):
+    ) -> str:
         # Get animal data
         animal_data = []
         for mla, _ in comment_data.items(): 
@@ -426,7 +435,7 @@ class DManager:
         fill_sacrifice_date(animal_id)
 
     def set_death_date(
-        self, animal_id: str, death_date: str, *, regenerate_weights: bool = True
+        self, animal_id: str, death_date: str | None, *, regenerate_weights: bool = True
     ) -> str | None:
         if death_date not in (None, "", "---"):
             strtodate(death_date)
@@ -450,8 +459,8 @@ class DManager:
         return warning
 
     def update_experiment_data_entry(
-        self, animal_id: str, category: str, data: Dict[str, Any]
-    ):
+        self, animal_id: str, category: str, data: Mapping[str, Any]
+    ) -> None:
         Table = get_category_table(EXPERIMENT_TABLES, category)
         require_entry_fields(category, data, experiment=True)
         # Check name:
@@ -488,7 +497,7 @@ class DManager:
                     db.session.delete(row)
         db.session.delete(animal_data)
 
-    def reset_animal_data(self, experiment):
+    def reset_animal_data(self, experiment: str) -> int:
         query = General.query.filter(General.experiment == experiment)
         num_data_reset = 0
         if query.first():
@@ -497,7 +506,7 @@ class DManager:
                 self.set_subprotocol(general.animal_id, "---", True)
         return num_data_reset 
 
-    def reload_animal_data(self, experiment): 
+    def reload_animal_data(self, experiment: str) -> Dict[str, str]:
         query = General.query.filter(General.experiment == experiment)
         saved_data = {}
         response = {"text": "reaload animals"}
@@ -532,23 +541,27 @@ class DManager:
         # Update stored? of animal-data
         self.__update_stored(animal_id)
     
-    def get_experiment_data(self, animal_id: str) -> Dict[str, Dict[str, Any]]:
+    def get_experiment_data(self, animal_id: str) -> ExperimentData:
         general = db.session.get(General, animal_id)
-        experiment_data = {"general": table_to_json(general)}
+        if general is None:
+            raise EntryNotFound(f"Experiment data for {animal_id} not found")
+        experiment_data: Dict[str, Any] = {"general": table_to_json(general)}
 
         for name, Table in EXPERIMENT_TABLES.items(): 
             data = Table.query.filter(Table.animal_id == animal_id)
-            # TODO (fux): Check types (it seems like general and other tables
-            # have different types?
             experiment_data[name] = [table_to_json(t) for t in data]
-        return experiment_data
+        return cast(ExperimentData, experiment_data)
 
     def get_surgery_sheet_data(
         self, animal_id: str
-    ) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
+    ) -> Tuple[SurgerySheetData, List[ProcedureSummary]]:
         general = db.session.get(General, animal_id)
+        if general is None:
+            raise EntryNotFound(f"Experiment data for {animal_id} not found")
         animal_data = db.session.get(AnimalData, general.animal_id)
-        data = {"general": table_to_json(general)}
+        if animal_data is None:
+            raise EntryNotFound(f"AnimalData for {animal_id} not found")
+        data: Dict[str, Any] = {"general": table_to_json(general)}
         table_notes = Note.query.filter(Note.animal_id == animal_id, Note.surgery_sheet)
         data["general"]["notes"] = "\n".join([unquote(note.note) for note in table_notes])
         print("NOTES: ", data["general"]["notes"])
@@ -586,18 +599,21 @@ class DManager:
         data["death_drugs"] = get_entries_with_dates("death_drugs")
         data["viruses"] = sort(get_entries_with_dates("viruses"), "date")
         data["procedures"] = sort([table_to_json(p) for p in data["procedures"]], "start_date")
-        return data, filtered_procedures
+        return cast(SurgerySheetData, data), filtered_procedures
 
-    def get_protocol_data(self, category: str, full_protocol: str): 
+    def get_protocol_data(
+        self, category: str, full_protocol: str
+    ) -> Tuple[dict[str, Any] | list[Any], dict[str, Any] | list[Any]]:
         if category not in ("general", "watercontrol"):
             get_category_table(PROTOCOL_TABLES, category)
         # Get tables which should have only 1 element:
         if category not in PROTOCOL_TABLES:
             if category == "general":
                 res = PGeneral.query.filter(PGeneral.protocol == full_protocol)
-            if category == "watercontrol":
+            else:
                 res = PWatercontrol.query.filter(PWatercontrol.protocol == full_protocol)
-            return table_to_json(res.first()) if res.first() else {}, {}
+            entry = res.first()
+            return table_to_json(entry) if entry else {}, {}
         # Get tables for all other categories.
         Table = get_category_table(PROTOCOL_TABLES, category)
         protocol_data = Table.query.filter(Table.protocol == full_protocol)
@@ -628,17 +644,19 @@ class DManager:
             definitions = sort_query(get_category_table(DEFINITION_TABLES, category).query.all(), "name")
         return protocol_data, definitions
 
-    def get_p9_data(self, escaped_protocol: str, use_year: str, force: bool): 
+    def get_p9_data(
+        self, escaped_protocol: str, use_year: str, force: bool
+    ) -> Tuple[Dict[str, Any], str, Dict[str, List[ProcedureSummary]], int]:
         protocol = db.session.get(Protocol, escaped_protocol)
         if protocol is None:
             raise EntryNotFound(f'Protocol "{escaped_protocol}" not found')
         subprotocols = {}
         error_json = {}
         num_errors = 0
-        def to_string(elems, procedure): 
-            return ", ".join([e.string() for e in elems if e.date in dates])
-
-        def procedures(procedures, medication, viruses, animal_data, num_errors):
+        def procedures(
+            procedures: Iterable[Procedure], medication: Iterable[Medication],
+            viruses: Iterable[Virus], animal_data: AnimalData, num_errors: int,
+        ) -> List[Dict[str, str]]:
             procedures = sort_query(procedures, "start_date")
             # Handle "unexpected death": Remove procedures after animals death
             procedures, filtered_procedures = remove_procedures_after_death(
@@ -682,17 +700,20 @@ class DManager:
             full_protocol = f"{escaped_protocol}/{sub}"
             generals = General.query.filter(General.experiment == full_protocol)
             data = {"animals": [], "experiment": sub}
-            if generals.first():
+            first_general = generals.first()
+            if first_general is not None:
                 data["subprotocol"] = db.session.scalars(
                     db.select(PGeneral).where(
-                        PGeneral.protocol == generals.first().experiment
+                        PGeneral.protocol == first_general.experiment
                     )
                 ).first()
 
                 for general in generals:
                     animal_data = db.session.get(AnimalData, general.animal_id)
+                    if animal_data is None:
+                        raise EntryNotFound(f"AnimalData for {general.animal_id} not found")
                     # Take only entries from the given year: 
-                    if use_year not in animal_data.death_date: 
+                    if not animal_data.death_date or use_year not in animal_data.death_date:
                         continue
                     path, _ = get_signature_path(animal_data.user)
                     signature = "default.png"
@@ -747,10 +768,9 @@ class DManager:
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
         if autofill is False: 
             return "Start date updated without updating other dates."
-        general = db.session.get(General, animal_id)
         surgery_start = get_surgery_start(general.experiment)
         not_updated = []
-        def get_date(inc):
+        def get_date(inc: int) -> str:
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
         # Update procedures: 
         for x in Procedure.query.filter(Procedure.animal_id == animal_id): 
@@ -763,6 +783,8 @@ class DManager:
                     + " Sorry for the inconvenience.)",
                     400
                 )
+            if default.days_after_start is None:
+                raise InvalidTypeException(f"Missing start offset for {default.name}")
             x.start_date = get_date(int(default.days_after_start))
             x.end_date = get_date(int(default.days_after_start)+int(default.get_duration())-1)
         fill_sacrifice_date(animal_id)
@@ -776,13 +798,15 @@ class DManager:
                 f"{json.dumps(not_updated)}"
 
     def update_weights_and_watercontrol(
-        self, animal_id: str, weights: str, water_control_mask: str
+        self, animal_id: str, weights: str | None, water_control_mask: str | None
     ) -> None:
         """! Updates a field of in an animal entry. """
         general = db.session.get(General, animal_id)
         if general is None: 
             raise EntryNotFound(f"Animal not found + {animal_id}")
         try:
+            if weights is None:
+                raise TypeError("Weights are required")
             parsed_weights = json.loads(weights)
         except (TypeError, ValueError) as error:
             raise InvalidTypeException("Weights must be a non-empty JSON list of numbers") from error
@@ -792,13 +816,15 @@ class DManager:
             if weight is None and index > 0:
                 continue  # An unmeasured day may be empty.
             try:
-                finite = type(weight) in (int, float) and math.isfinite(weight)
+                finite = isinstance(weight, (int, float)) and not isinstance(weight, bool) and math.isfinite(weight)
             except OverflowError:
                 finite = False
             if (not finite
-                    or weight < 0 or (index == 0 and weight == 0)):
+                    or weight is None or weight < 0 or (index == 0 and weight == 0)):
                 raise InvalidTypeException("Weights must contain finite, non-negative numbers; the first weight must be positive")
         try:
+            if water_control_mask is None:
+                raise TypeError("Watercontrol is required")
             parsed_mask = json.loads(water_control_mask)
         except (TypeError, ValueError) as error:
             raise InvalidTypeException("Watercontrol must be a JSON list of booleans") from error
@@ -812,7 +838,7 @@ class DManager:
         self.__update_stored(animal_id)
 
     def update_definitions_entry(
-        self, category: str, data: Dict[str, Any]
+        self, category: str, data: Mapping[str, Any]
     ) -> None:
         """! Updates or creates new definition entry. """
         Table = get_category_table(DEFINITION_TABLES, category)
@@ -839,7 +865,7 @@ class DManager:
             db.session.add(definitions_entry)
 
     def update_protocol_entry(
-        self, category: str, protocol: str, data: Dict[str, Any]
+        self, category: str, protocol: str, data: Mapping[str, Any]
     ) -> None:
         """! Updates or creates new definition entry. """
         if category not in ("general", "watercontrol"):
@@ -1014,6 +1040,8 @@ class DManager:
         # Generate water-control-mask, if watercontrol is allowed:
         if watercontrol_infos.allowed:
             try:
+                if watercontrol_infos.days_after_start is None or watercontrol_infos.duration is None:
+                    raise TypeError("Watercontrol start and duration are required")
                 days_after_start = int(watercontrol_infos.days_after_start)
                 water_duration = int(watercontrol_infos.duration)
             except (ValueError, TypeError) as error:
@@ -1094,7 +1122,7 @@ class DManager:
 
         @param animal_id  ID of animal
         """
-        def delete(table):
+        def delete(table: type[Any]) -> None:
             for x in table.query.filter(table.animal_id == animal_id):
                 db.session.delete(x)
         for x in [General, Medication, Procedure, Virus]:
@@ -1189,6 +1217,8 @@ class DManager:
             return 0, 100
         dates_counter[0] += 1 if date_filled(general.start) else 0
         animal_data = db.session.get(AnimalData, animal_id)
+        if animal_data is None:
+            raise EntryNotFound(f"AnimalData for {animal_id} not found")
         if not ignore_death_date:
             dates_counter[0] += 1 if date_filled(animal_data.death_date) else 0
         # Check procedures for dates
@@ -1198,7 +1228,7 @@ class DManager:
             dates_counter[1] += 2 
         return dates_counter[0], dates_counter[1]
 
-    def __update_stored(self, animal_id): 
+    def __update_stored(self, animal_id: str) -> None:
         x, of = self.__is_stored(animal_id)
         animal_data = db.session.get(AnimalData, animal_id) 
         if animal_data is None: 
@@ -1218,7 +1248,7 @@ class DManager:
                 not procedures_contains(procedures, "Sacrifice")
             )
 
-def parse_weight(weight: str | float):
+def parse_weight(weight: str | float) -> float:
     try: 
         value = float(weight)
     except (ValueError, TypeError, OverflowError) as error:
@@ -1228,13 +1258,13 @@ def parse_weight(weight: str | float):
     return value
 
 
-def get_category_table(tables, category):
+def get_category_table(tables: Mapping[str, T], category: str) -> T:
     if category not in tables:
         raise EntryNotFound(f'Unknown category "{category}"')
     return tables[category]
 
 
-def require_entry_fields(category, data, *, experiment=False):
+def require_entry_fields(category: str, data: Mapping[str, Any], *, experiment: bool = False) -> None:
     fields = {
         "medication": ("name", "kind", "procedure", "amount", "concentration", "dosis"),
         "procedures": ("name", "days_after_start", "duration", "requires_medication", "requires_virus"),
@@ -1251,28 +1281,33 @@ def require_entry_fields(category, data, *, experiment=False):
         if field not in data:
             raise MissingEntryException(field)
 
-def get_surgery_start(protocol: str):
+def get_surgery_start(protocol: str) -> int:
     procedures = db.session.query(PProcedure).filter_by(protocol=protocol)
     surgery_start = 900
     for procedure in procedures: 
-        if procedure.surgery and int(procedure.days_after_start) < surgery_start:
-            surgery_start = int(procedure.days_after_start)
+        if procedure.surgery:
+            if procedure.days_after_start is None:
+                raise InvalidTypeException(f"Missing start offset for {procedure.name}")
+            if int(procedure.days_after_start) < surgery_start:
+                surgery_start = int(procedure.days_after_start)
     return surgery_start
 
 
-def get_surgery_dates(animal_id: str, protocol: str): 
+def get_surgery_dates(animal_id: str, protocol: str) -> List[datetime]:
     procedures = db.session.query(Procedure).filter_by(animal_id=animal_id)
     surgery_dates = []
     for procedure in procedures:
         # Get matching protocol-entry to check if procedure is a surgery
         protocol_procedure = get_protocol_entry_by_name(PProcedure, protocol, procedure.name)
+        if protocol_procedure is None:
+            raise EntryNotFound(f"Protocol procedure {procedure.name} not found")
         if protocol_procedure.surgery:
             if date_filled(procedure.start_date) and date_filled(procedure.end_date):
                 for date in daterange(strtodate(procedure.start_date), strtodate(procedure.end_date)):
                     surgery_dates.append(date)
     return surgery_dates
 
-def fill_sacrifice_date(animal_id: str):
+def fill_sacrifice_date(animal_id: str) -> None:
     animal_data = db.session.get(AnimalData, animal_id)
     if animal_data:
         if not date_filled(animal_data.death_date):
@@ -1287,21 +1322,23 @@ def fill_sacrifice_date(animal_id: str):
                     entry.set_date(animal_data.death_date)
 
 
-def validate_unchanged_name(entry, name: str):
+def validate_unchanged_name(entry: NamedEntry, name: str) -> None:
     if name != entry.name:
         raise InvalidNameException(
             name=name, msg="The name of an existing entry cannot be changed."
         )
 
 
-def get_protocol_entry_by_name(Table, protocol: str, name: str) -> Table|None:
+def get_protocol_entry_by_name(
+    Table: type[ProtocolEntryT], protocol: str, name: str
+) -> ProtocolEntryT | None:
     res = Table.query.filter(Table.protocol == protocol, Table.name == name)
     if not res.first(): 
         return None
     return res.first() 
 
 def check_experiment_data_entry_exists(
-    Table, category: str, data: Dict[str, Any], animal_id: str
+    Table: type[Any], category: str, data: Mapping[str, Any], animal_id: str
 ) -> bool: 
     if category == "procedures": 
         return True if Table.query.filter(
@@ -1325,8 +1362,8 @@ def check_experiment_data_entry_exists(
         return False
 
 def remove_procedures_after_death(
-    procedures: List[Procedure], sacrifice_date: str
-) -> Tuple[List[Procedure], List[Procedure]]: 
+    procedures: Iterable[Procedure], sacrifice_date: str | None
+) -> Tuple[List[Procedure], List[ProcedureSummary]]:
     """
     Checks if there are procedures *after* the animals death. 
     If yes, also an existing sacrice procedure es removed. Then: 
@@ -1335,6 +1372,8 @@ def remove_procedures_after_death(
 
     Returns: procedures, removed-procedure
     """
+    if sacrifice_date is None:
+        raise InvalidTypeException("Sacrifice date is missing")
     filtered_procedures = []
     removed_procedures = []
     # Removes all procedures *after* death-date
@@ -1349,7 +1388,7 @@ def remove_procedures_after_death(
             })
     return filtered_procedures, removed_procedures
 
-def procedures_contains(procedures: List[Procedure], name: str) -> bool: 
+def procedures_contains(procedures: Iterable[Procedure], name: str) -> bool:
     for p in procedures: 
         if name in p.name: 
             return True 

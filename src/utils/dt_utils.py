@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, TypeGuard
 from exceptions.exceptions import InvalidDateException, FlakeError
 
 SOURCE_DATE_FORMAT = "%Y-%m-%d"
@@ -51,7 +51,7 @@ def daterange_str(date1: str, date2: str) -> List[str]:
     d2 = strtodate(date2)
     return [datetostr(d1 + timedelta(days=x), SOURCE_DATE_FORMAT) for x in range((d2-d1).days+1)]
 
-def is_date(date_str: str) -> bool:
+def is_date(date_str: object) -> TypeGuard[datetime]:
     return isinstance(date_str, datetime)
 
 def convert(
@@ -62,7 +62,7 @@ def convert(
 def today() -> datetime:
     return datetime.now()
 
-def date_filled(date_str: str) -> bool: 
+def date_filled(date_str: str | None) -> TypeGuard[str]:
     return date_str is not None and len(date_str) == 10
 
 def get_reporting_year(year: int) -> Tuple[datetime, datetime]: 
@@ -70,12 +70,12 @@ def get_reporting_year(year: int) -> Tuple[datetime, datetime]:
     end = datetime(year, 12, 31)
     return start, end
 
-def in_reporting_year(start: datetime, end: datetime, date_str: str) -> bool: 
+def in_reporting_year(start: datetime, end: datetime, date_str: str | None) -> bool:
     if not date_filled(date_str): 
         return False
     date = strtodate(date_str) 
     return start <= date <= end 
 
-def get_cur_year(): 
+def get_cur_year() -> int:
     x = datetime.now()
     return x.year

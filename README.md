@@ -95,3 +95,14 @@ baselining a database, because it records revisions without running them.
 
 The type decisions for issue #3 and the scope of its migration are documented in
 [docs/database-types.md](docs/database-types.md).
+
+## Development checks
+
+Install the development dependencies in the virtual environment, then run the
+type checker and tests from the repository root:
+
+```sh
+pip install -r requirements-dev.txt
+pyright
+PYTHONPATH=src python -m unittest discover -s tests
+```

@@ -47,7 +47,9 @@ class WeightGenerationTransactionTests(unittest.TestCase):
         nodes = []
         source = Path(__file__).resolve().parents[1] / 'src/app.py'
         for node in ast.parse(source.read_text()).body:
-            if isinstance(node, ast.FunctionDef) and node.name in names:
+            if isinstance(node, ast.ImportFrom) and node.module == '__future__':
+                nodes.append(node)
+            elif isinstance(node, ast.FunctionDef) and node.name in names:
                 node.decorator_list = []
                 nodes.append(node)
         ns = dict(globals(), app=self.app, dmanager=self.manager)

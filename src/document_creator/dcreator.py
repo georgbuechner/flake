@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 import os
@@ -7,27 +9,29 @@ from docx import Document
 from docx.shared import Cm
 from docx.text.paragraph import Paragraph
 from docx.enum.text import WD_BREAK
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
+from docx.table import Table, _Cell, _Row
+from data_manager.types import ExperimentData
 from utils.dt_utils import strtodate, datetostr, datetostr_month, daterange, incdate, is_date
 from utils.utils import get_signature_path
 
 class GenerationThread(threading.Thread):
-    def __init__(self, target, dcreator): 
+    def __init__(self, target: Callable[[], None], dcreator: DCreator) -> None:
         self.dcreator = dcreator 
-        self.error = None
+        self.error: Exception | None = None
         super().__init__(target=target)
 
-    def run(self):
+    def run(self) -> None:
         try:
             super().run()
         except Exception as error:
             self.error = error
 
-    def raise_if_failed(self):
+    def raise_if_failed(self) -> None:
         if self.error is not None:
             raise self.error
 
-    def progress(self): 
+    def progress(self) -> Dict[str, int]:
         return {"cur": self.dcreator.cur, "total": self.dcreator.total}
 
 class DCreator:
@@ -35,10 +39,10 @@ class DCreator:
     def __init__(
         self, 
         template_path: str, 
-        experiment_data: Dict[str, Dict[str, Any]],
+        experiment_data: ExperimentData,
         animal_data: Dict[str, Any],
-        user_email
-    ):
+        user_email: str
+    ) -> None:
         # Load replacements
         with open("resources/replacements.json") as f:
             self.replacements = json.load(f)
@@ -53,13 +57,13 @@ class DCreator:
             print(f"{protocol_specific} does not seem to exist. Using default.")
             self.doc = Document(os.path.join(template_path, "default.docx"))
         # Data
-        self.fields = experiment_data
+        self.fields: Mapping[str, Any] = experiment_data
         self.fields["general"].update(animal_data)
         self.fields["general"]["user-email"] = user_email
         self.total = 100
         self.cur = 0
 
-    def create_from_template(self):
+    def create_from_template(self) -> None:
         # Create document:
         self.__edit_paragraphs()
         self.__edit_tables()
@@ -67,7 +71,7 @@ class DCreator:
         # Save document:
         self.doc.save("src/output/surgery_sheet.docx")
 
-    def create_score_sheet(self): 
+    def create_score_sheet(self) -> None:
         self.__edit_paragraphs()
         self.__edit_tables()
         user = self.fields["general"]["user"]
@@ -104,7 +108,7 @@ class DCreator:
         monthly_weights.append(data)
 
         # Create extra tables for each month
-        def table_insert_paragraph_after(table):
+        def table_insert_paragraph_after(table: Table) -> Paragraph:
             """Return new `Paragraph` object inserted directly after `table`.
 
             `table` must already be immediately followed by a paragraph. So
@@ -114,7 +118,7 @@ class DCreator:
             p = table._tbl.getnext()
             paragraph = Paragraph(p, table._parent)
             return paragraph.insert_paragraph_before()
-        def copy_table_after(table, paragraph):
+        def copy_table_after(table: Table, paragraph: Paragraph) -> None:
             tbl, p = table._tbl, paragraph._p
             new_tbl = copy.deepcopy(tbl)
             p.addnext(new_tbl)
@@ -126,7 +130,7 @@ class DCreator:
             paragraph = table_insert_paragraph_after(tbl)
             copy_table_after(tbl, paragraph)
             
-        def do_update(cells, cell, data, cat): 
+        def do_update(cells: Sequence[_Cell], cell: int, data: Iterable[Tuple[int, str]], cat: str) -> None:
             update_paragraph(cells[cell].paragraphs[0], f"{{{x}}}", "")  # remove tag
             for i, val in data:
                 if cat == "sig":
@@ -157,7 +161,7 @@ class DCreator:
         self.doc.save("src/output/score_sheet.docx")
 
     ### replacing [tag]-s in paragraphs
-    def __edit_paragraphs(self):
+    def __edit_paragraphs(self) -> None:
         """! Iterates over all paragraphs in search for tags """
         # Handle header
         header = self.doc.sections[0].header
@@ -168,7 +172,7 @@ class DCreator:
             par = self.__edit_paragraph(par, self.fields["general"])
 
     ### replacing [tag]-s in tables
-    def __edit_tables(self):
+    def __edit_tables(self) -> None:
         """! Iterates over all tables in search for tags """
         for table in self.doc.tables:
             for row in table.rows:
@@ -176,7 +180,7 @@ class DCreator:
                     for par in cell.paragraphs:
                         par = self.__edit_paragraph(par, self.fields["general"])
 
-    def __edit_paragraph(self, par, fields: Dict[str, List[Dict[str, any]]]):
+    def __edit_paragraph(self, par: Paragraph, fields: Mapping[str, Any]) -> Paragraph:
         """! Edits paragraph by checking for tags and eventually replacing tag with entry. """
         result = re.search(r"\[(.*)\]", par.text)
         if result is not None:
@@ -194,11 +198,11 @@ class DCreator:
         return par
 
     ### replacing <tag>-s in tables
-    def __edit_list_tables(self):
+    def __edit_list_tables(self) -> None:
         """! Iterates over tables in search for list-tags (adding rows per
         matching entry). 
         """
-        def parse_value(value): 
+        def parse_value(value: Any) -> str:
             # Check for signal-word
             if isinstance(value, str):
                 result = re.search(r"\{(.*)\}", value)
@@ -211,7 +215,7 @@ class DCreator:
             # Otherwise return value unchanged
             return str(value)
 
-        def get_iterator_and_source(par) -> Tuple[str, List[any]]:
+        def get_iterator_and_source(par: Paragraph) -> Tuple[str, Sequence[Any]] | Tuple[None, None]:
             result = re.search(r"\{{(.*) in (.*)}}", par.text)
             if result is not None:
                 update_paragraph(par, result.group(0), "")  # remove tag
@@ -240,7 +244,7 @@ class DCreator:
                     return iterator_name, self.fields[result.group(2)]
             return None, None
                 
-        def get_tags(row) -> List[str]:
+        def get_tags(row: _Row) -> List[str]:
             tags = []
             for i in range(0, len(row.cells)):
                 cell_par = row.cells[i].paragraphs[0]
@@ -252,7 +256,7 @@ class DCreator:
                     print("Error in template: missing tag ({tag}) in table header")
             return tags
 
-        def edit_table(table, tags: List[str], it: str, entry: any):
+        def edit_table(table: Table, tags: List[str], it: str, entry: Any) -> None:
             print("DEBUG: ", tags, it, entry)
             # Add row to table with given information
             columns = table.add_row().cells
@@ -263,8 +267,8 @@ class DCreator:
                     columns[i].text = parse_value(entry)
                 elif tag in self.fields["general"]:
                     columns[i].text = parse_value(self.fields["general"][tag])
-                elif re.search(r'“(.*)”', tag) is not None: 
-                    columns[i].text = re.search(r'“(.*)”', tag).group(1)
+                elif (literal := re.search(r'“(.*)”', tag)) is not None:
+                    columns[i].text = literal.group(1)
                 else:
                     print(f"For tag {tag} not found: {entry}!")
 
@@ -273,7 +277,7 @@ class DCreator:
             # Get infos from first row
             row = table.rows[0]
             iterator, source_list = get_iterator_and_source(row.cells[0].paragraphs[0])
-            if iterator is None: 
+            if iterator is None or source_list is None:
                 continue 
             # Get tags
             tags = get_tags(row)
@@ -287,7 +291,7 @@ class DCreator:
                 for entry in source_list:
                     edit_table(table, tags, iterator, entry)
 
-def update_paragraph(par, old, new): 
+def update_paragraph(par: Paragraph, old: object, new: object) -> None:
     inline = par.runs 
     for i in range(len(inline)): 
         if str(old) in inline[i].text: 
@@ -298,10 +302,10 @@ def update_paragraph(par, old, new):
     # If not found (since runs split old-text):
     update_paragraph_fast(par, str(old), str(new))
 
-def update_paragraph_fast(par, old, new):
+def update_paragraph_fast(par: Paragraph, old: str, new: str) -> None:
     par.text = par.text.replace(old, new)
 
-def add_signature(par, user: str, height: float):
+def add_signature(par: Paragraph, user: str, height: float) -> None:
     p = par.insert_paragraph_before("")
     r = p.add_run()
     path, _ = get_signature_path(user)

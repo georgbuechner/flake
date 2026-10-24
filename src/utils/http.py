@@ -2,5 +2,5 @@
 from flask import Response
 
 
-def text_response(message="", status=200):
+def text_response(message: str = "", status: int = 200) -> Response:
     return Response(message, status=status, content_type="text/plain; charset=utf-8")
