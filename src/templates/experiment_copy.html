@@ -1,0 +1,58 @@
+<script src="/static/js/experiment_copy.js" defer></script>
+<div id="experiment-copy-tools" data-user-id="{{current_user.email}}"
+     {% if animal_id %}data-source-id="{{animal_id}}"{% endif %}>
+  {% if animal_id %}
+    <button type="button" id="open-experiment-copy">Copy experiment data</button>
+    <p id="experiment-copy-status" role="status"></p>
+    <dialog id="experiment-copy-dialog" style="height: fit-content; max-width: 650px;">
+      <h2>Copy experiment data from {{animal_id}}</h2>
+      <form id="experiment-copy-form">
+        <fieldset>
+          <legend>Select what to copy</legend>
+          {% for name, label, entries in [('procedures', 'Procedures', procedures),
+                                         ('viruses', 'Viruses', viruses),
+                                         ('medication', 'Medication', medication)] %}
+            {% set count = entries | list | length %}
+            <label>
+              <input type="checkbox" name="copy_category" value="{{name}}"
+                     {% if count %}checked{% else %}disabled{% endif %}>
+              {{label}} ({{count}})
+            </label><br>
+          {% endfor %}
+        </fieldset>
+        <br>
+        <button type="submit">Copy selection</button>
+        <button type="button" data-close-copy-dialog>Cancel</button>
+      </form>
+    </dialog>
+  {% else %}
+    <p id="experiment-copy-status" role="status">No experiment data copied.</p>
+    <span id="experiment-copy-selected">0 animals selected.</span>
+    <button type="button" id="open-experiment-paste" disabled>Paste to selected animals</button>
+    <button type="button" id="clear-experiment-copy" hidden>Clear copied selection</button>
+    <p class="small">Select all selects the loaded animals. Filtering or sorting clears the selection.</p>
+    <dialog id="experiment-paste-dialog" style="height: fit-content; max-width: 700px;">
+      <h2>Paste experiment data</h2>
+      <p id="experiment-paste-summary"></p>
+      <p id="experiment-paste-targets"></p>
+      <p>Existing entries in the selected categories will be replaced.</p>
+      <form id="experiment-paste-form">
+        <fieldset>
+          <legend>Procedure dates</legend>
+          <label><input type="radio" name="copy_date_mode" value="shift" checked>
+            Shift to each animal's start date, keeping the original offsets and exact durations.
+          </label><br>
+          <label><input type="radio" name="copy_date_mode" value="keep">
+            Keep the original calendar dates.
+          </label>
+        </fieldset>
+        <p>Source and destination animals need experiment start dates. All copied or linked
+          procedures need start and end dates. If anything is missing, nothing is copied.</p>
+        <p>When copying medication or viruses alone, the destination's procedure dates must
+          already match the selected date mode. Otherwise, include procedures in the copy.</p>
+        <button type="submit" id="confirm-experiment-paste">Replace selected data</button>
+        <button type="button" data-close-copy-dialog>Cancel</button>
+      </form>
+    </dialog>
+  {% endif %}
+</div>

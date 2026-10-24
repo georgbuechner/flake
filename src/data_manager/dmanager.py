@@ -16,6 +16,7 @@ from sqlalchemy.orm import Query
 from typing import Dict, Iterable, List, Mapping, Tuple, Any, TypeVar, cast
 from werkzeug.datastructures import FileStorage
 from data_manager.types import ExperimentData, NamedEntry, ProcedureSummary, SurgerySheetData
+from data_manager.experiment_copy import CopySummary, apply_experiment_copy, prepare_experiment_copy
 from exceptions.exceptions import (
     AnimalDataIncompleteException,
     ConfirmationRequired,
@@ -484,6 +485,22 @@ class DManager:
             db.session.add(element)
         # Update stored? of animal-data
         self.__update_stored(animal_id)
+
+    def copy_experiment_data(
+        self, source_id: str, target_ids: List[str], categories: List[str],
+        *, date_mode: str, actor: User,
+    ) -> CopySummary:
+        """Replace selected categories in one transaction; the caller commits."""
+        plans = prepare_experiment_copy(source_id, target_ids, categories, date_mode, actor)
+        for plan in plans:
+            apply_experiment_copy(plan)
+            self.__update_stored(plan.animal_id)
+        return {
+            "source_id": source_id,
+            "target_ids": [plan.animal_id for plan in plans],
+            "categories": list(dict.fromkeys(categories)),
+            "copied_rows": sum(len(rows) for plan in plans for rows in plan.rows.values()),
+        }
 
     def delete_animal_data(self, animal_id: str) -> None: 
         tables_to_delete = list(EXPERIMENT_TABLES.values())

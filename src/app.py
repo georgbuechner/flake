@@ -29,7 +29,7 @@ import traceback
 import shutil
 import urllib.parse
 from functools import wraps
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable, ParamSpec, TypeVar, cast
 from flask.typing import ResponseReturnValue
 from werkzeug.wrappers import Response
 from utils.utils import *
@@ -956,6 +956,20 @@ def store_notes(animal_id: str, category: str) -> ResponseReturnValue:
     dmanager.store_note(animal_id, category, apply_note, note_txt)
     db.session.commit()
     return text_response("Success")
+
+@app.route("/animal_data/copy", methods=["POST"])
+@login_required
+@handle_exception
+def copy_experiment_data() -> ResponseReturnValue:
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise InvalidTypeException("Provide a source, destinations, categories and date mode.")
+    summary = dmanager.copy_experiment_data(
+        data.get("source_id", ""), data.get("target_ids", []), data.get("categories", []),
+        date_mode=data.get("date_mode", ""), actor=cast(User, current_user),
+    )
+    db.session.commit()
+    return jsonify(summary)
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
