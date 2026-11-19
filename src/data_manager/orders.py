@@ -1,9 +1,21 @@
-"""Order choices and selection checks shared by the form and submission logic."""
+"""Order choices and validation shared by the form and submission logic."""
+from datetime import date as Date, timedelta
+import re
+from typing import Any, Mapping
+
 from werkzeug.exceptions import Forbidden
 
-from data_manager.tables import PAllowedMice, PGeneral, Protocol, User, db
+from data_manager.animal_counts import get_animal_counts
+from data_manager.tables import (
+    AnimalOrder, AnimalOrderByData, AnimalOrderById, PAllowedMice, PGeneral, Protocol,
+    User, db, optional_integer,
+)
 from data_manager.types import OrderLicenceOption, OrderLineOption
-from exceptions.exceptions import EntryNotFound, InvalidTypeException
+from exceptions.exceptions import (
+    EntryNotFound, InvalidDateException, InvalidTypeException,
+    OrderAllowanceNotConfigured, OrderQuotaExceeded,
+)
+from utils.dt_utils import today
 
 
 def _user_is_allowed(user: User, general: PGeneral) -> bool:
@@ -57,10 +69,16 @@ def get_order_lines(user: User, licence: str) -> list[OrderLineOption]:
     as None rather than interpreted as zero or unlimited.
     """
     _require_order_licence(user, licence)
-    return [
-        {"line": line.name, "allowance": line.num_availible_animals}
-        for line in PAllowedMice.query.filter_by(protocol=licence).order_by(PAllowedMice.name).all()
-    ]
+    counts = get_animal_counts(*licence.split("/", 1))
+    choices: list[OrderLineOption] = []
+    for line in PAllowedMice.query.filter_by(protocol=licence).order_by(PAllowedMice.name).all():
+        used = counts.get(line.name, 0)
+        allowance = line.num_availible_animals
+        choices.append({
+            "line": line.name, "allowance": allowance, "used": used,
+            "remaining": None if allowance is None else max(0, allowance - used),
+        })
+    return choices
 
 
 def validate_order_selection(user: User, licence: str, line: str) -> PAllowedMice:
@@ -77,3 +95,93 @@ def validate_order_selection(user: User, licence: str, line: str) -> PAllowedMic
     if allowance is None:
         raise EntryNotFound("The selected line is not configured for this licence.")
     return allowance
+
+
+def _delivery_date(value: object) -> Date:
+    if type(value) is Date:
+        delivery = value
+    elif isinstance(value, str):
+        text = value.strip()
+        try:
+            delivery = Date.fromisoformat(text)
+        except ValueError as error:
+            raise InvalidDateException(text, "YYYY-MM-DD") from error
+        if delivery.isoformat() != text:
+            raise InvalidDateException(text, "YYYY-MM-DD")
+    else:
+        raise InvalidDateException(str(value), "YYYY-MM-DD")
+    minimum = today().date() + timedelta(days=3)
+    if delivery < minimum:
+        raise InvalidTypeException(
+            f"Delivery must be on or after {minimum.isoformat()} (three calendar days from today)."
+        )
+    return delivery
+
+
+def _required_integer(value: object, field: str, minimum: int) -> int:
+    number = optional_integer(value, field, non_negative=True)
+    if number is None or number < minimum:
+        raise InvalidTypeException(f"Order {field} must be an integer of at least {minimum}.")
+    return number
+
+
+def _has_value(value: object) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None and value != []
+
+
+def _order_from_submission(user: User, data: Mapping[str, Any]) -> AnimalOrderById | AnimalOrderByData:
+    """Parse form/JSON values, deriving order identity and metadata on the server."""
+    order_type = data.get("order_type")
+    if order_type not in ("by_id", "by_data"):
+        raise InvalidTypeException("Select whether to order animals by ID or by data.")
+    if order_type == "by_id" and any(_has_value(data.get(field)) for field in ("sex", "age", "amount")):
+        raise InvalidTypeException("An ID order cannot also specify sex, age or amount.")
+    if order_type == "by_data" and _has_value(data.get("ids")):
+        raise InvalidTypeException("A data order cannot also specify animal IDs.")
+    comment = data.get("comment", "")
+    if not isinstance(comment, str):
+        raise InvalidTypeException("Order comment must be text.")
+    common: dict[str, Any] = {
+        "licence": data.get("licence"), "line": data.get("line"),
+        "date": _delivery_date(data.get("date")), "user": user.email, "comment": comment,
+    }
+    if order_type == "by_id":
+        ids = data.get("ids")
+        if isinstance(ids, str):
+            ids = [identifier for identifier in re.split(r"[,\s]+", ids.strip()) if identifier]
+        if not isinstance(ids, list):
+            raise InvalidTypeException("An ID order requires a non-empty list of animal IDs.")
+        return AnimalOrderById(**common, ids=ids)
+    sex = data.get("sex")
+    if not isinstance(sex, str):
+        raise InvalidTypeException("Order sex must be female, male or unknown.")
+    return AnimalOrderByData(
+        **common, sex=sex,
+        age=_required_integer(data.get("age"), "age in weeks", 0),
+        amount=_required_integer(data.get("amount"), "amount", 1),
+    )
+
+
+def validate_order_submission(user: User, data: Mapping[str, Any]) -> AnimalOrder:
+    """Return a validated, transient order for the caller to add and commit.
+
+    Dates use YYYY-MM-DD (or date objects), integer fields accept form strings,
+    and IDs accept a list or comma/whitespace-separated text. The user's email,
+    timestamp and pending status are derived on the server.
+
+    Remaining capacity is the configured allowance minus currently assigned
+    AnimalData records, matching the settings page. Pending/approved orders
+    do not reserve places: there is no import reconciliation for data orders
+    yet. Call this in the submission transaction with current database data.
+    """
+    order = _order_from_submission(user, data)
+    allowance = validate_order_selection(user, order.licence, order.line).num_availible_animals
+    if allowance is None:
+        raise OrderAllowanceNotConfigured(order.licence, order.line)
+    used = get_animal_counts(*order.licence.split("/", 1)).get(order.line, 0)
+    requested = len(order.ids) if isinstance(order, AnimalOrderById) else order.amount
+    if used + requested > allowance:
+        raise OrderQuotaExceeded(order.licence, order.line, allowance, used, requested)
+    return order

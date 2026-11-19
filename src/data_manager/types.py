@@ -33,3 +33,5 @@ class OrderLicenceOption(TypedDict):
 class OrderLineOption(TypedDict):
     line: str
     allowance: int | None
+    used: int
+    remaining: int | None

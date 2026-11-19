@@ -71,3 +71,18 @@ class AnimalNotSacrificed(FlakeError):
 class WeightGenerationUnavailable(FlakeError):
     def __init__(self, msg: str, status: int = 409) -> None:
         super().__init__(msg, status)
+
+
+class OrderAllowanceNotConfigured(FlakeError):
+    def __init__(self, licence: str, line: str) -> None:
+        super().__init__(f"Configure the animal allowance for {licence}, line {line}, before ordering.", 409)
+
+
+class OrderQuotaExceeded(FlakeError):
+    def __init__(self, licence: str, line: str, allowance: int, used: int, requested: int) -> None:
+        super().__init__(
+            f"Animal allowance exceeded for {licence}, line {line}: "
+            f"{used} already assigned out of {allowance} allowed; {requested} requested "
+            f"and {max(0, allowance - used)} remaining.",
+            409,
+        )

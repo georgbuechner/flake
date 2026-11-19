@@ -90,12 +90,12 @@ class OrderChoiceTests(unittest.TestCase):
     def test_lines_are_scoped_to_the_selected_licence_and_keep_zero_and_unset_limits(self):
         choices = get_order_lines(self.user, "zulu/A")
         self.assertEqual(choices, [
-            {"line": "Line A", "allowance": 0},
-            {"line": "Line Z", "allowance": 12},
-            {"line": "Unspecified", "allowance": None},
+            {"line": "Line A", "allowance": 0, "used": 0, "remaining": 0},
+            {"line": "Line Z", "allowance": 12, "used": 0, "remaining": 12},
+            {"line": "Unspecified", "allowance": None, "used": 0, "remaining": None},
         ])
         self.assertEqual(get_order_lines(self.user, "zulu/B"),
-                         [{"line": "Other subprotocol", "allowance": 4}])
+                         [{"line": "Other subprotocol", "allowance": 4, "used": 0, "remaining": 4}])
         self.assertEqual(get_order_lines(self.user, "alpha/NoLines"), [])
         self.assertEqual(json.loads(json.dumps(choices)), choices)
 
