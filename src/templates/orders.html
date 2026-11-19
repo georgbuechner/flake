@@ -30,7 +30,7 @@
         <input type="hidden" name="status" value="{{filters.status}}">
         <label for="licence">Licence:</label>
         <select name="licence" id="licence" autocomplete="off">
-          <option value="" selected>Select a licence</option>
+          <option value="" {% if not selected_licence %}selected{% endif %}>Select a licence</option>
           {% for choice in licences %}
             <option value="{{choice.licence}}" {% if choice.licence == selected_licence %}selected{% endif %}>{{choice.protocol}} / {{choice.subprotocol}}</option>
           {% endfor %}
@@ -40,7 +40,7 @@
           <option value="by_data" {% if order_type == 'by_data' %}selected{% endif %}>By data</option>
           <option value="by_id" {% if order_type == 'by_id' %}selected{% endif %}>By ID</option>
         </select>
-        <input type="submit" value="Apply"</input>
+        <input type="submit" value="Apply">
       </form>
 
       {% if selected_licence %}
@@ -111,7 +111,7 @@
               </tr>
             </table>
             <br>
-            <input type="submit" value="Submit order"</input>
+            <input type="submit" value="Submit order">
           </fieldset>
         </form>
       {% else %}
@@ -145,7 +145,7 @@
           <option value="{{status}}" {% if status == filters.status %}selected{% endif %}>{{status|capitalize}}</option>
         {% endfor %}
       </select>
-      <input type="submit" value="Apply filters"</input>
+      <input type="submit" value="Apply filters">
     </form>
     {% include "order_table.html" %}
   </main>

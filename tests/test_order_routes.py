@@ -191,14 +191,31 @@ class OrderRouteTests(OrderRouteFixture, unittest.TestCase):
         self.assertEqual(rendered[-1][0], "orders.html")
         return response, rendered[-1][1], OrderPageParser(response.text)
 
-    def test_page_passes_order_objects_to_jinja_with_scoped_licences_and_capacity(self):
+    def test_initial_page_requires_a_licence_selection_before_showing_the_order_form(self):
         response, context, page = self.page()
+        self.assertEqual(context["selected_licence"], "")
+        self.assertEqual(context["lines"], [])
+        self.assertFalse(context["can_submit"])
+        self.assertFalse(any(form.get("id") == "new-order" for form in page.forms))
+        self.assertEqual(
+            [option["value"] for option in page.selects["licence"] if "selected" in option],
+            [""],
+        )
+        self.assertIn("Select a licence", response.text)
+        self.assertEqual(page.order_rows, [self.own_uuid, self.rejected_uuid])
+
+    def test_page_passes_order_objects_to_jinja_with_scoped_licences_and_capacity(self):
+        response, context, page = self.page(licence="protocol/A")
         self.assertEqual(response.mimetype, "text/html")
         self.assertFalse(response.is_json)
         self.assertTrue(all(isinstance(order, AnimalOrder) for order in context["orders"]))
         self.assertEqual(page.order_rows, [self.own_uuid, self.rejected_uuid])
         self.assertEqual([choice["licence"] for choice in context["licences"]], ["protocol/A", "protocol/Empty"])
         self.assertEqual(context["selected_licence"], "protocol/A")
+        self.assertEqual(
+            [option["value"] for option in page.selects["licence"] if "selected" in option],
+            ["protocol/A"],
+        )
         self.assertEqual(context["lines"], [
             {"line": "Line A", "allowance": 5, "used": 2, "remaining": 3},
             {"line": "Unspecified", "allowance": None, "used": 0, "remaining": None},
@@ -278,7 +295,7 @@ class OrderRouteTests(OrderRouteFixture, unittest.TestCase):
         self.assertEqual(self.stored_status(self.other_uuid), "pending")
 
     def test_native_submission_redirects_before_rendering_and_refresh_does_not_duplicate(self):
-        response, context, page = self.page()
+        response, context, page = self.page(licence="protocol/A")
         form = page.form("new-order")
         self.assertEqual(form["method"].upper(), "POST")
         self.assertNotIn("data-ajax-submit", form)
