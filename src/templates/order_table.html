@@ -1,0 +1,51 @@
+{% if orders %}
+  <div style="overflow-x: auto;">
+    <table class="center" id="orders-table">
+      <thead>
+        <tr>
+          <th>Order</th><th>User</th><th>Requested (UTC)</th><th>Licence</th><th>Line</th>
+          <th>Animal details</th><th>Delivery by</th><th>Comment</th><th>Status</th>
+          {% if can_review %}<th>Review</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr id="order-{{order.uuid}}">
+            <td><a href="{{url_for('order_details', order_uuid=order.uuid)}}">{{order.uuid[:8]}}</a></td>
+            <td>{{user_names.get(order.user, order.user)}}<br><small>{{order.user}}</small></td>
+            <td>{{order.created_at.strftime('%d.%m.%Y %H:%M')}}</td>
+            <td>{{order.licence}}</td>
+            <td>{{order.line}}</td>
+            <td>
+              {% if order.order_type == 'by_id' %}
+                IDs: {{order.ids|join(', ')}}
+              {% else %}
+                {{order.amount}} × {{order.sex}}, {{order.age}} weeks
+              {% endif %}
+            </td>
+            <td>{{order.date.strftime('%d.%m.%Y')}}</td>
+            <td style="white-space: pre-wrap;">{{order.comment}}</td>
+            <td>{{order.status|capitalize}}{% if order.status == 'approved' %} (ordered){% endif %}</td>
+            {% if can_review %}
+              <td>
+                {% if order.status == 'pending' %}
+                  <form method="POST" action="{{url_for('update_order_status', order_uuid=order.uuid)}}">
+                    <input type="hidden" name="licence" value="{{selected_licence}}">
+                    <input type="hidden" name="order_type" value="{{order_type}}">
+                    <input type="hidden" name="filter_user" value="{{filters.user}}">
+                    <input type="hidden" name="filter_status" value="{{filters.status}}">
+                    <input type="hidden" name="return_order" value="{{return_order}}">
+                    <button type="submit" name="status" value="approved">Approve</button>
+                    <button type="submit" name="status" value="rejected">Reject</button>
+                  </form>
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p>No orders match the selected filters.</p>
+{% endif %}

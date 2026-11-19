@@ -96,6 +96,9 @@ baselining a database, because it records revisions without running them.
 The type decisions for issue #3 and the scope of its migration are documented in
 [docs/database-types.md](docs/database-types.md).
 
+The animal order pages, form flow and quota rules are documented in
+[docs/animal-orders.md](docs/animal-orders.md).
+
 ## Development checks
 
 Install the development dependencies in the virtual environment, then run the

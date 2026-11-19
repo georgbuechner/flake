@@ -86,3 +86,8 @@ class OrderQuotaExceeded(FlakeError):
             f"and {max(0, allowance - used)} remaining.",
             409,
         )
+
+
+class OrderAlreadyReviewed(FlakeError):
+    def __init__(self) -> None:
+        super().__init__("This order has already been reviewed. Reload to see its current status.", 409)

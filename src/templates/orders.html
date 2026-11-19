@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLAKE - Orders</title>
+  {% include "default_imports.html" %}
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/">FLAKE</a>
+    <a class="active" href="{{url_for('orders')}}">Orders</a>
+  </nav>
+  {% include "userinfos_header.html" %}
+  <main class="center_in_box">
+    {% include "in_box_header.html" %}
+    <h1><i>FLAKE</i> Animal orders</h1>
+
+    {% for message in get_flashed_messages() %}
+      <p role="status">{{message}}</p>
+    {% endfor %}
+    {% if error %}
+      <p class="err" role="alert" style="white-space: pre-wrap;">{{error}}</p>
+    {% endif %}
+
+    <h2>New order</h2>
+    {% if licences %}
+      <form method="GET" action="{{url_for('orders')}}" id="order-selection">
+        <input type="hidden" name="user" value="{{filters.user}}">
+        <input type="hidden" name="status" value="{{filters.status}}">
+        <label for="licence">Licence:</label>
+        <select name="licence" id="licence" autocomplete="off">
+          <option value="" selected>Select a licence</option>
+          {% for choice in licences %}
+            <option value="{{choice.licence}}" {% if choice.licence == selected_licence %}selected{% endif %}>{{choice.protocol}} / {{choice.subprotocol}}</option>
+          {% endfor %}
+        </select>
+        <label for="order_type">Order:</label>
+        <select name="order_type" id="order_type" autocomplete="off">
+          <option value="by_data" {% if order_type == 'by_data' %}selected{% endif %}>By data</option>
+          <option value="by_id" {% if order_type == 'by_id' %}selected{% endif %}>By ID</option>
+        </select>
+        <input type="submit" value="Apply"</input>
+      </form>
+
+      {% if selected_licence %}
+        {% if not lines %}
+          <p>No lines are configured for this licence.</p>
+        {% elif not can_submit %}
+          <p>No capacity is available. An allowance must be configured and have places remaining.</p>
+        {% endif %}
+        <br>
+        <form method="POST" action="{{url_for('submit_order')}}" id="new-order">
+          <input type="hidden" name="licence" value="{{selected_licence}}">
+          <input type="hidden" name="order_type" value="{{order_type}}">
+          <input type="hidden" name="filter_user" value="{{filters.user}}">
+          <input type="hidden" name="filter_status" value="{{filters.status}}">
+          <fieldset {% if not can_submit %}disabled{% endif %}>
+            <legend>{{'Order by ID' if order_type == 'by_id' else 'Order by data'}}</legend>
+            <table class="center">
+              <tr>
+                <td><label for="line">Line:</label></td>
+                <td>
+                  <select name="line" id="line" autocomplete="off" required>
+                    <option value="">Select a line</option>
+                    {% for choice in lines %}
+                      <option value="{{choice.line}}"
+                        {% if choice.line == values.get('line') %}selected{% endif %}
+                        {% if choice.remaining is none or choice.remaining == 0 %}disabled{% endif %}>
+                        {{choice.line}} — {% if choice.allowance is none %}allowance not configured ({{choice.used}} assigned){% else %}{{choice.remaining}} remaining ({{choice.used}} assigned / {{choice.allowance}} allowed){% endif %}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </td>
+              </tr>
+              {% if order_type == 'by_id' %}
+                <tr>
+                  <td><label for="ids">Animal IDs:</label></td>
+                  <td>
+                    <textarea name="ids" id="ids" rows="4" cols="35" required>{{ids_text}}</textarea>
+                    <p>Enter one ID per line, or separate IDs with commas.</p>
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td><label for="sex">Sex:</label></td>
+                  <td>
+                    <select name="sex" id="sex" required>
+                      {% for sex in ('female', 'male', 'unknown') %}
+                        <option value="{{sex}}" {% if sex == values.get('sex', 'unknown') %}selected{% endif %}>{{sex|capitalize}}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <td><label for="age">Age at delivery (weeks):</label></td>
+                  <td><input type="number" name="age" id="age" min="0" step="1" value="{{values.get('age', '')}}" required></td>
+                </tr>
+                <tr>
+                  <td><label for="amount">Amount:</label></td>
+                  <td><input type="number" name="amount" id="amount" min="1" step="1" value="{{values.get('amount', '')}}" required></td>
+                </tr>
+              {% endif %}
+              <tr>
+                <td><label for="date">Delivery by:</label></td>
+                <td><input type="date" name="date" id="date" min="{{min_delivery_date}}" value="{{values.get('date', min_delivery_date)}}" required></td>
+              </tr>
+              <tr>
+                <td><label for="comment">Comment:</label></td>
+                <td><textarea name="comment" id="comment" rows="3" cols="35">{{values.get('comment', '')}}</textarea></td>
+              </tr>
+            </table>
+            <br>
+            <input type="submit" value="Submit order"</input>
+          </fieldset>
+        </form>
+      {% else %}
+        <p>Select a licence and update the selection to see its lines.</p>
+      {% endif %}
+    {% else %}
+      <p>No licences are available for your username. Ask for access in the licence's allowed-user list.</p>
+    {% endif %}
+    <br>
+    <br>
+
+    <h2>Orders</h2>
+    <form method="GET" action="{{url_for('orders')}}" id="order-filters">
+      <input type="hidden" name="licence" value="{{selected_licence}}">
+      <input type="hidden" name="order_type" value="{{order_type}}">
+      {% if can_review %}
+        <label for="filter-user">User:</label>
+        <select name="user" id="filter-user">
+          <option value="">All users</option>
+          {% for user in users %}
+            <option value="{{user.email}}" {% if user.email == filters.user %}selected{% endif %}>{{user.name}} ({{user.email}})</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="hidden" name="user" value="{{filters.user}}">
+      {% endif %}
+      <label for="filter-status">Status:</label>
+      <select name="status" id="filter-status">
+        <option value="">All statuses</option>
+        {% for status in ('pending', 'approved', 'rejected') %}
+          <option value="{{status}}" {% if status == filters.status %}selected{% endif %}>{{status|capitalize}}</option>
+        {% endfor %}
+      </select>
+      <input type="submit" value="Apply filters"</input>
+    </form>
+    {% include "order_table.html" %}
+  </main>
+</body>
+</html>

@@ -3,6 +3,7 @@ from datetime import date as Date, timedelta
 import re
 from typing import Any, Mapping
 
+from sqlalchemy.orm import Query
 from werkzeug.exceptions import Forbidden
 
 from data_manager.animal_counts import get_animal_counts
@@ -12,7 +13,7 @@ from data_manager.tables import (
 )
 from data_manager.types import OrderLicenceOption, OrderLineOption
 from exceptions.exceptions import (
-    EntryNotFound, InvalidDateException, InvalidTypeException,
+    EntryNotFound, InvalidDateException, InvalidTypeException, OrderAlreadyReviewed,
     OrderAllowanceNotConfigured, OrderQuotaExceeded,
 )
 from utils.dt_utils import today
@@ -46,7 +47,7 @@ def get_order_licences(user: User) -> list[OrderLicenceOption]:
     ))
 
 
-def _require_order_licence(user: User, licence: str) -> None:
+def _require_existing_order_licence(licence: str) -> None:
     if not isinstance(licence, str):
         raise InvalidTypeException("Select a protocol and subprotocol for the order.")
     escaped_protocol, separator, subprotocol = licence.partition("/")
@@ -55,6 +56,10 @@ def _require_order_licence(user: User, licence: str) -> None:
     protocol = db.session.get(Protocol, escaped_protocol)
     if protocol is None or subprotocol not in protocol.get_subprotocols():
         raise EntryNotFound("The selected order licence no longer exists.")
+
+
+def _require_order_licence(user: User, licence: str) -> None:
+    _require_existing_order_licence(licence)
     general = PGeneral.query.filter_by(protocol=licence).first()
     if general is None or not _user_is_allowed(user, general):
         raise Forbidden("You are not allowed to order animals for this licence.")
@@ -89,12 +94,20 @@ def validate_order_selection(user: User, licence: str, line: str) -> PAllowedMic
     This validates eligibility only; it does not check the requested quantity.
     """
     _require_order_licence(user, licence)
+    return _get_order_allowance(licence, line)
+
+
+def _get_order_allowance(licence: str, line: str) -> PAllowedMice:
     if not isinstance(line, str) or not line.strip():
         raise InvalidTypeException("Select a line for the order.")
     allowance = PAllowedMice.query.filter_by(protocol=licence, name=line).first()
     if allowance is None:
         raise EntryNotFound("The selected line is not configured for this licence.")
     return allowance
+
+
+def minimum_order_delivery_date() -> Date:
+    return today().date() + timedelta(days=3)
 
 
 def _delivery_date(value: object) -> Date:
@@ -110,7 +123,7 @@ def _delivery_date(value: object) -> Date:
             raise InvalidDateException(text, "YYYY-MM-DD")
     else:
         raise InvalidDateException(str(value), "YYYY-MM-DD")
-    minimum = today().date() + timedelta(days=3)
+    minimum = minimum_order_delivery_date()
     if delivery < minimum:
         raise InvalidTypeException(
             f"Delivery must be on or after {minimum.isoformat()} (three calendar days from today)."
@@ -178,10 +191,88 @@ def validate_order_submission(user: User, data: Mapping[str, Any]) -> AnimalOrde
     """
     order = _order_from_submission(user, data)
     allowance = validate_order_selection(user, order.licence, order.line).num_availible_animals
+    _validate_order_capacity(order, allowance)
+    return order
+
+
+def _validate_order_capacity(order: AnimalOrder, allowance: int | None) -> None:
     if allowance is None:
         raise OrderAllowanceNotConfigured(order.licence, order.line)
     used = get_animal_counts(*order.licence.split("/", 1)).get(order.line, 0)
-    requested = len(order.ids) if isinstance(order, AnimalOrderById) else order.amount
+    if isinstance(order, AnimalOrderById):
+        requested = len(order.ids)
+    elif isinstance(order, AnimalOrderByData):
+        requested = order.amount
+    else:
+        raise InvalidTypeException("Unsupported order type.")
     if used + requested > allowance:
         raise OrderQuotaExceeded(order.licence, order.line, allowance, used, requested)
+
+
+def _visible_orders(user: User) -> Query[AnimalOrder]:
+    query = AnimalOrder.query
+    if not user.paw_control:
+        query = query.filter(AnimalOrder.user == user.email)
+    return query
+
+
+def get_orders(user: User, *, requester: str = "", status: str = "") -> list[AnimalOrder]:
+    """List newest orders first, applying access restrictions before filters."""
+    if status and status not in ("pending", "approved", "rejected"):
+        raise InvalidTypeException("Order status filter must be pending, approved or rejected.")
+    query = _visible_orders(user)
+    if requester:
+        if not user.paw_control and requester != user.email:
+            raise Forbidden("You may only view your own orders.")
+        query = query.filter(AnimalOrder.user == requester)
+    if status:
+        query = query.filter(AnimalOrder.status == status)
+    return query.order_by(AnimalOrder.created_at.desc(), AnimalOrder.uuid.desc()).all()
+
+
+def get_order_users(user: User) -> list[dict[str, str]]:
+    """Requester filter choices for all visible orders, independent of filters.
+
+    Keep historical orders accessible when an account has been deleted, using
+    the stored email as the display name in that case.
+    """
+    emails = [row[0] for row in _visible_orders(user).with_entities(AnimalOrder.user).distinct().all()]
+    names = {account.email: account.name for account in User.query.filter(User.email.in_(emails)).all()}
+    return sorted(
+        [{"email": email, "name": names.get(email) or email} for email in emails],
+        key=lambda choice: (choice["name"].casefold(), choice["email"]),
+    )
+
+
+def get_order(user: User, order_uuid: str) -> AnimalOrder:
+    """Return one visible order; another user's order is indistinguishable from a missing one."""
+    order = _visible_orders(user).filter(AnimalOrder.uuid == order_uuid).first()
+    if order is None:
+        raise EntryNotFound("Order not found.")
+    return order
+
+
+def review_order(user: User, order_uuid: str, status: object) -> AnimalOrder:
+    """Review a pending order, leaving commit/rollback to the request handler.
+
+    Paw Control membership grants review access independently of licence
+    membership. Approval rechecks the existing licence, line and capacity;
+    rejection remains possible if those configurations were removed. The
+    conditional update prevents a second reviewer from replacing a decision.
+    """
+    if not user.paw_control:
+        raise Forbidden("Only Paw Control members can approve or reject orders.")
+    if status not in ("approved", "rejected"):
+        raise InvalidTypeException("Set order status to approved or rejected.")
+    order = get_order(user, order_uuid)
+    if order.status != "pending":
+        raise OrderAlreadyReviewed()
+    if status == "approved":
+        _require_existing_order_licence(order.licence)
+        _validate_order_capacity(order, _get_order_allowance(order.licence, order.line).num_availible_animals)
+    updated = AnimalOrder.query.filter_by(uuid=order_uuid, status="pending").update(
+        {"status": status}, synchronize_session="fetch",
+    )
+    if updated != 1:
+        raise OrderAlreadyReviewed()
     return order

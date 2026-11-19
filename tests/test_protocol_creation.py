@@ -1,4 +1,5 @@
 """Create empty subprotocols and independent copies through the real routes."""
+from html.parser import HTMLParser
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +18,56 @@ from route_helpers import ROOT, load_routes
 
 
 CONFIG_TABLES = (PGeneral, PWatercontrol, *PROTOCOL_TABLES.values())
+
+
+class TemplateFormParser(HTMLParser):
+    """Read the template choices and submission target from the rendered form."""
+
+    def __init__(self, html):
+        super().__init__()
+        self.action = None
+        self.method = None
+        self.groups = []
+        self.options = []
+        self._in_form = False
+        self._in_select = False
+        self._group = None
+        self._value = None
+        self._label = []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "form":
+            action = attrs.get("action") or ""
+            self._in_form = action.endswith("/add_protocol")
+            if self._in_form:
+                self.action = action
+                self.method = (attrs.get("method") or "get").lower()
+        elif self._in_form and tag == "select":
+            self._in_select = attrs.get("name") == "template"
+        elif self._in_select and tag == "optgroup":
+            self._group = attrs.get("label")
+            self.groups.append(self._group)
+        elif self._in_select and tag == "option":
+            self._value = attrs.get("value")
+            self._label = []
+
+    def handle_data(self, data):
+        if self._in_select and self._value is not None:
+            self._label.append(data)
+
+    def handle_endtag(self, tag):
+        if self._in_select and tag == "option":
+            label = " ".join("".join(self._label).split())
+            self.options.append((self._group, self._value, label))
+            self._value = None
+        elif self._in_select and tag == "optgroup":
+            self._group = None
+        elif tag == "select":
+            self._in_select = False
+        elif tag == "form":
+            self._in_form = False
 
 
 class ProtocolCreationTests(unittest.TestCase):
@@ -209,13 +260,45 @@ class ProtocolCreationTests(unittest.TestCase):
     def test_creation_page_groups_templates_by_parent(self):
         response = self.client.get("/settings/protocols/target")
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertIn('action="/settings/protocols/target/add_protocol"', response.text)
-        self.assertIn('<option value="">Start empty</option>', response.text)
+        form = TemplateFormParser(response.text)
+        self.assertEqual(form.action, "/settings/protocols/target/add_protocol")
+        self.assertEqual(form.method, "post")
+        self.assertEqual(form.groups, ["Source <protocol>", "Target protocol"])
+        self.assertEqual(form.options, [
+            (None, "", "Start empty"),
+            ("Source <protocol>", "source/A", "source/A"),
+            ("Source <protocol>", "source/Empty", "source/Empty"),
+            ("Target protocol", "target/Existing", "target/Existing"),
+        ])
         self.assertIn('<optgroup label="Source &lt;protocol&gt;">', response.text)
-        self.assertIn('<option value="source/A">A</option>', response.text)
-        self.assertIn('<optgroup label="Target protocol">', response.text)
-        self.assertIn('<option value="target/Existing">Existing</option>', response.text)
-        self.assertNotIn('<optgroup label="Unused">', response.text)
+
+    def test_rendered_choices_copy_from_the_correct_parent_with_shared_subprotocol_names(self):
+        self.target.add_subprotocol("A")
+        target_general = PGeneral.query.filter_by(protocol="target/A").one()
+        target_general.allowed_users = "Other"
+        target_general.num_availible_animals = 7
+        db.session.commit()
+
+        response = self.client.get("/settings/protocols/target")
+        self.assertEqual(response.status_code, 200, response.text)
+        form = TemplateFormParser(response.text)
+        choices = {label: value for _, value, label in form.options}
+        for label, name in (("source/A", "CopiedSource"), ("target/A", "CopiedTarget")):
+            with self.subTest(template=label):
+                originals = {Table: self.rows(Table, label) for Table in CONFIG_TABLES}
+                response = self.client.post(form.action, data={
+                    "name": name, "template": choices[label],
+                })
+                self.assertEqual(response.status_code, 302, response.text)
+                self.assertEqual(response.location, f"/settings/protocols/target/{name}/general")
+                for Table, source_rows in originals.items():
+                    settings = lambda row: {
+                        key: value for key, value in row.items() if key not in ("uuid", "protocol")
+                    }
+                    self.assertCountEqual(
+                        [settings(row) for row in self.rows(Table, f"target/{name}")],
+                        [settings(row) for row in source_rows],
+                    )
 
     def test_route_creates_and_redirects_to_general_with_or_without_template(self):
         for name, template in (("Empty", ""), ("Copied", "source/A")):
