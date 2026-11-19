@@ -22,3 +22,14 @@ class ProcedureSummary(TypedDict):
     name: str
     start_date: str
     end_date: str
+
+
+class OrderLicenceOption(TypedDict):
+    licence: str
+    protocol: str
+    subprotocol: str
+
+
+class OrderLineOption(TypedDict):
+    line: str
+    allowance: int | None
