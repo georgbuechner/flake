@@ -792,7 +792,6 @@ class DManager:
         general.start = datetostr(start_date, SOURCE_DATE_FORMAT)
         if autofill is False: 
             return "Start date updated without updating other dates."
-        surgery_start = get_surgery_start(general.experiment)
         not_updated = []
         def get_date(inc: int) -> str:
             return datetostr(incdate(start_date, inc), SOURCE_DATE_FORMAT)
@@ -807,10 +806,12 @@ class DManager:
                     + " Sorry for the inconvenience.)",
                     400
                 )
-            if default.days_after_start is None:
-                raise InvalidTypeException(f"Missing start offset for {default.name}")
-            x.start_date = get_date(int(default.days_after_start))
-            x.end_date = get_date(int(default.days_after_start)+int(default.get_duration())-1)
+            previous_offset = None
+            if date_filled(old_start_date) and date_filled(x.start_date):
+                previous_offset = (strtodate(x.start_date) - strtodate(old_start_date)).days
+            offset = default.get_start_offset(previous_offset)
+            x.start_date = get_date(offset)
+            x.end_date = get_date(offset + default.get_duration() - 1)
         fill_sacrifice_date(animal_id)
         self.__update_stored(animal_id)
         if regenerate_weights and not date_filled(old_start_date):
@@ -1357,18 +1358,6 @@ def require_entry_fields(category: str, data: Mapping[str, Any], *, experiment: 
     for field in required:
         if field not in data:
             raise MissingEntryException(field)
-
-def get_surgery_start(protocol: str) -> int:
-    procedures = db.session.query(PProcedure).filter_by(protocol=protocol)
-    surgery_start = 900
-    for procedure in procedures: 
-        if procedure.surgery:
-            if procedure.days_after_start is None:
-                raise InvalidTypeException(f"Missing start offset for {procedure.name}")
-            if int(procedure.days_after_start) < surgery_start:
-                surgery_start = int(procedure.days_after_start)
-    return surgery_start
-
 
 def get_surgery_dates(animal_id: str, protocol: str) -> List[datetime]:
     procedures = db.session.query(Procedure).filter_by(animal_id=animal_id)

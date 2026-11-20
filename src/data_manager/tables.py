@@ -671,7 +671,7 @@ class PProcedure(db.Model):
     uuid: Mapped[str] = db.Column(db.String, primary_key=True)
     protocol: Mapped[str] = db.Column(db.String, primary_key=False)
     name: Mapped[str] = db.Column(db.String, primary_key=False)
-    # Legacy offset ranges are retained; automatic scheduling still needs a scalar.
+    # Fixed day offsets and inclusive ranges, e.g. "0-6".
     days_after_start: Mapped[str | None] = db.Column(db.String, primary_key=False)
     duration: Mapped[str | None] = db.Column(db.String, primary_key=False)
     surgery: Mapped[bool] = db.Column(db.Boolean, primary_key=False)
@@ -741,6 +741,32 @@ class PProcedure(db.Model):
         self.optional = "optional" in procedure
         self.requires_medication = procedure["requires_medication"] 
         self.requires_virus = procedure["requires_virus"] 
+
+    def get_start_offset_bounds(self) -> Tuple[int, int]:
+        """Parse a fixed offset or an inclusive range, including negative days."""
+        if self.days_after_start is None:
+            raise InvalidTypeException(f"Missing start offset for {self.name}")
+        match = re.fullmatch(
+            r"([+-]?[0-9]+)(?:\s*-\s*([+-]?[0-9]+))?", self.days_after_start.strip()
+        )
+        if match:
+            lower = int(match[1])
+            upper = int(match[2]) if match[2] is not None else lower
+            if lower <= upper:
+                return lower, upper
+        raise InvalidTypeException(
+            f'Invalid start offset for "{self.name}": {self.days_after_start}. '
+            'Enter an integer or an ascending range such as "0-6".'
+        )
+
+    def get_start_offset(self, previous_offset: int | None = None) -> int:
+        """Reuse a scheduled offset when valid, otherwise choose within the range."""
+        lower, upper = self.get_start_offset_bounds()
+        if lower == upper:
+            return lower
+        if previous_offset is not None and lower <= previous_offset <= upper:
+            return previous_offset
+        return random.randint(lower, upper)
 
     def get_duration(self) -> int: 
         """ Gets duration or random duration between min and max """
@@ -1085,10 +1111,16 @@ class Procedure(db.Model):
 
     @classmethod 
     def from_default(cls, animal_id: str, experimenter: str, procedure: PProcedure) -> Procedure:
+        start = ""
+        if procedure.days_after_start is not None:
+            lower, upper = procedure.get_start_offset_bounds()
+            # Ranges need an experiment start date before a day can be chosen.
+            if lower == upper:
+                start = str(lower)
         return cls(
             animal_id, 
             procedure.name, 
-            str(procedure.days_after_start) if procedure.days_after_start is not None else "",
+            start,
             "", 
             experimenter, 
             procedure.uuid
