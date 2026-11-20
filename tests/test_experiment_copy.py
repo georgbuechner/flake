@@ -88,6 +88,13 @@ class ExperimentCopyTests(unittest.TestCase):
                 for Table in (*EXPERIMENT_TABLES.values(), General, Note, AnimalData)
                 for animal_id in ("source", "B", "C")}
 
+    def assert_copy_rejected(self, status=400, **changes):
+        before = self.snapshot()
+        response = self.post(**changes)
+        self.assertEqual(response.status_code, status, response.text)
+        self.assertEqual(self.snapshot(), before)
+        return response
+
     def test_shift_preserves_offsets_durations_and_independent_ids(self):
         original = self.snapshot()
         response = self.post()
@@ -114,13 +121,6 @@ class ExperimentCopyTests(unittest.TestCase):
             self.assertTrue(db.session.get(AnimalData, animal_id).stored)
         for Table in EXPERIMENT_TABLES.values():
             self.assertEqual(self.rows(Table, "source"), original[(Table.__tablename__, "source")])
-
-    def test_keep_dates_ignores_target_start_offset(self):
-        response = self.post(date_mode="keep")
-        self.assertEqual(response.status_code, 200, response.text)
-        for animal_id in ("B", "C"):
-            surgery = Procedure.query.filter_by(animal_id=animal_id, name="Surgery").one()
-            self.assertEqual((surgery.start_date, surgery.end_date), ("2025-01-03", "2025-01-05"))
 
     def test_single_day_and_year_boundary_keep_exact_duration(self):
         surgery = Procedure.query.filter_by(animal_id="source", name="Surgery").one()
@@ -181,19 +181,6 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(medication.procedure, "Surgery")
         self.assertEqual(Medication.query.filter_by(animal_id="B", name="Fixed").one().amount, "4")
 
-    def test_sacrifice_procedure_uses_destination_death_date_in_both_modes(self):
-        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
-        db.session.add(template)
-        db.session.add(Procedure("source", "Sacrifice", "2025-01-10", "2025-01-10", "Performer", template.uuid))
-        db.session.get(AnimalData, "B").death_date = "2025-02-20"
-        db.session.commit()
-        for mode in ("shift", "keep"):
-            with self.subTest(mode=mode):
-                response = self.post(target_ids=["B"], categories=["procedures"], date_mode=mode)
-                self.assertEqual(response.status_code, 200, response.text)
-                procedure = Procedure.query.filter_by(animal_id="B", name="Sacrifice").one()
-                self.assertEqual((procedure.start_date, procedure.end_date), ("2025-02-20", "2025-02-20"))
-
     def test_copy_preserves_edited_associations_with_and_without_source_template_ids(self):
         for Table in (Medication, Virus):
             source = Table.query.filter_by(animal_id="source", name="Drug" if Table is Medication else "Vector").one()
@@ -237,35 +224,23 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(copied.procedure, "Followup")
         self.assertEqual(db.session.get(PMedication, copied.protocol_entry_uuid).procedure, "Surgery")
 
-    def test_medication_only_copy_matches_sacrifice_against_destination_death_date(self):
-        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
-        drug = PMedication("P/S", "Death drug", "Kind", "Sacrifice", "4", "1", "1", True)
-        db.session.add_all([template, drug])
-        for animal_id, date in (("source", "2025-01-10"), ("B", "2025-02-20")):
-            db.session.add(Procedure(animal_id, "Sacrifice", date, date, "Performer", template.uuid))
-            db.session.get(AnimalData, animal_id).death_date = date
-        Medication.query.filter_by(animal_id="source").delete()
-        db.session.add(Medication.from_default("source", drug))
-        db.session.commit()
-        response = self.post(target_ids=["B"], categories=["medication"], date_mode="keep")
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(Procedure.query.filter_by(animal_id="B", name="Sacrifice").one().start_date, "2025-02-20")
-
-    def test_missing_experiment_start_on_source_or_any_target_aborts_entire_batch(self):
-        for animal_id in ("source", "B", "C"):
+    def test_missing_required_dates_abort_entire_batch(self):
+        for Table, animal_id, field, message in (
+            (General, "source", "start", "experiment start date"),
+            (General, "B", "start", "experiment start date"),
+            (General, "C", "start", "experiment start date"),
+            (AnimalData, "C", "death_date", "sacrifice date"),
+        ):
             for mode in ("shift", "keep"):
-                with self.subTest(animal=animal_id, mode=mode):
-                    general = db.session.get(General, animal_id)
-                    saved = general.start
-                    general.start = ""
+                with self.subTest(animal=animal_id, field=field, mode=mode):
+                    row = db.session.get(Table, animal_id)
+                    saved = getattr(row, field)
+                    setattr(row, field, "")
                     db.session.commit()
-                    before = self.snapshot()
-                    response = self.post(date_mode=mode)
-                    self.assertEqual(response.status_code, 400, response.text)
+                    response = self.assert_copy_rejected(date_mode=mode)
                     self.assertIn(animal_id, response.text)
-                    self.assertIn("experiment start date", response.text)
-                    self.assertEqual(self.snapshot(), before)
-                    general.start = saved
+                    self.assertIn(message, response.text)
+                    setattr(row, field, saved)
                     db.session.commit()
 
     def test_preview_shows_missing_dates_and_source_counts_without_writing(self):
@@ -299,24 +274,27 @@ class ExperimentCopyTests(unittest.TestCase):
             db.session.commit()
         self.assertEqual(self.client.post("/animal_data/copy/preview", json=[], headers=self.headers).status_code, 400)
 
-    def test_entered_dates_are_applied_with_rows_in_both_modes(self):
+    def test_date_modes_use_stored_or_entered_destination_dates(self):
         template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
         db.session.add(template)
         db.session.add(Procedure("source", "Sacrifice", "2025-01-15", "2025-01-15", "Performer", template.uuid))
-        for mode in ("shift", "keep"):
-            with self.subTest(mode=mode):
-                db.session.get(General, "B").start = ""
-                db.session.get(AnimalData, "B").death_date = None
+        dates = {"start": "2025-03-01", "sacrifice_date": "2025-03-20"}
+        for entered, mode in itertools.product((False, True), ("shift", "keep")):
+            with self.subTest(entered=entered, mode=mode):
+                db.session.get(General, "B").start = "" if entered else dates["start"]
+                db.session.get(AnimalData, "B").death_date = None if entered else dates["sacrifice_date"]
                 db.session.commit()
                 weights = db.session.get(General, "B").weights
                 response = self.post(target_ids=["B"], date_mode=mode,
-                                     target_dates={"B": {"start": "2025-03-01", "sacrifice_date": "2025-03-20"}})
+                                     target_dates={"B": dates} if entered else {})
                 self.assertEqual(response.status_code, 200, response.text)
                 self.assertEqual(db.session.get(General, "B").start, "2025-03-01")
                 self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-03-20")
                 self.assertEqual(db.session.get(General, "B").weights, weights)
                 surgery = Procedure.query.filter_by(animal_id="B", name="Surgery").one()
-                self.assertEqual(surgery.start_date, "2025-03-03" if mode == "shift" else "2025-01-03")
+                self.assertEqual((surgery.start_date, surgery.end_date),
+                                 ("2025-03-03", "2025-03-05") if mode == "shift" else
+                                 ("2025-01-03", "2025-01-05"))
                 sacrifice = Procedure.query.filter_by(animal_id="B", name="Sacrifice").one()
                 self.assertEqual((sacrifice.start_date, sacrifice.end_date), ("2025-03-20", "2025-03-20"))
 
@@ -334,43 +312,29 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(response.json["copied_rows"], 5)
         self.assertEqual(db.session.get(General, "B").start, "2025-01-01")
         self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-12-31")
+        after = self.snapshot()
         for key, value in before.items():
             if key[1] in ("source", "C"):
-                self.assertEqual(self.snapshot()[key], value)
-
-    def test_missing_sacrifice_date_requires_entry_or_skipping(self):
-        db.session.get(AnimalData, "C").death_date = ""
-        db.session.commit()
-        before = self.snapshot()
-        response = self.post()
-        self.assertEqual(response.status_code, 400, response.text)
-        self.assertIn("sacrifice date", response.text)
-        self.assertEqual(self.snapshot(), before)
-        self.assertEqual(self.post(skip_ids=["C"]).status_code, 200)
+                self.assertEqual(after[key], value)
 
     def test_invalid_or_overwritten_date_choices_reject_the_whole_batch(self):
         for choices in ([], {"missing": {}}, {"B": []}, {"B": {"start": None}},
                         {"B": {"other": "2025-01-01"}}, {"B": {"start": "2025-02-02"}}):
             with self.subTest(choices=choices):
-                before = self.snapshot()
-                self.assertEqual(self.post(target_dates=choices).status_code, 400)
-                self.assertEqual(self.snapshot(), before)
+                self.assert_copy_rejected(target_dates=choices)
         for skip_ids in ("C", [None], ["source"], ["missing"]):
-            before = self.snapshot()
-            self.assertEqual(self.post(skip_ids=skip_ids).status_code, 400)
-            self.assertEqual(self.snapshot(), before)
+            with self.subTest(skip_ids=skip_ids):
+                self.assert_copy_rejected(skip_ids=skip_ids)
         db.session.get(General, "C").start = ""
         db.session.get(AnimalData, "C").death_date = ""
         db.session.commit()
         for start, end in (("", "2025-05-01"), ("2025-02-30", "2025-05-01"),
                            ("2023-12-31", "2025-05-01"), ("2025-06-01", "2025-05-01"),
                            ("9999-12-31", "9999-12-31")):
-            before = self.snapshot()
-            response = self.post(target_dates={"C": {"start": start, "sacrifice_date": end}})
-            self.assertEqual(response.status_code, 400, response.text)
-            self.assertEqual(self.snapshot(), before)
+            with self.subTest(start=start, end=end):
+                self.assert_copy_rejected(target_dates={"C": {"start": start, "sacrifice_date": end}})
 
-    def test_entering_sacrifice_date_updates_linked_procedure_without_replacing_it(self):
+    def test_medication_only_copy_uses_stored_or_entered_sacrifice_date(self):
         template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
         drug = PMedication("P/S", "Death drug", "Kind", "Sacrifice", "4", "1", "1", True)
         db.session.add_all([template, drug])
@@ -379,16 +343,27 @@ class ExperimentCopyTests(unittest.TestCase):
         db.session.add(destination)
         Medication.query.filter_by(animal_id="source").delete()
         db.session.add(Medication.from_default("source", drug))
-        db.session.get(AnimalData, "B").death_date = ""
+        db.session.get(AnimalData, "source").death_date = "2025-01-10"
         db.session.commit()
         destination_id = destination.uuid
-        response = self.post(target_ids=["B"], categories=["medication"],
-                             target_dates={"B": {"sacrifice_date": "2025-02-20"}})
-        self.assertEqual(response.status_code, 200, response.text)
-        destination = db.session.get(Procedure, destination_id)
-        self.assertEqual((destination.start_date, destination.end_date), ("2025-02-20", "2025-02-20"))
-        self.assertEqual(destination.experimenter, "Other")
-        self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-02-20")
+        for entered in (False, True):
+            with self.subTest(entered=entered):
+                destination = db.session.get(Procedure, destination_id)
+                destination.start_date = destination.end_date = "" if entered else "2025-02-20"
+                db.session.get(AnimalData, "B").death_date = destination.start_date
+                db.session.commit()
+                old_ids = {row.uuid for row in Medication.query.filter_by(animal_id="B")}
+                response = self.post(target_ids=["B"], categories=["medication"], date_mode="keep",
+                                     target_dates={"B": {"sacrifice_date": "2025-02-20"}} if entered else {})
+                self.assertEqual(response.status_code, 200, response.text)
+                db.session.remove()
+                copied = Medication.query.filter_by(animal_id="B").one()
+                self.assertEqual((copied.name, copied.procedure, copied.amount), ("Death drug", "Sacrifice", "4"))
+                self.assertNotIn(copied.uuid, old_ids)
+                destination = db.session.get(Procedure, destination_id)
+                self.assertEqual((destination.start_date, destination.end_date), ("2025-02-20", "2025-02-20"))
+                self.assertEqual(destination.experimenter, "Other")
+                self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-02-20")
 
     def test_write_failure_rolls_back_entered_dates_and_first_animal_rows(self):
         from data_manager.experiment_copy import apply_experiment_copy
@@ -418,22 +393,16 @@ class ExperimentCopyTests(unittest.TestCase):
                 row = Procedure.query.filter_by(animal_id="source", name="Surgery").one()
                 row.start_date, row.end_date = start, end
                 db.session.commit()
-                before = self.snapshot()
-                response = self.post()
-                self.assertEqual(response.status_code, 400, response.text)
+                response = self.assert_copy_rejected()
                 self.assertIn("Surgery", response.text)
-                self.assertEqual(self.snapshot(), before)
 
     def test_medication_and_viruses_require_matching_existing_procedure_dates(self):
         for mode in ("shift", "keep"):
             row = Procedure.query.filter_by(animal_id="C", name="Surgery").one()
             row.end_date = "2025-03-06"
             db.session.commit()
-            before = self.snapshot()
-            response = self.post(categories=["medication", "viruses"], date_mode=mode)
-            self.assertEqual(response.status_code, 400, response.text)
+            response = self.assert_copy_rejected(categories=["medication", "viruses"], date_mode=mode)
             self.assertIn("Include procedures", response.text)
-            self.assertEqual(self.snapshot(), before)
 
     def test_invalid_requests_are_rejected(self):
         for changes in ({"source_id": None}, {"target_ids": []}, {"target_ids": "B"},
@@ -441,10 +410,7 @@ class ExperimentCopyTests(unittest.TestCase):
                         {"categories": []}, {"categories": "procedures"},
                         {"categories": ["general"]}, {"categories": [{}]}, {"date_mode": "other"}):
             with self.subTest(changes=changes):
-                before = self.snapshot()
-                response = self.post(**changes)
-                self.assertEqual(response.status_code, 400, response.text)
-                self.assertEqual(self.snapshot(), before)
+                self.assert_copy_rejected(**changes)
         for data in ([], None, "source"):
             response = self.client.post("/animal_data/copy", data=json.dumps(data),
                                         content_type="application/json", headers=self.headers)
@@ -461,10 +427,7 @@ class ExperimentCopyTests(unittest.TestCase):
             animal = db.session.get(AnimalData, animal_id)
             animal.user = "Other"
             db.session.commit()
-            before = self.snapshot()
-            response = self.post()
-            self.assertEqual(response.status_code, 403, response.text)
-            self.assertEqual(self.snapshot(), before)
+            self.assert_copy_rejected(status=403)
             self.user.admin = True
             db.session.commit()
             self.assertEqual(self.post().status_code, 200)
@@ -474,15 +437,11 @@ class ExperimentCopyTests(unittest.TestCase):
 
     def test_missing_animal_or_general_rejects_whole_batch(self):
         for changes in ({"source_id": "missing"}, {"target_ids": ["B", "missing"]}):
-            before = self.snapshot()
-            response = self.post(**changes)
-            self.assertEqual(response.status_code, 404)
-            self.assertEqual(self.snapshot(), before)
+            with self.subTest(changes=changes):
+                self.assert_copy_rejected(status=404, **changes)
         db.session.delete(db.session.get(General, "C"))
         db.session.commit()
-        before = self.snapshot()
-        self.assertEqual(self.post().status_code, 404)
-        self.assertEqual(self.snapshot(), before)
+        self.assert_copy_rejected(status=404)
 
     def test_login_required(self):
         before = self.snapshot()
@@ -509,39 +468,25 @@ class ExperimentCopyTests(unittest.TestCase):
         db.session.get(General, "C").experiment = "P/Other"
         db.session.add(PProcedure("P/Other", "Surgery", "2", "3", True, False, 0, 0))
         db.session.commit()
-        before = self.snapshot()
-        response = self.post()
-        self.assertEqual(response.status_code, 400, response.text)
+        response = self.assert_copy_rejected()
         self.assertIn("no unique procedures", response.text)
-        self.assertEqual(self.snapshot(), before)
         PProcedure.query.filter_by(protocol="P/Other", name="Surgery").delete()
         db.session.commit()
-        response = self.post()
-        self.assertEqual(response.status_code, 400, response.text)
-        self.assertEqual(self.snapshot(), before)
+        self.assert_copy_rejected()
 
     def test_procedure_copy_cannot_leave_unselected_entries_without_a_procedure(self):
         Procedure.query.filter_by(animal_id="source", name="Followup").delete()
         db.session.commit()
-        before = self.snapshot()
-        response = self.post(categories=["procedures"])
-        self.assertEqual(response.status_code, 400, response.text)
+        response = self.assert_copy_rejected(categories=["procedures"])
         self.assertIn("Followup", response.text)
-        self.assertEqual(self.snapshot(), before)
 
     def test_empty_selected_category_and_missing_source_links_abort(self):
         Virus.query.filter_by(animal_id="source").delete()
         db.session.commit()
-        before = self.snapshot()
-        response = self.post(categories=["viruses"])
-        self.assertEqual(response.status_code, 400, response.text)
-        self.assertEqual(self.snapshot(), before)
+        self.assert_copy_rejected(categories=["viruses"])
         Procedure.query.filter_by(animal_id="source", name="Surgery").delete()
         db.session.commit()
-        before = self.snapshot()
-        response = self.post(categories=["medication"])
-        self.assertEqual(response.status_code, 400, response.text)
-        self.assertEqual(self.snapshot(), before)
+        self.assert_copy_rejected(categories=["medication"])
 
     def test_repeated_procedure_names_keep_individual_offsets_and_durations(self):
         db.session.add(Procedure("source", "Surgery", "2025-01-12", "2025-01-15", "Performer", self.surgery.uuid))
