@@ -96,6 +96,9 @@ baselining a database, because it records revisions without running them.
 The type decisions for issue #3 and the scope of its migration are documented in
 [docs/database-types.md](docs/database-types.md).
 
+The animal order pages, form flow and quota rules are documented in
+[docs/animal-orders.md](docs/animal-orders.md).
+
 ## Development checks
 
 Install the development dependencies in the virtual environment, then run the
@@ -103,6 +106,14 @@ type checker and tests from the repository root:
 
 ```sh
 pip install -r requirements-dev.txt
-pyright
-PYTHONPATH=src python -m unittest discover -s tests
+make check
 ```
+
+This runs Pyright, the Python tests and both JavaScript checks. Node.js must be
+available. The default Python interpreter is `.venv/bin/python`; override it with
+`make check PYTHON=python` when using another virtual environment.
+
+Detailed input and quota cases belong in service tests. Route tests cover forms,
+permissions, redirects and persisted results; migration tests cover database
+constraints and data preservation. Shared database/login fixtures live in
+`tests/helpers.py`. Tests use isolated databases and temporary files.

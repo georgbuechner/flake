@@ -105,7 +105,7 @@ def get_keys_from_config(path: str) -> Tuple[str, str, str | int]:
         password = config["password"]["password"].encode()
         salt = config["password"]["salt"].encode()
         print("Loading .env")
-        print("Got dotenv: ", os.getenv(ENV_FIELD_MASTER_PW, False))
+        print("Got dotenv: ", bool(os.getenv(ENV_FIELD_MASTER_PW, False)))
         inp = os.getenv(ENV_FIELD_MASTER_PW) or getpass.getpass("password: ")
         if hash_pw(inp, salt)[0] == password:
             encoded_password, _ = encode_password(inp.encode(), salt)

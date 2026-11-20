@@ -57,7 +57,7 @@ class PawControlMigrationTests(unittest.TestCase):
 
     def test_upgrade_backfills_all_users_and_preserves_existing_data(self):
         before = self.legacy_rows()
-        command.upgrade(self.config, "head")
+        command.upgrade(self.config, REVISION)
         self.assertEqual(self.legacy_rows(), before)
         column = next(column for column in sa.inspect(self.engine).get_columns("user")
                       if column["name"] == "paw_control")

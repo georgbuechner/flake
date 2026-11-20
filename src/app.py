@@ -4,6 +4,7 @@ import json
 import html
 from flask import (
     Flask, 
+    flash,
     jsonify, 
     make_response, 
     redirect, 
@@ -15,11 +16,15 @@ from flask import (
 )
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from data_manager.dmanager import DManager, date_filled, parse_weight, get_category_table
+from data_manager.orders import (
+    get_order, get_order_licences, get_order_lines, get_order_users, get_orders,
+    minimum_order_delivery_date, review_order, validate_order_submission,
+)
 from data_manager.tables import *
 from document_creator.dcreator import DCreator, GenerationThread
 from exceptions.exceptions import *
 from exceptions.handlers import handle_request_error, is_ajax_request, register_error_handlers
-from werkzeug.exceptions import Unauthorized, Forbidden
+from werkzeug.exceptions import HTTPException, Unauthorized, Forbidden
 from PIL import Image, UnidentifiedImageError
 import os
 import subprocess
@@ -29,7 +34,7 @@ import traceback
 import shutil
 import urllib.parse
 from functools import wraps
-from typing import Callable, ParamSpec, TypeVar
+from typing import Any, Callable, Mapping, ParamSpec, TypeVar, cast
 from flask.typing import ResponseReturnValue
 from werkzeug.wrappers import Response
 from utils.utils import *
@@ -243,6 +248,136 @@ def register() -> ResponseReturnValue:
 def logout() -> ResponseReturnValue:
     logout_user()
     return redirect("/login")
+
+
+def _order_request_data() -> dict[str, Any]:
+    """Read native form fields, including repeated ID inputs."""
+    data: dict[str, Any] = request.form.to_dict()
+    ids = request.form.getlist("ids")
+    if len(ids) > 1:
+        data["ids"] = ids
+    return data
+
+
+def _render_orders(values: Mapping[str, Any] | None = None, *, error: str = "") -> str:
+    """Pass order objects and form state directly to Jinja."""
+    user = cast(User, current_user)
+    source = request.args if request.method == "GET" else request.form
+    prefix = "" if request.method == "GET" else "filter_"
+    filters = {key: source.get(prefix + key, "") for key in ("user", "status")}
+    entries = get_orders(user, requester=filters["user"], status=filters["status"])
+    values = source if values is None else values
+    licences = get_order_licences(user)
+    licence = values.get("licence", "")
+    order_type = values.get("order_type", "by_data")
+    if order_type not in ("by_id", "by_data"):
+        if not error:
+            raise InvalidTypeException("Select whether to order animals by ID or by data.")
+        order_type = "by_data"
+    lines = []
+    if licence:
+        try:
+            lines = get_order_lines(user, licence)
+        except (FlakeError, HTTPException):
+            if not error:
+                raise
+            licence = ""
+    users = get_order_users(user)
+    ids = values.get("ids", "")
+    ids_text = "\n".join(ids) if isinstance(ids, list) else ids
+    return render_template(
+        "orders.html", orders=entries, users=users,
+        user_names={choice["email"]: choice["name"] for choice in users},
+        licences=licences, lines=lines, selected_licence=licence, order_type=order_type,
+        values=values, ids_text=ids_text, filters=filters, error=error,
+        min_delivery_date=minimum_order_delivery_date().isoformat(),
+        can_submit=any(line["remaining"] is not None and line["remaining"] > 0 for line in lines),
+        can_review=bool(user.paw_control), return_order="",
+    )
+
+
+def _order_form_error(error: FlakeError | HTTPException, values: Mapping[str, Any] | None = None) -> ResponseReturnValue:
+    db.session.rollback()
+    if isinstance(error, FlakeError):
+        message, status = error.msg, error.status
+    else:
+        message, status = error.description or "The order could not be processed.", error.code or 500
+    return _render_orders(values, error=message), status
+
+
+def _order_redirect(order: AnimalOrder) -> ResponseReturnValue:
+    if request.form.get("return_order") == order.uuid:
+        return redirect(url_for("order_details", order_uuid=order.uuid), code=303)
+    user = cast(User, current_user)
+    licence = request.form.get("licence", "")
+    if licence not in {choice["licence"] for choice in get_order_licences(user)}:
+        licence = ""
+    order_type = request.form.get("order_type", "")
+    if order_type not in ("by_id", "by_data"):
+        order_type = ""
+    requester = request.form.get("filter_user", "")
+    if not user.paw_control and requester != user.email:
+        requester = ""
+    status = request.form.get("filter_status", "")
+    if status not in ("pending", "approved", "rejected"):
+        status = ""
+    return redirect(url_for(
+        "orders", licence=licence or None, order_type=order_type or None,
+        user=requester or None, status=status or None,
+    ), code=303)
+
+
+@app.route("/orders", methods=["GET"])
+@login_required
+@handle_exception
+def orders() -> ResponseReturnValue:
+    return _render_orders()
+
+
+@app.route("/orders", methods=["POST"])
+@login_required
+@handle_exception
+def submit_order() -> ResponseReturnValue:
+    data = _order_request_data()
+    try:
+        order = validate_order_submission(cast(User, current_user), data)
+        db.session.add(order)
+        db.session.commit()
+    except (FlakeError, HTTPException) as error:
+        return _order_form_error(error, data)
+    flash("Order submitted.")
+    return _order_redirect(order)
+
+
+@app.route("/orders/<order_uuid>", methods=["GET"])
+@login_required
+@handle_exception
+def order_details(order_uuid: str) -> ResponseReturnValue:
+    user = cast(User, current_user)
+    order = get_order(user, order_uuid)
+    owner = db.session.get(User, order.user)
+    return render_template(
+        "order.html", order=order, orders=[order],
+        user_names={order.user: owner.name if owner and owner.name else order.user},
+        can_review=bool(user.paw_control), filters={"user": "", "status": ""},
+        selected_licence="", order_type="by_data", return_order=order.uuid,
+    )
+
+
+@app.route("/orders/<order_uuid>/status", methods=["POST"])
+@login_required
+@handle_exception
+def update_order_status(order_uuid: str) -> ResponseReturnValue:
+    if not current_user.paw_control:
+        raise Forbidden("Only Paw Control members can approve or reject orders.")
+    try:
+        order = review_order(cast(User, current_user), order_uuid, request.form.get("status"))
+        db.session.commit()
+    except (FlakeError, HTTPException) as error:
+        return _order_form_error(error)
+    flash(f"Order {order.status}.")
+    return _order_redirect(order)
+
 
 @app.route("/overview")
 @login_required

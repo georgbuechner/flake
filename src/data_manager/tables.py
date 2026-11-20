@@ -5,6 +5,7 @@ import math
 import uuid
 import random
 import re
+from datetime import date as Date, datetime, timezone
 from exceptions.exceptions import EntryNotFound, FlakeError, InvalidDateException, InvalidTypeException
 from flask_sqlalchemy import SQLAlchemy
 from flask_sqlalchemy.model import Model
@@ -101,6 +102,158 @@ class VerificationCode(db.Model):
 
     if TYPE_CHECKING:
         def __init__(self, *, priv: str, pub: str, email: str) -> None: ...
+
+
+class AnimalOrder(db.Model):
+    """Shared order data; concrete variants share the animal_orders table.
+
+    ``licence`` identifies a full protocol/subprotocol, ``date`` is the
+    requested delivery date, and ``created_at`` is stored as naive UTC.
+    User, licence and line are snapshots so historical orders survive changes
+    to accounts and protocol definitions. Eligibility and quotas are checked
+    when submitting an order, rather than by this persistence model.
+    """
+    __tablename__ = "animal_orders"
+    __table_args__ = (
+        db.CheckConstraint(
+            "order_type IN ('by_id', 'by_data')", name="ck_animal_orders_type",
+        ),
+        db.CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')", name="ck_animal_orders_status",
+        ),
+        db.CheckConstraint(
+            "(order_type = 'by_id' AND ids IS NOT NULL AND sex IS NULL "
+            "AND age IS NULL AND amount IS NULL) OR "
+            "(order_type = 'by_data' AND ids IS NULL AND sex IS NOT NULL "
+            "AND age IS NOT NULL AND amount IS NOT NULL)",
+            name="ck_animal_orders_selection",
+        ),
+        db.CheckConstraint(
+            "ids IS NULL OR (json_valid(ids) AND json_type(ids) = 'array' "
+            "AND json_array_length(ids) > 0)", name="ck_animal_orders_ids",
+        ),
+        db.CheckConstraint(
+            "sex IS NULL OR sex IN ('female', 'male', 'unknown')",
+            name="ck_animal_orders_sex",
+        ),
+        db.CheckConstraint(
+            "age IS NULL OR (typeof(age) = 'integer' AND age >= 0)",
+            name="ck_animal_orders_age",
+        ),
+        db.CheckConstraint(
+            "amount IS NULL OR (typeof(amount) = 'integer' AND amount > 0)",
+            name="ck_animal_orders_amount",
+        ),
+    )
+
+    uuid: Mapped[str] = db.Column(db.String, primary_key=True)
+    order_type: Mapped[str] = db.Column(db.String, nullable=False)
+    licence: Mapped[str] = db.Column(db.String, nullable=False)
+    line: Mapped[str] = db.Column(db.String, nullable=False)
+    date: Mapped[Date] = db.Column(db.Date, nullable=False)
+    comment: Mapped[str] = db.Column(db.Text, nullable=False, default="", server_default=db.text("''"))
+    user: Mapped[str] = db.Column(db.String, nullable=False, index=True)
+    created_at: Mapped[datetime] = db.Column(
+        db.DateTime, nullable=False, server_default=db.func.current_timestamp(),
+    )
+    status: Mapped[str] = db.Column(
+        db.String, nullable=False, default="pending", server_default="pending", index=True,
+    )
+
+    __mapper_args__ = {
+        "polymorphic_on": order_type, "polymorphic_abstract": True, "with_polymorphic": "*",
+    }
+
+    def __init__(
+        self, *, licence: str, line: str, date: Date, user: str, comment: str = "",
+    ) -> None:
+        self.uuid = str(uuid.uuid4())
+        self.licence = licence
+        self.line = line
+        self.date = date
+        self.user = user
+        self.comment = comment
+        self.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        self.status = "pending"
+
+    @validates("licence", "line", "user")
+    def validate_required_text(self, key: str, value: object) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise InvalidTypeException(f"Order {key} must not be blank.")
+        return value.strip()
+
+    @validates("date")
+    def validate_date(self, key: str, value: object) -> Date:
+        if type(value) is not Date:
+            raise InvalidTypeException("Order date must be a delivery date.")
+        return value
+
+    @validates("status")
+    def validate_status(self, key: str, value: object) -> str:
+        if value not in ("pending", "approved", "rejected"):
+            raise InvalidTypeException("Invalid order status.")
+        return str(value)
+
+
+class AnimalOrderById(AnimalOrder):
+    """An order for a list of IDs, which need not have been imported yet.
+
+    Replace ``ids`` with a new list when editing; in-place mutations of JSON
+    values are not tracked by SQLAlchemy.
+    """
+    ids: Mapped[list[str]] = db.Column(db.JSON(none_as_null=True), nullable=True)
+
+    __mapper_args__ = {"polymorphic_identity": "by_id"}
+
+    def __init__(
+        self, *, licence: str, line: str, date: Date, user: str,
+        ids: list[str], comment: str = "",
+    ) -> None:
+        super().__init__(licence=licence, line=line, date=date, user=user, comment=comment)
+        self.ids = ids
+
+    @validates("ids")
+    def validate_ids(self, key: str, value: object) -> list[str]:
+        if not isinstance(value, list) or not value:
+            raise InvalidTypeException("An ID order requires a non-empty list of animal IDs.")
+        if any(not isinstance(identifier, str) or not identifier.strip() for identifier in value):
+            raise InvalidTypeException("Animal IDs must be non-empty strings.")
+        ids = [identifier.strip() for identifier in value]
+        if len(ids) != len(set(ids)):
+            raise InvalidTypeException("Animal IDs must not be repeated within an order.")
+        return ids
+
+
+class AnimalOrderByData(AnimalOrder):
+    """An order for an amount of animals with the given sex and age in weeks."""
+    sex: Mapped[str] = db.Column(db.String, nullable=True)
+    age: Mapped[int] = db.Column(db.Integer, nullable=True)
+    amount: Mapped[int] = db.Column(db.Integer, nullable=True)
+
+    __mapper_args__ = {"polymorphic_identity": "by_data"}
+
+    def __init__(
+        self, *, licence: str, line: str, date: Date, user: str,
+        sex: str, age: int, amount: int, comment: str = "",
+    ) -> None:
+        super().__init__(licence=licence, line=line, date=date, user=user, comment=comment)
+        self.sex = sex
+        self.age = age
+        self.amount = amount
+
+    @validates("sex")
+    def validate_sex(self, key: str, value: object) -> str:
+        if value not in ("female", "male", "unknown"):
+            raise InvalidTypeException("Order sex must be female, male or unknown.")
+        return str(value)
+
+    @validates("age", "amount")
+    def validate_integer(self, key: str, value: object) -> int:
+        minimum = 1 if key == "amount" else 0
+        if type(value) is not int or not minimum <= value < 2**63:
+            raise InvalidTypeException(f"Order {key} must be an integer of at least {minimum}.")
+        return value
+
 
 class AnimalData(db.Model): 
     __tablename__ = "animal_data" 
