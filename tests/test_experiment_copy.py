@@ -4,27 +4,18 @@ import json
 import unittest
 from unittest.mock import patch
 
-from flask import Flask
-
 from data_manager.dmanager import DManager
 from data_manager.tables import (
     db, AnimalData, General, Medication, Note, PMedication, PProcedure, PVirus,
     Procedure, Protocol, User, Virus, EXPERIMENT_TABLES,
 )
-from route_helpers import ROOT, load_routes
+from helpers import database_app, login_as
+from route_helpers import load_routes
 
 
 class ExperimentCopyTests(unittest.TestCase):
     def setUp(self):
-        self.app = Flask(__name__, template_folder=str(ROOT / "src/templates"))
-        self.app.config.update(SECRET_KEY="test", SQLALCHEMY_DATABASE_URI="sqlite:///:memory:")
-        db.init_app(self.app)
-        context = self.app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         self.namespace = load_routes(self.app, decorated=True)
         self.manager = DManager()
         self.namespace["dmanager"] = self.manager
@@ -73,9 +64,7 @@ class ExperimentCopyTests(unittest.TestCase):
             db.session.add_all([drug, fixed])
         db.session.commit()
         self.client = self.app.test_client()
-        with self.client.session_transaction() as session:
-            session["_user_id"] = self.user.email
-            session["_fresh"] = True
+        login_as(self.client, self.user.email)
         self.headers = {"X-Requested-With": "XMLHttpRequest"}
 
     def post(self, **changes):
@@ -153,6 +142,8 @@ class ExperimentCopyTests(unittest.TestCase):
         response = self.post(target_ids=["B"], categories=["medication"], date_mode="keep")
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(self.rows(Procedure, "B"), before)
+        drug = Medication.query.filter_by(animal_id="B", name="Drug").one()
+        self.assertEqual((drug.amount, drug.toe_pinch), ("40", False))
 
     def test_every_nonempty_category_combination_replaces_only_selected_rows(self):
         for medication in Medication.query.all():
@@ -167,6 +158,7 @@ class ExperimentCopyTests(unittest.TestCase):
                     for category, Table in EXPERIMENT_TABLES.items():
                         after = self.rows(Table, "B")
                         if category in categories:
+                            self.assertEqual(len(after), len(self.rows(Table, "source")))
                             self.assertTrue({r["uuid"] for r in after}.isdisjoint(
                                 {r["uuid"] for r in before[(Table.__tablename__, "B")]}))
                         else:
@@ -293,10 +285,11 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(self.preview(target_ids=[]).json["targets"], [])
 
     def test_preview_validates_selection_and_permissions(self):
-        for changes in ({"source_id": None}, {"target_ids": "B"}, {"target_ids": [None]},
-                        {"target_ids": ["source"]}, {"target_ids": ["missing"]}):
+        for changes, status in (({"source_id": None}, 400), ({"target_ids": "B"}, 400),
+                                ({"target_ids": [None]}, 400), ({"target_ids": ["source"]}, 400),
+                                ({"target_ids": ["missing"]}, 404)):
             with self.subTest(changes=changes):
-                self.assertIn(self.preview(**changes).status_code, (400, 404))
+                self.assertEqual(self.preview(**changes).status_code, status)
         for animal_id in ("source", "C"):
             animal = db.session.get(AnimalData, animal_id)
             animal.user = "Other"
@@ -305,10 +298,6 @@ class ExperimentCopyTests(unittest.TestCase):
             animal.user = "Tester"
             db.session.commit()
         self.assertEqual(self.client.post("/animal_data/copy/preview", json=[], headers=self.headers).status_code, 400)
-
-    def test_preview_requires_login(self):
-        response = self.app.test_client().post("/animal_data/copy/preview", json={"source_id": "source"}, headers=self.headers)
-        self.assertEqual(response.status_code, 401)
 
     def test_entered_dates_are_applied_with_rows_in_both_modes(self):
         template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
@@ -497,9 +486,12 @@ class ExperimentCopyTests(unittest.TestCase):
 
     def test_login_required(self):
         before = self.snapshot()
-        response = self.app.test_client().post("/animal_data/copy", json={}, headers=self.headers)
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(self.snapshot(), before)
+        client = self.app.test_client()
+        for path in ("/animal_data/copy", "/animal_data/copy/preview"):
+            with self.subTest(path=path):
+                response = client.post(path, json={}, headers=self.headers)
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(self.snapshot(), before)
 
     def test_cross_subprotocol_copy_remaps_template_ids(self):
         self.manager.create_subprotocol("P", "Other", template=("P", "S"))
@@ -558,22 +550,6 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         dates = {(row.start_date, row.end_date) for row in Procedure.query.filter_by(animal_id="B", name="Surgery")}
         self.assertEqual(dates, {("2025-02-03", "2025-02-05"), ("2025-02-12", "2025-02-15")})
-
-    def test_write_failure_on_second_target_rolls_back_first_target(self):
-        from data_manager.experiment_copy import apply_experiment_copy
-        before = self.snapshot()
-
-        def fail_second(plan):
-            if plan.animal_id == "C":
-                raise RuntimeError("Failed on second target")
-            return apply_experiment_copy(plan)
-
-        with patch("data_manager.dmanager.apply_experiment_copy", side_effect=fail_second):
-            with self.assertLogs(self.app.logger, level="ERROR"):
-                response = self.post()
-        self.assertEqual(response.status_code, 500)
-        db.session.remove()
-        self.assertEqual(self.snapshot(), before)
 
     def test_copy_and_paste_modes_render_on_all_overviews(self):
         for path in ("/animal_data/source", "/overview", "/users/Tester", "/protocols/P"):

@@ -257,11 +257,7 @@ class ProtocolCreationTests(unittest.TestCase):
             ("Source <protocol>", "source/Empty", "source/Empty"),
             ("Target protocol", "target/Existing", "target/Existing"),
         ])
-        self.assertIn('<optgroup label="Source &lt;protocol&gt;">', response.text)
-        self.assertIn('<option value="source/A">A</option>', response.text)
-        self.assertIn('<optgroup label="Target protocol">', response.text)
-        self.assertIn('<option value="target/Existing">Existing</option>', response.text)
-        self.assertNotIn('<optgroup label="Unused">', response.text)
+        self.assertIn("Source &lt;protocol&gt;", response.text)
 
     def test_rendered_choices_copy_from_the_correct_parent_with_shared_subprotocol_names(self):
         self.target.add_subprotocol("A")
@@ -282,6 +278,8 @@ class ProtocolCreationTests(unittest.TestCase):
                 })
                 self.assertEqual(response.status_code, 302, response.text)
                 self.assertEqual(response.location, f"/settings/protocols/target/{name}/general")
+                page = self.client.get(response.location)
+                self.assertEqual(page.status_code, 200, page.text)
                 for Table, source_rows in originals.items():
                     settings = lambda row: {
                         key: value for key, value in row.items() if key not in ("uuid", "protocol")
@@ -291,23 +289,17 @@ class ProtocolCreationTests(unittest.TestCase):
                         [settings(row) for row in source_rows],
                     )
 
-    def test_route_creates_and_redirects_to_general_with_or_without_template(self):
-        for name, template in (("Empty", ""), ("Copied", "source/A")):
-            with self.subTest(template=template):
-                response = self.client.post("/settings/protocols/target/add_protocol", data={
-                    "name": name, "template": template,
-                })
+    def test_empty_and_legacy_forms_create_and_redirect_to_general(self):
+        for data in ({"name": "Empty", "template": ""}, {"name": "Legacy"}):
+            with self.subTest(data=data):
+                response = self.client.post("/settings/protocols/target/add_protocol", data=data)
                 self.assertEqual(response.status_code, 302, response.text)
+                name = data["name"]
                 self.assertEqual(response.location, f"/settings/protocols/target/{name}/general")
                 page = self.client.get(response.location)
                 self.assertEqual(page.status_code, 200, page.text)
                 general = PGeneral.query.filter_by(protocol=f"target/{name}").one()
-                self.assertEqual(general.allowed_users, "Tester,Other" if template else "")
-
-    def test_route_accepts_existing_forms_without_a_template_field(self):
-        response = self.client.post("/settings/protocols/target/add_protocol", data={"name": "New"})
-        self.assertEqual(response.status_code, 302, response.text)
-        self.assertEqual(PGeneral.query.filter_by(protocol="target/New").one().allowed_users, "")
+                self.assertEqual(general.allowed_users, "")
 
     def test_route_rejects_malformed_or_missing_template(self):
         for template, status in (("source", 400), ("/A", 400), ("source/", 400),

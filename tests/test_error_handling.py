@@ -1,35 +1,47 @@
 """Exercise routes without importing app.py's database initialization."""
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from data_manager.tables import PProcedure
-from exceptions.exceptions import (
-    EntryNotFound, InvalidTypeException, AnimalNotSacrificed, ConfirmationRequired,
-    InvalidDateException, InvalidNameException,
-)
+from data_manager.dmanager import DManager
+from data_manager.tables import AnimalData, General, PProcedure, User, db
+from exceptions.exceptions import InvalidTypeException, InvalidDateException
 from utils.dt_utils import strtodate, SOURCE_DATE_FORMAT
-from helpers import database_app
+from helpers import database_app, login_as
 from route_helpers import load_routes
 
 
-class RouteErrorTests(unittest.TestCase):
+class ScoreSheetErrorTests(unittest.TestCase):
     def setUp(self):
         self.app = database_app(self)
-        context = self.app.test_request_context(method="POST")
-        context.push()
-        self.addCleanup(context.pop)
-        self.ns = load_routes(self.app, {"handle_exception", "generate_score_sheet"})
+        self.ns = load_routes(self.app, {
+            "handle_exception", "user_loader", "unauthorized_handler", "generate_score_sheet",
+        }, decorated=True)
+        self.ns["dmanager"] = DManager()
+        db.session.add_all([
+            User("test@example.org", "Test", False, "hash", b"salt"),
+            AnimalData({
+                "id": "test", "sex": "M", "line": "Line", "dob": "2025-01-01",
+                "death_date": "2025-02-01", "user": "Test",
+                "protocol_pyrat": "P", "supplier": "",
+            }),
+            General("test", "P/Sub", False, "Leicht"),
+        ])
+        db.session.commit()
+        self.client = self.app.test_client()
+        login_as(self.client, "test@example.org")
+        self.ajax = {"X-Requested-With": "XMLHttpRequest"}
 
-    def test_expected_errors_preserve_status_without_logging(self):
-        for error in (EntryNotFound("missing"), ConfirmationRequired("confirm"),
-                      InvalidNameException('<img src=x onerror="alert(1)">', "Choose another name")):
-            with self.subTest(error=error):
-                handler = self.ns["handle_exception"](Mock(side_effect=error))
+    def test_missing_or_living_animals_return_plain_errors_without_logging(self):
+        db.session.get(AnimalData, "test").death_date = ""
+        db.session.commit()
+        for animal_id, status, message in (("missing", 404, "not found"),
+                                           ("test", 409, "not yet sacrificed")):
+            with self.subTest(animal_id=animal_id):
                 with self.assertNoLogs(self.app.logger, level="ERROR"):
-                    response = handler()
-                self.assertEqual(response.status_code, error.status)
-                self.assertEqual(response.get_data(as_text=True), error.msg)
+                    response = self.client.get(f"/generate/score_sheet/{animal_id}", headers=self.ajax)
+                self.assertEqual(response.status_code, status)
+                self.assertIn(message, response.text)
                 self.assertEqual(response.content_type, "text/plain; charset=utf-8")
 
     def test_failed_score_sheet_never_serves_file_and_removes_task(self):
@@ -37,30 +49,16 @@ class RouteErrorTests(unittest.TestCase):
         creator = Mock()
         creator.create_score_sheet.side_effect = error
         send = Mock()
-        self.ns.update(
-            db=SimpleNamespace(session=Mock()), AnimalData=object,
-            date_filled=lambda value: True, DCreator=Mock(return_value=creator),
-            dmanager=Mock(), table_to_json=lambda value: {},
-            current_user=SimpleNamespace(email="test"),
-            generation_threads={}, send_file=send,
-        )
-        with self.assertRaises(RuntimeError) as raised:
-            self.ns["generate_score_sheet"]("test")
-        self.assertIs(raised.exception, error)
+        # Only replace document output; database, auth, route decorators and the
+        # worker thread stay real so failures must reach the HTTP error handler.
+        with patch.dict(self.ns, DCreator=Mock(return_value=creator), send_file=send):
+            with self.assertLogs(self.app.logger, level="ERROR") as logs:
+                response = self.client.get("/generate/score_sheet/test", headers=self.ajax)
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn(str(error), response.text)
+        self.assertIn(str(error), "\n".join(logs.output))
         self.assertEqual(self.ns["generation_threads"], {})
         send.assert_not_called()
-
-    def test_score_sheet_missing_animal_and_incomplete_state(self):
-        session = Mock()
-        self.ns.update(db=SimpleNamespace(session=session), AnimalData=object,
-                       date_filled=lambda value: False)
-        session.get.return_value = None
-        with self.assertRaises(EntryNotFound):
-            self.ns["generate_score_sheet"]("missing")
-        session.get.return_value = SimpleNamespace(death_date="")
-        with self.assertRaises(AnimalNotSacrificed) as raised:
-            self.ns["generate_score_sheet"]("alive")
-        self.assertEqual(raised.exception.status, 409)
 
 
 class InputErrorTests(unittest.TestCase):

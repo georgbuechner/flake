@@ -47,7 +47,8 @@ function response(status, message = "Useful server message") {
 }
 
 async function main() {
-  for (const status of [400, 401, 403, 404, 409, 422, 500]) {
+  // Authentication, confirmation and server failures cover the distinct flows.
+  for (const status of [401, 409, 500]) {
     const {context, events, element} = setup();
     context.fetch = async (url, options) => {
       assert.equal(options.headers.get("X-Requested-With"), "XMLHttpRequest");

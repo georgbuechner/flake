@@ -109,7 +109,7 @@ pip install -r requirements-dev.txt
 make check
 ```
 
-This runs Pyright, the Python tests and both JavaScript checks. Node.js must be
+This runs Pyright, the Python tests and all three JavaScript checks. Node.js must be
 available. The default Python interpreter is `.venv/bin/python`; override it with
 `make check PYTHON=python` when using another virtual environment.
 

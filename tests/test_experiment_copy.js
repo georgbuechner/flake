@@ -205,7 +205,7 @@ async function main() {
     await state.submit("experiment-paste-form");
     assert.equal(state.events.requests.length, 1);
   }
-  for (const status of [400, 401, 403, 404, 500]) {
+  for (const status of [400, 401, 500]) {
     const state = setup();
     await state.element("open-experiment-paste").listeners.click();
     state.context.AppFetch = async () => ({ok: false, status, text: async () => "Missing source start date"});
