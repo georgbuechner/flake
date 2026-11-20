@@ -6,7 +6,7 @@ range storage or select values from existing ranges.
 | Field | SQL type | Decision |
 | --- | --- | --- |
 | `availible_procedures.days_after_start` | Integer, nullable | Definition defaults are fixed day offsets. Negative values, including the sacrifice marker `-1`, remain valid. |
-| `protocol_procedures.days_after_start` | String, nullable | Preserve the eight existing offset ranges. Automatic scheduling still requires a single integer; interpreting these ranges is deferred. |
+| `protocol_procedures.days_after_start` | String, nullable | Preserve fixed offsets and inclusive ranges such as `0-6`. Date autofill supports both; see procedure scheduling below. |
 | `protocol_watercontrol.days_after_start` | String, nullable | Preserve the existing offset range. Water-control generation still requires a single integer. |
 | Procedure `duration` fields | String, nullable | Procedure durations explicitly support ranges such as `2-5`; the existing parser and random selection remain unchanged. |
 | `protocol_watercontrol.duration` | String, nullable | Preserve the existing `14-20` value. Water-control generation currently requires a single integer duration. |
@@ -22,10 +22,27 @@ verbatim in the retained String columns.
 
 Unset counts impose no requirement when checking for missing medication or
 viruses. Unset schedule values display as blank; an animal procedure created
-from an unset protocol offset starts with an empty date. Automatic scheduling
-and enabled water-control generation still need valid, configured scalar values.
-Retaining a range in a String column does not add range support to these paths.
-No range-handling code or additional range tests are part of this change.
+from an unset protocol offset starts with an empty date. Enabled water-control
+generation still needs valid, configured scalar values for its start and duration.
+The migration itself only preserved ranges; procedure scheduling now interprets
+them as described below.
+
+## Procedure scheduling
+
+Procedure start offsets accept an integer or an ascending, inclusive integer
+range, including negative offsets such as `-5--3`. The single value `-1` retains
+its special meaning as the sacrifice-date marker.
+
+Assigning a subprotocol leaves the start date of a procedure with a ranged offset
+empty until date autofill runs. Autofill chooses a random offset within the range
+and saves a calendar date relative to the experiment start. Later autofills reuse
+the saved date's offset from the previous experiment start if it still fits the
+configured range; otherwise they choose again. Existing fixed offsets and the
+duration selection behavior are unchanged. Surgery and water-control calculations
+use the actual scheduled surgery dates.
+
+No database migration is needed for this scheduling support. The existing range
+strings and saved procedure dates provide the required information.
 
 Medication/virus amounts, concentrations and doses remain Strings: existing
 values include units, percentages and combinations. Date Strings and JSON list
