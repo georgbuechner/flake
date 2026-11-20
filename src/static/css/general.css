@@ -89,6 +89,51 @@ li {
   background-color: rgb(201, 209, 213);
 }
 
+.experiment-copy-mode {
+  display: inline-block;
+}
+
+.experiment-copy-mode label {
+  margin: 0 0.5em;
+}
+
+.experiment-copy-dialog {
+  height: fit-content;
+  max-width: 650px;
+  max-height: 85vh;
+  overflow: auto;
+}
+
+.experiment-paste-dialog {
+  max-width: 1100px;
+}
+
+.experiment-copy-table {
+  overflow-x: auto;
+}
+
+.experiment-copy-table input[type="date"] {
+  display: block;
+  margin: 0 auto 0.5em;
+}
+
+.copy-date-row--ready {
+  background-color: #d2ead6;
+}
+
+.copy-date-row--missing {
+  background-color: #f5d4d6;
+}
+
+.copy-date-row--skipped {
+  background-color: #dedede;
+}
+
+.copy-date-status {
+  display: block;
+  margin-bottom: 0.5em;
+}
+
 .mod {
   padding: 0.5rem;
 }

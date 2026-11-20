@@ -84,6 +84,11 @@ class ExperimentCopyTests(unittest.TestCase):
         data.update(changes)
         return self.client.post("/animal_data/copy", json=data, headers=self.headers)
 
+    def preview(self, **changes):
+        data = {"source_id": "source", "target_ids": ["B", "C"]}
+        data.update(changes)
+        return self.client.post("/animal_data/copy/preview", json=data, headers=self.headers)
+
     def rows(self, Table, animal_id):
         criteria = {"mla_num": animal_id} if Table is AnimalData else {"animal_id": animal_id}
         return [{column.name: getattr(row, column.name) for column in Table.__table__.columns}
@@ -150,6 +155,9 @@ class ExperimentCopyTests(unittest.TestCase):
         self.assertEqual(self.rows(Procedure, "B"), before)
 
     def test_every_nonempty_category_combination_replaces_only_selected_rows(self):
+        for medication in Medication.query.all():
+            medication.update_amount()
+        db.session.commit()
         for size in range(1, 4):
             for categories in itertools.combinations(EXPERIMENT_TABLES, size):
                 with self.subTest(categories=categories):
@@ -163,6 +171,93 @@ class ExperimentCopyTests(unittest.TestCase):
                                 {r["uuid"] for r in before[(Table.__tablename__, "B")]}))
                         else:
                             self.assertEqual(after, before[(Table.__tablename__, "B")])
+
+    def test_procedure_only_copy_recalculates_existing_medication_without_replacing_it(self):
+        general = db.session.get(General, "B")
+        general.weights = json.dumps([20] * 4 + [30] * 8)
+        medication = Medication.query.filter_by(animal_id="B", name="Drug").one()
+        medication.update_amount()
+        self.assertEqual(medication.amount, "40")
+        medication_id = medication.uuid
+        source = Procedure.query.filter_by(animal_id="source", name="Surgery").one()
+        source.start_date, source.end_date = "2025-01-05", "2025-01-07"
+        db.session.commit()
+        response = self.post(target_ids=["B"], categories=["procedures"])
+        self.assertEqual(response.status_code, 200, response.text)
+        medication = db.session.get(Medication, medication_id)
+        self.assertEqual(medication.amount, "60")
+        self.assertEqual(medication.procedure, "Surgery")
+        self.assertEqual(Medication.query.filter_by(animal_id="B", name="Fixed").one().amount, "4")
+
+    def test_sacrifice_procedure_uses_destination_death_date_in_both_modes(self):
+        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
+        db.session.add(template)
+        db.session.add(Procedure("source", "Sacrifice", "2025-01-10", "2025-01-10", "Performer", template.uuid))
+        db.session.get(AnimalData, "B").death_date = "2025-02-20"
+        db.session.commit()
+        for mode in ("shift", "keep"):
+            with self.subTest(mode=mode):
+                response = self.post(target_ids=["B"], categories=["procedures"], date_mode=mode)
+                self.assertEqual(response.status_code, 200, response.text)
+                procedure = Procedure.query.filter_by(animal_id="B", name="Sacrifice").one()
+                self.assertEqual((procedure.start_date, procedure.end_date), ("2025-02-20", "2025-02-20"))
+
+    def test_copy_preserves_edited_associations_with_and_without_source_template_ids(self):
+        for Table in (Medication, Virus):
+            source = Table.query.filter_by(animal_id="source", name="Drug" if Table is Medication else "Vector").one()
+            data = {column.name: getattr(source, column.name) for column in Table.__table__.columns}
+            data["procedure"] = "Followup"
+            data.pop("weight_independant", None)
+            data.pop("toe_pinch", None)
+            self.manager.update_experiment_data_entry("source", "medication" if Table is Medication else "viruses", data)
+        db.session.commit()
+        for clear_links in (False, True):
+            if clear_links:
+                for Table in (Medication, Virus):
+                    for entry in Table.query.filter_by(animal_id="source"):
+                        entry.protocol_entry_uuid = ""
+                db.session.commit()
+            for cross_protocol in (False, True):
+                with self.subTest(clear_links=clear_links, cross_protocol=cross_protocol):
+                    if cross_protocol and db.session.get(General, "B").experiment != "P/Other":
+                        if "Other" not in db.session.get(Protocol, "P").get_subprotocols():
+                            self.manager.create_subprotocol("P", "Other", template=("P", "S"))
+                    db.session.get(General, "B").experiment = "P/Other" if cross_protocol else "P/S"
+                    db.session.commit()
+                    response = self.post(target_ids=["B"])
+                    self.assertEqual(response.status_code, 200, response.text)
+                    for Table, Default, name in ((Medication, PMedication, "Drug"), (Virus, PVirus, "Vector")):
+                        entry = Table.query.filter_by(animal_id="B", name=name).one()
+                        self.assertEqual(entry.procedure, "Followup")
+                        self.assertEqual(db.session.get(Default, entry.protocol_entry_uuid).procedure, "Surgery")
+
+    def test_cross_protocol_template_mapping_uses_original_identity_when_names_repeat(self):
+        self.manager.create_subprotocol("P", "Other", template=("P", "S"))
+        alternate = PMedication("P/Other", "Drug", "Kind", "Followup", "0", "1", "2", False)
+        db.session.add(alternate)
+        db.session.get(General, "B").experiment = "P/Other"
+        source = Medication.query.filter_by(animal_id="source", name="Drug").one()
+        source.procedure = "Followup"
+        db.session.commit()
+        response = self.post(target_ids=["B"])
+        self.assertEqual(response.status_code, 200, response.text)
+        copied = Medication.query.filter_by(animal_id="B", name="Drug").one()
+        self.assertEqual(copied.procedure, "Followup")
+        self.assertEqual(db.session.get(PMedication, copied.protocol_entry_uuid).procedure, "Surgery")
+
+    def test_medication_only_copy_matches_sacrifice_against_destination_death_date(self):
+        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
+        drug = PMedication("P/S", "Death drug", "Kind", "Sacrifice", "4", "1", "1", True)
+        db.session.add_all([template, drug])
+        for animal_id, date in (("source", "2025-01-10"), ("B", "2025-02-20")):
+            db.session.add(Procedure(animal_id, "Sacrifice", date, date, "Performer", template.uuid))
+            db.session.get(AnimalData, animal_id).death_date = date
+        Medication.query.filter_by(animal_id="source").delete()
+        db.session.add(Medication.from_default("source", drug))
+        db.session.commit()
+        response = self.post(target_ids=["B"], categories=["medication"], date_mode="keep")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(Procedure.query.filter_by(animal_id="B", name="Sacrifice").one().start_date, "2025-02-20")
 
     def test_missing_experiment_start_on_source_or_any_target_aborts_entire_batch(self):
         for animal_id in ("source", "B", "C"):
@@ -180,6 +275,152 @@ class ExperimentCopyTests(unittest.TestCase):
                     self.assertEqual(self.snapshot(), before)
                     general.start = saved
                     db.session.commit()
+
+    def test_preview_shows_missing_dates_and_source_counts_without_writing(self):
+        db.session.get(General, "B").start = ""
+        db.session.get(AnimalData, "C").death_date = None
+        db.session.commit()
+        before = self.snapshot()
+        response = self.preview()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json["counts"], {"procedures": 2, "medication": 2, "viruses": 1})
+        self.assertEqual(response.json["source"]["start"], "2025-01-01")
+        self.assertEqual(response.json["source"]["sacrifice_date"], "2025-12-31")
+        self.assertEqual(response.json["targets"][0]["start"], "")
+        self.assertEqual(response.json["targets"][1]["sacrifice_date"], "")
+        self.assertEqual(response.json["targets"][0]["dob"], "2024-01-01")
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.preview(target_ids=[]).json["targets"], [])
+
+    def test_preview_validates_selection_and_permissions(self):
+        for changes in ({"source_id": None}, {"target_ids": "B"}, {"target_ids": [None]},
+                        {"target_ids": ["source"]}, {"target_ids": ["missing"]}):
+            with self.subTest(changes=changes):
+                self.assertIn(self.preview(**changes).status_code, (400, 404))
+        for animal_id in ("source", "C"):
+            animal = db.session.get(AnimalData, animal_id)
+            animal.user = "Other"
+            db.session.commit()
+            self.assertEqual(self.preview().status_code, 403)
+            animal.user = "Tester"
+            db.session.commit()
+        self.assertEqual(self.client.post("/animal_data/copy/preview", json=[], headers=self.headers).status_code, 400)
+
+    def test_preview_requires_login(self):
+        response = self.app.test_client().post("/animal_data/copy/preview", json={"source_id": "source"}, headers=self.headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_entered_dates_are_applied_with_rows_in_both_modes(self):
+        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
+        db.session.add(template)
+        db.session.add(Procedure("source", "Sacrifice", "2025-01-15", "2025-01-15", "Performer", template.uuid))
+        for mode in ("shift", "keep"):
+            with self.subTest(mode=mode):
+                db.session.get(General, "B").start = ""
+                db.session.get(AnimalData, "B").death_date = None
+                db.session.commit()
+                weights = db.session.get(General, "B").weights
+                response = self.post(target_ids=["B"], date_mode=mode,
+                                     target_dates={"B": {"start": "2025-03-01", "sacrifice_date": "2025-03-20"}})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(db.session.get(General, "B").start, "2025-03-01")
+                self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-03-20")
+                self.assertEqual(db.session.get(General, "B").weights, weights)
+                surgery = Procedure.query.filter_by(animal_id="B", name="Surgery").one()
+                self.assertEqual(surgery.start_date, "2025-03-03" if mode == "shift" else "2025-01-03")
+                sacrifice = Procedure.query.filter_by(animal_id="B", name="Sacrifice").one()
+                self.assertEqual((sacrifice.start_date, sacrifice.end_date), ("2025-03-20", "2025-03-20"))
+
+    def test_source_dates_can_be_used_and_skipped_animals_are_completely_unchanged(self):
+        for animal_id in ("B", "C"):
+            db.session.get(General, animal_id).start = ""
+            db.session.get(AnimalData, animal_id).death_date = ""
+        db.session.commit()
+        before = self.snapshot()
+        response = self.post(target_dates={"B": {"start": "2025-01-01", "sacrifice_date": "2025-12-31"}},
+                             skip_ids=["C", "C"])
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json["target_ids"], ["B"])
+        self.assertEqual(response.json["skipped_ids"], ["C"])
+        self.assertEqual(response.json["copied_rows"], 5)
+        self.assertEqual(db.session.get(General, "B").start, "2025-01-01")
+        self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-12-31")
+        for key, value in before.items():
+            if key[1] in ("source", "C"):
+                self.assertEqual(self.snapshot()[key], value)
+
+    def test_missing_sacrifice_date_requires_entry_or_skipping(self):
+        db.session.get(AnimalData, "C").death_date = ""
+        db.session.commit()
+        before = self.snapshot()
+        response = self.post()
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("sacrifice date", response.text)
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.post(skip_ids=["C"]).status_code, 200)
+
+    def test_invalid_or_overwritten_date_choices_reject_the_whole_batch(self):
+        for choices in ([], {"missing": {}}, {"B": []}, {"B": {"start": None}},
+                        {"B": {"other": "2025-01-01"}}, {"B": {"start": "2025-02-02"}}):
+            with self.subTest(choices=choices):
+                before = self.snapshot()
+                self.assertEqual(self.post(target_dates=choices).status_code, 400)
+                self.assertEqual(self.snapshot(), before)
+        for skip_ids in ("C", [None], ["source"], ["missing"]):
+            before = self.snapshot()
+            self.assertEqual(self.post(skip_ids=skip_ids).status_code, 400)
+            self.assertEqual(self.snapshot(), before)
+        db.session.get(General, "C").start = ""
+        db.session.get(AnimalData, "C").death_date = ""
+        db.session.commit()
+        for start, end in (("", "2025-05-01"), ("2025-02-30", "2025-05-01"),
+                           ("2023-12-31", "2025-05-01"), ("2025-06-01", "2025-05-01"),
+                           ("9999-12-31", "9999-12-31")):
+            before = self.snapshot()
+            response = self.post(target_dates={"C": {"start": start, "sacrifice_date": end}})
+            self.assertEqual(response.status_code, 400, response.text)
+            self.assertEqual(self.snapshot(), before)
+
+    def test_entering_sacrifice_date_updates_linked_procedure_without_replacing_it(self):
+        template = PProcedure("P/S", "Sacrifice", "-1", "1", False, False, 0, 0)
+        drug = PMedication("P/S", "Death drug", "Kind", "Sacrifice", "4", "1", "1", True)
+        db.session.add_all([template, drug])
+        db.session.add(Procedure("source", "Sacrifice", "2025-01-10", "2025-01-10", "Performer", template.uuid))
+        destination = Procedure("B", "Sacrifice", "", "", "Other", template.uuid)
+        db.session.add(destination)
+        Medication.query.filter_by(animal_id="source").delete()
+        db.session.add(Medication.from_default("source", drug))
+        db.session.get(AnimalData, "B").death_date = ""
+        db.session.commit()
+        destination_id = destination.uuid
+        response = self.post(target_ids=["B"], categories=["medication"],
+                             target_dates={"B": {"sacrifice_date": "2025-02-20"}})
+        self.assertEqual(response.status_code, 200, response.text)
+        destination = db.session.get(Procedure, destination_id)
+        self.assertEqual((destination.start_date, destination.end_date), ("2025-02-20", "2025-02-20"))
+        self.assertEqual(destination.experimenter, "Other")
+        self.assertEqual(db.session.get(AnimalData, "B").death_date, "2025-02-20")
+
+    def test_write_failure_rolls_back_entered_dates_and_first_animal_rows(self):
+        from data_manager.experiment_copy import apply_experiment_copy
+        for animal_id in ("B", "C"):
+            db.session.get(General, animal_id).start = ""
+            db.session.get(AnimalData, animal_id).death_date = ""
+        db.session.commit()
+        before = self.snapshot()
+
+        def fail_second(plan):
+            apply_experiment_copy(plan)
+            if plan.animal_id == "C":
+                raise RuntimeError("Failed after setting dates")
+
+        dates = {animal_id: {"start": "2025-01-01", "sacrifice_date": "2025-12-31"} for animal_id in ("B", "C")}
+        with patch("data_manager.dmanager.apply_experiment_copy", side_effect=fail_second):
+            with self.assertLogs(self.app.logger, level="ERROR"):
+                response = self.post(target_dates=dates)
+        self.assertEqual(response.status_code, 500)
+        db.session.remove()
+        self.assertEqual(self.snapshot(), before)
 
     def test_missing_invalid_or_reversed_source_dates_abort_without_writes(self):
         for start, end in (("", "2025-01-05"), ("2025-01-03", ""), ("1", "2025-01-05"),
@@ -334,16 +575,19 @@ class ExperimentCopyTests(unittest.TestCase):
         db.session.remove()
         self.assertEqual(self.snapshot(), before)
 
-    def test_copy_and_paste_controls_render_on_animal_and_all_overviews(self):
+    def test_copy_and_paste_modes_render_on_all_overviews(self):
         for path in ("/animal_data/source", "/overview", "/users/Tester", "/protocols/P"):
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200, response.text)
-                self.assertIn('/static/js/experiment_copy.js', response.text)
                 if path == "/animal_data/source":
+                    self.assertNotIn('/static/js/experiment_copy.js', response.text)
+                else:
+                    self.assertIn('/static/js/experiment_copy.js', response.text)
+                    self.assertIn('id="experiment-copy-mode"', response.text)
+                    self.assertIn('id="experiment-paste-mode"', response.text)
                     for category in ("procedures", "viruses", "medication"):
                         self.assertIn(f'name="copy_category" value="{category}"', response.text)
-                else:
                     self.assertIn('id="open-experiment-paste"', response.text)
                     self.assertIn('value="shift"', response.text)
                     self.assertIn('value="keep"', response.text)
