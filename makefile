@@ -43,3 +43,4 @@ check:
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src $(PYTHON) -m unittest discover -s tests
 	$(NODE) tests/test_request_errors.js
 	$(NODE) tests/test_message_rendering.js
+	$(NODE) tests/test_experiment_copy.js

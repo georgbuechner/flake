@@ -109,7 +109,7 @@ pip install -r requirements-dev.txt
 make check
 ```
 
-This runs Pyright, the Python tests and both JavaScript checks. Node.js must be
+This runs Pyright, the Python tests and all three JavaScript checks. Node.js must be
 available. The default Python interpreter is `.venv/bin/python`; override it with
 `make check PYTHON=python` when using another virtual environment.
 
@@ -117,3 +117,25 @@ Detailed input and quota cases belong in service tests. Route tests cover forms,
 permissions, redirects and persisted results; migration tests cover database
 constraints and data preservation. Shared database/login fixtures live in
 `tests/helpers.py`. Tests use isolated databases and temporary files.
+
+## Copy experiment data
+
+On the main, user, or protocol overview, choose **Copy** mode and select one
+source animal. Click **Copy from selected animal** and choose procedures,
+medication, and/or viruses. The overview then switches to **Paste** mode and
+clears the source selection so you can select destination animals. You can
+switch back to Copy mode to choose another source.
+
+Click **Paste to selected animals** to review the destinations. Green rows have
+both start and sacrifice dates. For red rows, enter missing dates directly or
+use the corresponding source dates. **Skip animal** excludes the entire animal
+from the operation, including date changes. Existing dates are preserved, and
+each included destination needs an assigned protocol and subprotocol.
+
+Pasting replaces every entry in the selected categories using the source's
+latest data. Procedure dates can keep their calendar dates or shift relative
+to each destination's start date; sacrifice procedures always use the
+destination's sacrifice date. Medication amounts are recalculated when their
+dates or inputs change. Existing weights and notes are retained. All included
+animals are validated before writing, and dates and copied rows are saved in
+one transaction.

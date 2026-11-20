@@ -16,6 +16,9 @@ from sqlalchemy.orm import Query
 from typing import Dict, Iterable, List, Mapping, Tuple, Any, TypeVar, cast
 from werkzeug.datastructures import FileStorage
 from data_manager.types import ExperimentData, NamedEntry, ProcedureSummary, SurgerySheetData
+from data_manager.experiment_copy import (
+    CopyPreview, CopySummary, apply_experiment_copy, prepare_experiment_copy, preview_experiment_copy,
+)
 from data_manager.animal_counts import get_animal_counts
 from exceptions.exceptions import (
     AnimalDataIncompleteException,
@@ -485,6 +488,28 @@ class DManager:
             db.session.add(element)
         # Update stored? of animal-data
         self.__update_stored(animal_id)
+
+    def get_copy_preview(self, source_id: str, target_ids: List[str], *, actor: User) -> CopyPreview:
+        return preview_experiment_copy(source_id, target_ids, actor)
+
+    def copy_experiment_data(
+        self, source_id: str, target_ids: List[str], categories: List[str],
+        *, date_mode: str, actor: User,
+        target_dates: Dict[str, Dict[str, str]] | None = None, skip_ids: List[str] | None = None,
+    ) -> CopySummary:
+        """Replace selected categories in one transaction; the caller commits."""
+        plans = prepare_experiment_copy(source_id, target_ids, categories, date_mode, actor,
+                                        target_dates, skip_ids)
+        for plan in plans:
+            apply_experiment_copy(plan)
+            self.__update_stored(plan.animal_id)
+        return {
+            "source_id": source_id,
+            "target_ids": [plan.animal_id for plan in plans],
+            "categories": list(dict.fromkeys(categories)),
+            "copied_rows": sum(len(rows) for plan in plans for rows in plan.rows.values()),
+            "skipped_ids": [animal_id for animal_id in dict.fromkeys(target_ids) if animal_id in (skip_ids or [])],
+        }
 
     def delete_animal_data(self, animal_id: str) -> None: 
         tables_to_delete = list(EXPERIMENT_TABLES.values())

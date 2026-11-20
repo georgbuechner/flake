@@ -53,7 +53,7 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             self.assertEqual(connection.execute(sa.text("SELECT value FROM untouched")).scalar(), "keep")
 
     def test_upgrade_creates_the_model_schema_and_preserves_legacy_data(self):
-        command.upgrade(self.config, "head")
+        command.upgrade(self.config, REVISION)
         self.assertEqual(set(sa.inspect(self.engine).get_table_names()),
                          {"user", "untouched", "alembic_version", "animal_orders"})
         metadata = sa.MetaData()
@@ -68,11 +68,6 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             self.assertEqual(compare_metadata(context, metadata), [])
             self.assertEqual(connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar(),
                              REVISION)
-        actual_checks = {constraint["name"]: constraint["sqltext"] for constraint in
-                         sa.inspect(self.engine).get_check_constraints("animal_orders")}
-        model_checks = {constraint.name: str(constraint.sqltext) for constraint in
-                        AnimalOrder.__table__.constraints if isinstance(constraint, sa.CheckConstraint)}
-        self.assertEqual(actual_checks, model_checks)
         self.assert_legacy_data_preserved()
 
     def test_both_models_persist_against_the_migrated_schema(self):
@@ -119,9 +114,9 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             self.assertEqual(row[:2], ("pending", ""))
             self.assertIsNotNone(row.created_at)
 
-    def test_migrated_constraints_reject_incomplete_and_mixed_variants(self):
+    def test_migrated_and_model_constraints_reject_incomplete_and_mixed_variants(self):
         command.upgrade(self.config, REVISION)
-        for selection in (
+        invalid_variants = (
             {"order_type": "other", "ids": '["001"]'},
             {"order_type": "by_id", "ids": '["001"]', "status": "ordered"},
             {"order_type": "by_id", "ids": None},
@@ -135,19 +130,26 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             {"order_type": "by_data", "sex": "male", "age": 8, "amount": 0},
             {"order_type": "by_data", "sex": "male", "age": 8, "amount": 1.5},
             {"order_type": "by_data", "sex": "other", "age": 8, "amount": 3},
-        ):
-            row = {
-                "uuid": "invalid", "licence": "protocol/subprotocol", "line": "Line A",
-                "date": "2027-01-15", "user": "member@example.org", "order_type": "by_id",
-                "ids": None, "sex": None, "age": None, "amount": None, "status": "pending", **selection,
-            }
-            with self.subTest(selection=selection), self.assertRaises(sa.exc.IntegrityError):
-                with self.engine.begin() as connection:
-                    connection.execute(sa.text(
-                        "INSERT INTO animal_orders "
-                        "(uuid, licence, line, date, user, order_type, ids, sex, age, amount, status) "
-                        "VALUES (:uuid, :licence, :line, :date, :user, :order_type, :ids, :sex, :age, :amount, :status)"
-                    ), row)
+        )
+        # Both startup's create_all() and Alembic must enforce the same rules,
+        # regardless of constraint names or how their SQL expressions are written.
+        for schema in ("migrated", "model"):
+            if schema == "model":
+                AnimalOrder.__table__.drop(self.engine)
+                AnimalOrder.__table__.create(self.engine)
+            for selection in invalid_variants:
+                row = {
+                    "uuid": "invalid", "licence": "protocol/subprotocol", "line": "Line A",
+                    "date": "2027-01-15", "user": "member@example.org", "order_type": "by_id",
+                    "ids": None, "sex": None, "age": None, "amount": None, "status": "pending", **selection,
+                }
+                with self.subTest(schema=schema, selection=selection), self.assertRaises(sa.exc.IntegrityError):
+                    with self.engine.begin() as connection:
+                        connection.execute(sa.text(
+                            "INSERT INTO animal_orders "
+                            "(uuid, licence, line, date, user, order_type, ids, sex, age, amount, status) "
+                            "VALUES (:uuid, :licence, :line, :date, :user, :order_type, :ids, :sex, :age, :amount, :status)"
+                        ), row)
 
     def test_downgrade_and_reupgrade_only_remove_order_data(self):
         command.upgrade(self.config, REVISION)

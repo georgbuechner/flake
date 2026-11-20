@@ -34,6 +34,7 @@ import traceback
 import shutil
 import urllib.parse
 from functools import wraps
+from typing import Callable, ParamSpec, TypeVar, cast
 from typing import Any, Callable, Mapping, ParamSpec, TypeVar, cast
 from flask.typing import ResponseReturnValue
 from werkzeug.wrappers import Response
@@ -1091,6 +1092,33 @@ def store_notes(animal_id: str, category: str) -> ResponseReturnValue:
     dmanager.store_note(animal_id, category, apply_note, note_txt)
     db.session.commit()
     return text_response("Success")
+
+@app.route("/animal_data/copy/preview", methods=["POST"])
+@login_required
+@handle_exception
+def preview_experiment_data_copy() -> ResponseReturnValue:
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise InvalidTypeException("Provide a source animal and destination animals.")
+    return jsonify(dmanager.get_copy_preview(
+        data.get("source_id", ""), data.get("target_ids", []), actor=cast(User, current_user),
+    ))
+
+
+@app.route("/animal_data/copy", methods=["POST"])
+@login_required
+@handle_exception
+def copy_experiment_data() -> ResponseReturnValue:
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise InvalidTypeException("Provide a source, destinations, categories and date mode.")
+    summary = dmanager.copy_experiment_data(
+        data.get("source_id", ""), data.get("target_ids", []), data.get("categories", []),
+        date_mode=data.get("date_mode", ""), actor=cast(User, current_user),
+        target_dates=data.get("target_dates"), skip_ids=data.get("skip_ids"),
+    )
+    db.session.commit()
+    return jsonify(summary)
 
 @app.route("/animal_data/<animal_id>/<category>", methods=["POST"])
 @login_required
