@@ -106,6 +106,14 @@ type checker and tests from the repository root:
 
 ```sh
 pip install -r requirements-dev.txt
-pyright
-PYTHONPATH=src python -m unittest discover -s tests
+make check
 ```
+
+This runs Pyright, the Python tests and both JavaScript checks. Node.js must be
+available. The default Python interpreter is `.venv/bin/python`; override it with
+`make check PYTHON=python` when using another virtual environment.
+
+Detailed input and quota cases belong in service tests. Route tests cover forms,
+permissions, redirects and persisted results; migration tests cover database
+constraints and data preservation. Shared database/login fixtures live in
+`tests/helpers.py`. Tests use isolated databases and temporary files.

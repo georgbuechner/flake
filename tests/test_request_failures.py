@@ -8,7 +8,6 @@ from unittest.mock import patch
 from unittest.mock import Mock
 from urllib.parse import quote
 
-from flask import Flask
 from PIL import Image
 
 from data_manager.dmanager import DManager
@@ -16,7 +15,8 @@ from data_manager.tables import (
     db, AnimalData, General, AMedication, User, CommentBackup, Virus,
     Medication, Procedure, VerificationCode,
 )
-from route_helpers import ROOT, load_routes
+from route_helpers import load_routes
+from helpers import database_app, login_as
 
 
 def image_bytes(image_format="PNG"):
@@ -27,15 +27,7 @@ def image_bytes(image_format="PNG"):
 
 class RequestFailureTests(unittest.TestCase):
     def setUp(self):
-        self.app = Flask(__name__, template_folder=str(ROOT / "src/templates"))
-        self.app.config.update(SECRET_KEY="test-only", SQLALCHEMY_DATABASE_URI="sqlite:///:memory:")
-        db.init_app(self.app)
-        context = self.app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         self.ns = load_routes(self.app, decorated=True)
         self.manager = DManager()
         self.ns["dmanager"] = self.manager
@@ -57,13 +49,12 @@ class RequestFailureTests(unittest.TestCase):
         db.session.add(general)
         db.session.commit()
         self.client = self.app.test_client()
-        with self.client.session_transaction() as session:
-            session["_user_id"] = user.email
-            session["_fresh"] = True
+        login_as(self.client, user.email)
         self.ajax = {"X-Requested-With": "XMLHttpRequest"}
 
     def test_invalid_weight_or_mask_never_changes_existing_values(self):
         cases = [
+            ('not JSON', '[false]'), ('null', '[]'), ('[null]', '[true]'),
             ('[20, "bad"]', '[false, false]'), ('[20, -1]', '[false, false]'),
             ('[20, NaN]', '[false, false]'), ('[20, Infinity]', '[false, false]'),
             ('[true, 21]', '[false, false]'), ('[0, 21]', '[false, false]'),
@@ -209,14 +200,16 @@ class RequestFailureTests(unittest.TestCase):
         self.assertEqual(response.headers['Location'], '/login')
 
     def test_undecorated_page_error_is_logged_and_private_details_are_hidden(self):
-        with patch.object(self.manager, 'get_current_year', side_effect=RuntimeError('private detail')):
-            with self.assertLogs(self.app.logger, level='ERROR') as logs:
-                response = self.client.get('/', headers={"Accept": "text/html"})
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.mimetype, 'text/html')
-        self.assertIn('The error has been logged', response.text)
-        self.assertNotIn('private detail', response.text)
-        self.assertIn('private detail', '\n'.join(logs.output))
+        for headers, mimetype in (({"Accept": "text/html"}, "text/html"), (self.ajax, "text/plain")):
+            with self.subTest(mimetype=mimetype):
+                with patch.object(self.manager, 'get_current_year', side_effect=RuntimeError('private detail')):
+                    with self.assertLogs(self.app.logger, level='ERROR') as logs:
+                        response = self.client.get('/', headers=headers)
+                self.assertEqual(response.status_code, 500)
+                self.assertEqual(response.mimetype, mimetype)
+                self.assertIn('The error has been logged', response.text)
+                self.assertNotIn('private detail', response.text)
+                self.assertIn('private detail', '\n'.join(logs.output))
 
     def test_native_and_ajax_errors_escape_html_and_preserve_http_headers(self):
         response = self.client.get('/missing', headers={"Accept": "text/html"})
@@ -291,6 +284,9 @@ class RequestFailureTests(unittest.TestCase):
     def test_signature_failures_preserve_original_and_remove_temporary_files(self):
         original = self.signatures / 'TestUser.png'
         original.write_bytes(image_bytes())
+        response = self.client.post('/upload/signature/TestUser', headers=self.ajax)
+        self.assertEqual(response.status_code, 406)
+        self.assertEqual(original.read_bytes(), image_bytes())
         for payload, mimetype in ((b'bad image', 'image/png'), (b'bad image', 'application/pdf')):
             response = self.client.post('/upload/signature/TestUser', headers=self.ajax,
                                         data={'sig': (io.BytesIO(payload), 'signature.png', mimetype)})

@@ -81,9 +81,12 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             "licence": "protocol/subprotocol", "line": "Line A",
             "date": date(2027, 1, 15), "user": "member@example.org",
         }
+        original_ids = [" 001 ", "002"]
         with Session(self.engine) as session:
+            by_id = AnimalOrderById(**common, ids=original_ids, comment="Requested IDs")
+            original_ids.append("not part of the order")
             session.add_all([
-                AnimalOrderById(**common, ids=["001", "002"]),
+                by_id,
                 AnimalOrderByData(**common, sex="unknown", age=8, amount=4),
             ])
             session.commit()
@@ -94,9 +97,15 @@ class AnimalOrderMigrationTests(unittest.TestCase):
             self.assertIsInstance(by_id, AnimalOrderById)
             self.assertIsInstance(by_data, AnimalOrderByData)
             self.assertEqual(by_id.ids, ["001", "002"])
+            self.assertEqual(by_id.comment, "Requested IDs")
             self.assertEqual((by_data.sex, by_data.age, by_data.amount), ("unknown", 8, 4))
             self.assertEqual(by_id.status, "pending")
             self.assertEqual(by_data.status, "pending")
+            by_id.ids = [*by_id.ids, "003"]
+            identifier = by_id.uuid
+            session.commit()
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(AnimalOrder, identifier).ids, ["001", "002", "003"])
         with self.engine.begin() as connection:
             # Database defaults cover inserts that do not go through the ORM.
             connection.execute(sa.text(
@@ -114,25 +123,30 @@ class AnimalOrderMigrationTests(unittest.TestCase):
         command.upgrade(self.config, REVISION)
         for selection in (
             {"order_type": "other", "ids": '["001"]'},
+            {"order_type": "by_id", "ids": '["001"]', "status": "ordered"},
             {"order_type": "by_id", "ids": None},
             {"order_type": "by_id", "ids": "[]"},
+            {"order_type": "by_id", "ids": '"001"'},
             {"order_type": "by_id", "ids": '["001"]', "amount": 1},
+            {"order_type": "by_data", "ids": '["001"]', "sex": "male", "age": 8, "amount": 3},
             {"order_type": "by_data", "sex": "male", "age": 8},
             {"order_type": "by_data", "sex": "male", "age": -1, "amount": 3},
+            {"order_type": "by_data", "sex": "male", "age": 1.5, "amount": 3},
             {"order_type": "by_data", "sex": "male", "age": 8, "amount": 0},
+            {"order_type": "by_data", "sex": "male", "age": 8, "amount": 1.5},
             {"order_type": "by_data", "sex": "other", "age": 8, "amount": 3},
         ):
             row = {
                 "uuid": "invalid", "licence": "protocol/subprotocol", "line": "Line A",
                 "date": "2027-01-15", "user": "member@example.org", "order_type": "by_id",
-                "ids": None, "sex": None, "age": None, "amount": None, **selection,
+                "ids": None, "sex": None, "age": None, "amount": None, "status": "pending", **selection,
             }
             with self.subTest(selection=selection), self.assertRaises(sa.exc.IntegrityError):
                 with self.engine.begin() as connection:
                     connection.execute(sa.text(
                         "INSERT INTO animal_orders "
-                        "(uuid, licence, line, date, user, order_type, ids, sex, age, amount) "
-                        "VALUES (:uuid, :licence, :line, :date, :user, :order_type, :ids, :sex, :age, :amount)"
+                        "(uuid, licence, line, date, user, order_type, ids, sex, age, amount, status) "
+                        "VALUES (:uuid, :licence, :line, :date, :user, :order_type, :ids, :sex, :age, :amount, :status)"
                     ), row)
 
     def test_downgrade_and_reupgrade_only_remove_order_data(self):

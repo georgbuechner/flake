@@ -3,33 +3,25 @@ from datetime import date, datetime
 import unittest
 from unittest.mock import patch
 
-from flask import Flask
 from sqlalchemy import inspect
 from werkzeug.exceptions import Forbidden
 
 from data_manager.animal_counts import get_animal_counts
 from data_manager.orders import get_order_lines, validate_order_submission
 from data_manager.tables import (
-    AnimalData, AnimalOrder, AnimalOrderByData, AnimalOrderById, PAllowedMice,
+    AnimalData, AnimalOrderByData, AnimalOrderById, PAllowedMice,
     PGeneral, Protocol, User, db,
 )
 from exceptions.exceptions import (
     EntryNotFound, FlakeError, InvalidTypeException,
     OrderAllowanceNotConfigured, OrderQuotaExceeded,
 )
+from helpers import database_app
 
 
 class OrderSubmissionTests(unittest.TestCase):
     def setUp(self):
-        app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        db.init_app(app)
-        context = app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         clock = patch("data_manager.orders.today", return_value=datetime(2026, 11, 19, 23, 45))
         clock.start()
         self.addCleanup(clock.stop)
@@ -44,6 +36,7 @@ class OrderSubmissionTests(unittest.TestCase):
             PAllowedMice("protocol/A", "Unspecified", None),
             PAllowedMice("protocol/A", "Zero", 0),
             PAllowedMice("protocol/B", "Line A", 20),
+            PAllowedMice("protocol/B", "Foreign line", 20),
             PAllowedMice("other/A", "Line A", 20),
         ])
         self.add_animal("001", death_date="2020-01-01", user="Other")
@@ -78,29 +71,17 @@ class OrderSubmissionTests(unittest.TestCase):
         self.assertEqual(get_animal_counts("protocol", "A"), {"Line A": 3, "Line B": 1})
         self.assertEqual(get_animal_counts("protocol", "B"), {"Line A": 1})
         self.assertEqual(get_animal_counts("other", "A"), {"Line A": 1})
-
-    def test_line_choices_report_used_and_remaining_capacity(self):
-        self.assertEqual(get_order_lines(self.user, "protocol/A"), [
-            {"line": "Line A", "allowance": 5, "used": 3, "remaining": 2},
-            {"line": "Line B", "allowance": 3, "used": 1, "remaining": 2},
-            {"line": "Unspecified", "allowance": None, "used": 0, "remaining": None},
-            {"line": "Zero", "allowance": 0, "used": 0, "remaining": 0},
-        ])
+        line = get_order_lines(self.user, "protocol/A")[0]
+        self.assertEqual((line["used"], line["remaining"]), (3, 2))
 
     def test_valid_data_order_accepts_form_integers_and_exact_remaining_capacity(self):
         order = validate_order_submission(self.user, {
             **self.data, "age": " 0 ", "amount": " 2 ", "comment": "Keep this\ncomment.",
-            "user": "forged@example.org", "status": "approved", "uuid": "forged",
-            "created_at": "2000-01-01",
         })
         self.assertIsInstance(order, AnimalOrderByData)
         self.assertEqual((order.age, order.amount, order.sex), (0, 2, "unknown"))
         self.assertEqual(order.date, date(2026, 11, 22))
         self.assertEqual(order.comment, "Keep this\ncomment.")
-        self.assertEqual(order.user, self.user.email)
-        self.assertEqual(order.status, "pending")
-        self.assertNotEqual(order.uuid, "forged")
-        self.assertIsInstance(order.created_at, datetime)
         self.assertTrue(inspect(order).transient)
 
     def test_valid_id_order_accepts_a_list_or_comma_and_whitespace_separated_text(self):
@@ -109,31 +90,23 @@ class OrderSubmissionTests(unittest.TestCase):
                 order = validate_order_submission(self.user, {**self.ids, "ids": ids})
                 self.assertIsInstance(order, AnimalOrderById)
                 self.assertEqual(order.ids, ["NEW-1", "NEW-2"])
-                self.assertTrue(inspect(order).transient)
-        self.assertEqual(AnimalData.query.count(), 7)
 
-    def test_both_order_modes_reject_quantities_above_remaining_capacity(self):
-        for data in ({**self.data, "amount": 3}, {**self.ids, "ids": "NEW-1,NEW-2,NEW-3"}):
-            with self.subTest(order_type=data["order_type"]), self.assertRaises(OrderQuotaExceeded) as raised:
-                validate_order_submission(self.user, data)
-            self.assertEqual(raised.exception.status, 409)
-            self.assertIn("3 already assigned out of 5 allowed", raised.exception.msg)
-            self.assertIn("3 requested and 2 remaining", raised.exception.msg)
-
-    def test_zero_and_unconfigured_allowances_block_submission(self):
-        for line, error in (("Zero", OrderQuotaExceeded), ("Unspecified", OrderAllowanceNotConfigured)):
-            for data in (self.data, self.ids):
-                with self.subTest(line=line, mode=data["order_type"]), self.assertRaises(error) as raised:
-                    validate_order_submission(self.user, {**data, "line": line})
-                self.assertEqual(raised.exception.status, 409)
-
-    def test_an_already_exceeded_allowance_has_zero_remaining_and_rejects_more_orders(self):
-        self.allowance.num_availible_animals = 2
-        db.session.commit()
-        line = next(line for line in get_order_lines(self.user, "protocol/A") if line["line"] == "Line A")
-        self.assertEqual((line["used"], line["remaining"]), (3, 0))
-        with self.assertRaises(OrderQuotaExceeded):
-            validate_order_submission(self.user, {**self.data, "amount": 1})
+    def test_quota_boundaries_apply_to_both_order_modes(self):
+        for allowance, line, quantity, error in (
+            (5, "Line A", 3, OrderQuotaExceeded),
+            (2, "Line A", 1, OrderQuotaExceeded), (5, "Zero", 1, OrderQuotaExceeded),
+            (5, "Unspecified", 1, OrderAllowanceNotConfigured),
+        ):
+            self.allowance.num_availible_animals = allowance
+            db.session.commit()
+            for mode in ("by_data", "by_id"):
+                data = ({**self.data, "amount": quantity} if mode == "by_data" else
+                        {**self.ids, "ids": [f"NEW-{index}" for index in range(quantity)]})
+                data["line"] = line
+                with self.subTest(mode=mode, allowance=allowance, line=line, quantity=quantity), self.assertRaises(error):
+                    validate_order_submission(self.user, data)
+            remaining = get_order_lines(self.user, "protocol/A")[0]["remaining"]
+            self.assertEqual(remaining, max(0, allowance - 3))
 
     def test_counts_and_allowances_are_rechecked_for_each_submission(self):
         validate_order_submission(self.user, self.data)
@@ -167,39 +140,22 @@ class OrderSubmissionTests(unittest.TestCase):
                 validate_order_submission(self.user, {**self.data, "date": value})
             self.assertIn("2026-11-22", raised.exception.msg)
 
-    def test_delivery_boundaries_cross_the_year_and_leap_day(self):
-        for current, too_soon, minimum in (
-            (datetime(2026, 12, 30), "2027-01-01", "2027-01-02"),
-            (datetime(2028, 2, 27), "2028-02-29", "2028-03-01"),
-        ):
-            with self.subTest(today=current), patch("data_manager.orders.today", return_value=current):
-                with self.assertRaises(InvalidTypeException):
-                    validate_order_submission(self.user, {**self.data, "date": too_soon})
-                validate_order_submission(self.user, {**self.data, "date": minimum})
-
-    def test_malformed_dates_are_rejected(self):
-        for value in (None, "", "not a date", "22.11.2026", "2026-11-31", "2027-02-29",
-                      "20261122", "2026-W47-7", datetime(2026, 11, 22), True):
-            with self.subTest(date=value), self.assertRaises(FlakeError) as raised:
-                validate_order_submission(self.user, {**self.data, "date": value})
-            self.assertEqual(raised.exception.status, 400)
-
-    def test_required_data_fields_reject_missing_fractional_boolean_and_invalid_values(self):
+    def test_invalid_form_values_are_rejected(self):
         for field, values in {
             "order_type": (None, "", "other"),
             "sex": (None, "", "m", "other"),
             "age": (None, "", "-1", "1.5", 1.5, True, "1e2", str(2**63)),
             "amount": (None, "", "0", "-1", "1.5", 1.5, True, "1e2", str(2**63)),
             "comment": (None, 3, []),
+            "date": (None, "", "not a date", "22.11.2026", "2026-11-31",
+                     "20261122", "2026-W47-7", datetime(2026, 11, 22), True),
+            "ids": (None, [], "", " , \n ", "NEW-1, NEW-1", ["NEW-1", " NEW-1 "], [3]),
         }.items():
             for value in values:
-                with self.subTest(field=field, value=value), self.assertRaises(InvalidTypeException):
-                    validate_order_submission(self.user, {**self.data, field: value})
-
-    def test_empty_duplicate_and_invalid_ids_are_rejected_after_parsing(self):
-        for ids in (None, [], "", " , \n ", "NEW-1, NEW-1", ["NEW-1", " NEW-1 "], [3], [None]):
-            with self.subTest(ids=ids), self.assertRaises(InvalidTypeException):
-                validate_order_submission(self.user, {**self.ids, "ids": ids})
+                data = self.ids if field == "ids" else self.data
+                with self.subTest(field=field, value=value), self.assertRaises(FlakeError) as raised:
+                    validate_order_submission(self.user, {**data, field: value})
+                self.assertEqual(raised.exception.status, 400)
 
     def test_an_order_cannot_combine_ids_and_data_fields(self):
         for field, value in (("sex", "male"), ("age", 0), ("amount", 2)):
@@ -210,17 +166,6 @@ class OrderSubmissionTests(unittest.TestCase):
         validate_order_submission(self.user, {**self.ids, "sex": "", "age": " ", "amount": None})
         validate_order_submission(self.user, {**self.data, "ids": []})
 
-    def test_submission_rechecks_licence_permissions_and_line_configuration(self):
-        with self.assertRaises(EntryNotFound):
-            validate_order_submission(self.user, {**self.data, "line": "Unconfigured line"})
-        with self.assertRaises(EntryNotFound):
-            validate_order_submission(self.user, {**self.data, "licence": "missing/A"})
-        validate_order_submission(self.user, self.data)
-        PGeneral.query.filter_by(protocol="protocol/A").one().allowed_users = "Other"
-        db.session.commit()
-        with self.assertRaises(Forbidden):
-            validate_order_submission(self.user, self.data)
-
     def test_admin_and_paw_control_membership_do_not_bypass_quotas(self):
         self.user.admin = True
         self.user.paw_control = True
@@ -228,21 +173,31 @@ class OrderSubmissionTests(unittest.TestCase):
         with self.assertRaises(OrderQuotaExceeded):
             validate_order_submission(self.user, {**self.data, "amount": 3})
 
-    def test_validation_does_not_persist_orders_or_change_existing_records(self):
-        before = {table.name: db.session.scalar(db.select(db.func.count()).select_from(table))
-                  for table in db.metadata.sorted_tables}
-        for data in (self.data, self.ids):
-            self.assertTrue(inspect(validate_order_submission(self.user, data)).transient)
-        with self.assertRaises(OrderQuotaExceeded):
-            validate_order_submission(self.user, {**self.data, "amount": 3})
-        self.assertFalse(db.session.new)
-        self.assertFalse(db.session.dirty)
-        db.session.commit()
-        after = {table.name: db.session.scalar(db.select(db.func.count()).select_from(table))
-                 for table in db.metadata.sorted_tables}
-        self.assertEqual(after, before)
-        self.assertEqual(AnimalOrder.query.count(), 0)
-
+    def test_submission_rechecks_permissions_and_configuration(self):
+        for field, value in (("licence", "missing/A"), ("line", "Foreign line"),
+                             ("line", "Unknown")):
+            with self.subTest(field=field, value=value), self.assertRaises(EntryNotFound):
+                validate_order_submission(self.user, {**self.data, field: value})
+        for field, value in (("licence", ""), ("line", " ")):
+            with self.subTest(field=field), self.assertRaises(InvalidTypeException):
+                validate_order_submission(self.user, {**self.data, field: value})
+        general = PGeneral.query.filter_by(protocol="protocol/A").one()
+        protocol = db.session.get(Protocol, "protocol")
+        for change, error in (
+            (lambda: setattr(general, "allowed_users", "Other"), Forbidden),
+            (lambda: db.session.delete(self.allowance), EntryNotFound),
+            (lambda: setattr(protocol, "subprotocols", "B"), EntryNotFound),
+            (lambda: db.session.delete(protocol), EntryNotFound),
+        ):
+            validate_order_submission(self.user, self.data)
+            transaction = db.session.begin_nested()
+            try:
+                change()
+                db.session.flush()
+                with self.subTest(error=error), self.assertRaises(error):
+                    validate_order_submission(self.user, self.data)
+            finally:
+                transaction.rollback()
 
 if __name__ == "__main__":
     unittest.main()

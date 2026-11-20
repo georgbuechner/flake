@@ -2,11 +2,10 @@
 from html.parser import HTMLParser
 import unittest
 
-from flask import Flask
-
 from data_manager.dmanager import DManager
 from data_manager.tables import db, User, table_to_json
-from route_helpers import ROOT, load_routes
+from route_helpers import load_routes
+from helpers import database_app, login_as
 
 
 class InputParser(HTMLParser):
@@ -21,15 +20,7 @@ class InputParser(HTMLParser):
 
 class PawControlTests(unittest.TestCase):
     def setUp(self):
-        self.app = Flask(__name__, template_folder=str(ROOT / "src/templates"))
-        self.app.config.update(SECRET_KEY="test-only", SQLALCHEMY_DATABASE_URI="sqlite:///:memory:")
-        db.init_app(self.app)
-        context = self.app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         namespace = load_routes(self.app, decorated=True)
         namespace["dmanager"] = DManager()
         self.admin = User("admin@example.org", "Admin", True, "hash", b"salt")
@@ -41,9 +32,7 @@ class PawControlTests(unittest.TestCase):
         self.login(self.admin)
 
     def login(self, user):
-        with self.client.session_transaction() as session:
-            session["_user_id"] = user.email
-            session["_fresh"] = True
+        login_as(self.client, user.email)
 
     def test_new_users_default_to_false_before_and_after_persistence(self):
         user = User("new@example.org", "New", False, "hash", b"salt")

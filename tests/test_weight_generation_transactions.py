@@ -1,33 +1,18 @@
 """Weight generation and date transactions against an isolated database."""
-import ast
 import json
 import unittest
-from functools import wraps
-from pathlib import Path
 from unittest.mock import patch
 
-from flask import Flask, request, redirect
-from werkzeug.exceptions import HTTPException
-
-from data_manager.dmanager import DManager, parse_weight
+from data_manager.dmanager import DManager
 from data_manager.tables import db, AnimalData, General, PGeneral, PWatercontrol
-from exceptions.exceptions import FlakeError, InvalidTypeException, WeightGenerationUnavailable
-from exceptions.handlers import handle_request_error
-from utils.dt_utils import date_filled
-from utils.http import text_response
+from exceptions.exceptions import WeightGenerationUnavailable
+from helpers import database_app
+from route_helpers import load_routes
 
 
 class WeightGenerationTransactionTests(unittest.TestCase):
     def setUp(self):
-        self.app = Flask(__name__)
-        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-        db.init_app(self.app)
-        context = self.app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         self.manager = DManager()
         db.session.add(AnimalData({
             'id': 'test', 'sex': 'M', 'line': 'Line', 'dob': '01.01.2025',
@@ -40,20 +25,10 @@ class WeightGenerationTransactionTests(unittest.TestCase):
         general.watercontrol_mask = '[false, false]'
         db.session.add(general)
         db.session.commit()
-        # Importing app.py would initialize the production database. Compile only
-        # the real handlers and route bodies, and register them on this test app.
         names = {'handle_exception', 'update_animal_all', 'update_animal_death_date',
                  'update_dates', 'generate_weight_list'}
-        nodes = []
-        source = Path(__file__).resolve().parents[1] / 'src/app.py'
-        for node in ast.parse(source.read_text()).body:
-            if isinstance(node, ast.ImportFrom) and node.module == '__future__':
-                nodes.append(node)
-            elif isinstance(node, ast.FunctionDef) and node.name in names:
-                node.decorator_list = []
-                nodes.append(node)
-        ns = dict(globals(), app=self.app, dmanager=self.manager)
-        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), ns)
+        ns = load_routes(self.app, names)
+        ns['dmanager'] = self.manager
         for path, name in (
             ('/death/<animal_id>', 'update_animal_death_date'),
             ('/dates/<animal_id>/<autofill>', 'update_dates'),
