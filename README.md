@@ -96,6 +96,9 @@ baselining a database, because it records revisions without running them.
 The type decisions for issue #3 and the scope of its migration are documented in
 [docs/database-types.md](docs/database-types.md).
 
+The animal order pages, form flow and quota rules are documented in
+[docs/animal-orders.md](docs/animal-orders.md).
+
 ## Development checks
 
 Install the development dependencies in the virtual environment, then run the
@@ -103,27 +106,17 @@ type checker and tests from the repository root:
 
 ```sh
 pip install -r requirements-dev.txt
-pyright
-PYTHONPATH=src python -m unittest discover -s tests
+make check
 ```
 
-JavaScript checks run without additional dependencies:
+This runs Pyright, the Python tests and both JavaScript checks. Node.js must be
+available. The default Python interpreter is `.venv/bin/python`; override it with
+`make check PYTHON=python` when using another virtual environment.
 
-```sh
-node tests/test_experiment_copy.js
-node tests/test_request_errors.js
-node tests/test_message_rendering.js
-```
-
-To check the copy/paste workflow in headless Chromium, start
-`chromedriver --port=9516`, then run:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv/bin/python tests/browser_experiment_copy.py
-```
-
-The browser check uses an isolated in-memory database and saves its review
-screenshot to `/tmp/flake-copy-paste-review.png`.
+Detailed input and quota cases belong in service tests. Route tests cover forms,
+permissions, redirects and persisted results; migration tests cover database
+constraints and data preservation. Shared database/login fixtures live in
+`tests/helpers.py`. Tests use isolated databases and temporary files.
 
 ## Copy experiment data
 

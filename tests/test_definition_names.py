@@ -1,25 +1,16 @@
 import unittest
 
-from flask import Flask
-
 from data_manager.dmanager import DManager
 from data_manager.tables import (
     db, AnimalData, DEFINITION_TABLES, PROTOCOL_TABLES, EXPERIMENT_TABLES,
 )
 from exceptions.exceptions import DublicateEntry, EntryNotFound, InvalidNameException
+from helpers import database_app
 
 
 class DefinitionNameTests(unittest.TestCase):
     def setUp(self):
-        app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        db.init_app(app)
-        context = app.app_context()
-        context.push()
-        self.addCleanup(context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         self.manager = DManager()
         self.data = {
             "name": "Original", "uuid": "", "procedure": "Procedure", "kind": "Kind",

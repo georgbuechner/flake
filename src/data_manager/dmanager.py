@@ -19,6 +19,7 @@ from data_manager.types import ExperimentData, NamedEntry, ProcedureSummary, Sur
 from data_manager.experiment_copy import (
     CopyPreview, CopySummary, apply_experiment_copy, prepare_experiment_copy, preview_experiment_copy,
 )
+from data_manager.animal_counts import get_animal_counts
 from exceptions.exceptions import (
     AnimalDataIncompleteException,
     ConfirmationRequired,
@@ -651,10 +652,7 @@ class DManager:
         # Get definitions:
         if category == "allowed_animals":
             escaped_protocol, subprotocol = full_protocol.split("/", 1)
-            counts = dict(db.session.query(AnimalData.line, db.func.count()).filter(
-                AnimalData.protocol_escaped == escaped_protocol,
-                AnimalData.subprotocol == subprotocol,
-            ).group_by(AnimalData.line).all())
+            counts = get_animal_counts(escaped_protocol, subprotocol)
             configured_names = {line.name for line in protocol_data}
             for line in protocol_data:
                 line.used = counts.get(line.name, 0)

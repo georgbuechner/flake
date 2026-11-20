@@ -1,26 +1,44 @@
 import unittest
-from pathlib import Path
+from html.parser import HTMLParser
 
-from flask import Flask
-from jinja2 import Template
 from sqlalchemy.exc import IntegrityError
 
 from data_manager.dmanager import DManager
-from data_manager.tables import db, PAllowedMice, ALine, AnimalData
+from data_manager.tables import db, PAllowedMice, ALine, AnimalData, Protocol, User
 from exceptions.exceptions import DublicateEntry, InvalidTypeException, InvalidNameException, EntryNotFound
+from helpers import database_app, login_as
+from route_helpers import load_routes
+
+
+class AllowanceRows(HTMLParser):
+    def __init__(self, html):
+        super().__init__()
+        self.rows = []
+        self.row = {}
+        self.cell = None
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "tr":
+            self.row = attrs
+        elif tag == "td" and attrs.get("name") == "num_availible_animals":
+            self.cell = attrs
+            self.cell["text"] = ""
+            self.rows.append((self.row, attrs))
+
+    def handle_data(self, data):
+        if self.cell is not None:
+            self.cell["text"] += data
+
+    def handle_endtag(self, tag):
+        if tag == "td":
+            self.cell = None
 
 
 class AllowedAnimalTests(unittest.TestCase):
     def setUp(self):
-        app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        db.init_app(app)
-        self.context = app.app_context()
-        self.context.push()
-        self.addCleanup(self.context.pop)
-        self.addCleanup(db.engine.dispose)
-        self.addCleanup(db.session.remove)
-        db.create_all()
+        self.app = database_app(self)
         self.manager = DManager()
         self.first = PAllowedMice("protocol/sub", "Line A", 10)
         self.second = PAllowedMice("protocol/sub", "Line B", 20)
@@ -155,21 +173,31 @@ class AllowedAnimalTests(unittest.TestCase):
                 db.session.rollback()
 
     def test_display_distinguishes_unspecified_zero_and_numeric_limits(self):
-        source = Path("src/templates/subprotocol.html").read_text()
-        start = source.index('          <tr {{ "class=err"')
-        end = source.index("</tr>", start) + len("</tr>")
-        template = Template(source[start:end])
+        namespace = load_routes(self.app, {
+            "handle_exception", "user_loader", "unauthorized_handler", "subprotocol",
+        }, decorated=True)
+        namespace["dmanager"] = self.manager
+        db.session.delete(self.second)
+        db.session.add_all([Protocol("Protocol", "protocol", "sub"),
+                            User("test@example.org", "Test", False, "hash", b"salt")])
+        db.session.commit()
+        client = self.app.test_client()
+        login_as(client, "test@example.org")
         for allowance, used, warning in ((None, 7, False), (0, 0, False),
                                          (0, 7, True), (10, 7, False), (10, 11, True)):
             with self.subTest(allowance=allowance, used=used):
-                html = template.render(line={
-                    "uuid": "test", "name": "Line A", "used": used,
-                    "num_availible_animals": allowance,
-                }, category="allowed_animals")
-                self.assertEqual("class=err" in html, warning)
-                self.assertEqual("Not configured" in html, allowance is None)
+                self.first.num_availible_animals = allowance
+                AnimalData.query.delete()
+                for identifier in range(used):
+                    self.add_animal(str(identifier), "Line A")
+                db.session.commit()
+                response = client.get("/settings/protocols/protocol/sub/allowed_animals")
+                self.assertEqual(response.status_code, 200, response.text)
+                row, cell = AllowanceRows(response.text).rows[0]
+                self.assertEqual("err" in row.get("class", "").split(), warning)
+                self.assertEqual(cell["text"].strip(), "Not configured" if allowance is None else str(allowance))
                 raw_value = "" if allowance is None else str(allowance)
-                self.assertIn(f'data-value="{raw_value}"', html)
+                self.assertEqual(cell["data-value"], raw_value)
 
 
 if __name__ == "__main__":

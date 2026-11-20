@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLAKE - Order</title>
+  {% include "default_imports.html" %}
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/">FLAKE</a>
+    <a href="{{url_for('orders')}}">Orders</a>
+    <a class="active" href="{{url_for('order_details', order_uuid=order.uuid)}}">Order</a>
+  </nav>
+  {% include "userinfos_header.html" %}
+  <main class="center_in_box">
+    {% include "in_box_header.html" %}
+    <h1><i>FLAKE</i> Order</h1>
+    {% for message in get_flashed_messages() %}
+      <p role="status">{{message}}</p>
+    {% endfor %}
+    {% include "order_table.html" %}
+    <p><a href="{{url_for('orders')}}">Back to orders</a></p>
+  </main>
+</body>
+</html>

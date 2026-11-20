@@ -210,3 +210,12 @@ dialog {
 .hide-column {
   display: none;
 }
+
+.box_header {
+  float: right;
+  margin: -30px;
+}
+
+.box_header > a {
+  margin-left: 1rem;
+}
